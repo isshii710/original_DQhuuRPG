@@ -1028,6 +1028,15 @@ window.addEventListener('resize', resizeCanvas);
 // INIT / TITLE
 // ============================================================
 window.addEventListener('load',()=>{
+  // 画面の初期状態を強制リセット（CSS キャッシュ対策）
+  ['lobby-screen','battle-screen','spell-screen','target-screen',
+   'ally-target-screen','menu-screen','status-screen','equip-screen',
+   'lvlup-screen','dialog','save-modal','online-modal','join-modal',
+   'item-popup','chat-input'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.classList.add('hidden');
+  });
+  document.getElementById('title-screen').classList.remove('hidden');
   createStars();
   setTimeout(()=>{
     document.getElementById('loading').classList.add('hidden');
