@@ -983,7 +983,7 @@ const G = {
   party: [],
   // Map
   mapIdx:0, dungeonFloor:0, prevMapIdx:0,
-  clearedDungeons:{}, chests:[], chestAnim:null,
+  clearedDungeons:{}, chests:[], chestAnim:null, doors:[], doorAnim:null,
   // Enemies on map (sprites)
   mapEnemies:[],
   // Battle
@@ -1008,7 +1008,7 @@ const G = {
 };
 
 // Tile IDs
-const T={FLOOR:0,WALL:1,TREE:3,NPC:4,EXIT:5,STAIR_D:6,STAIR_U:7,BOSS_GATE:8,CHEST:10};
+const T={FLOOR:0,WALL:1,TREE:3,NPC:4,EXIT:5,STAIR_D:6,STAIR_U:7,BOSS_GATE:8,CHEST:10,DOOR:11};
 
 // ============================================================
 // CANVAS SETUP
@@ -1614,6 +1614,7 @@ function _handleP2P(msg) {
         G.mapIdx  = msg.mapIdx;
         G.tiles   = msg.tiles;
         G.chests  = msg.chests || [];
+        G.doors   = msg.doors  || [];
         G.mapEnemies = [];
         G.npcsOnMap  = NPCS.filter(n => msg.tiles[n.y]?.[n.x] === T.NPC).map(n => ({...n}));
         const mapName = MAPS_DEF[msg.mapIdx]?.name || '';
@@ -1848,6 +1849,9 @@ function checkAutoJoin() { return false; } // P2P版ではURLからの自動参�
 const MAP_W=24, MAP_H=18;
 
 function initGame(){
+  // タイルセット&扉画像を事前ロード
+  getImg(BASECHIP);
+  DOOR_FRAMES.forEach(p=>getImg(p));
   generateMap(G.mapIdx||0);
   startLoop();
   updatePartyHUD();
@@ -1908,6 +1912,8 @@ function generateMap(idx){
   G.tiles=[];
   G.npcsOnMap=[];
   G.chests=[];
+  G.doors=[];
+  G.doorAnim=null;
   G.mapEnemies=[];
 
   for(let y=0;y<MAP_H;y++){G.tiles[y]=[];for(let x=0;x<MAP_W;x++)G.tiles[y][x]=(x===0||y===0||x===MAP_W-1||y===MAP_H-1)?T.WALL:T.FLOOR;}
@@ -1946,6 +1952,10 @@ function generateMap(idx){
         if(G.tiles[cy][cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
       }
       if(idx<MAPS_DEF.length-1)G.tiles[1][MAP_W-2]=T.EXIT;
+      // 扉の配置（候補位置が空き床なら設置）
+      [[15,3],[4,14],[17,12],[9,2],[20,8]].forEach(([dx,dy])=>{
+        if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false});}
+      });
     }
     setPlayerPos(12,9);
   }
@@ -1961,7 +1971,7 @@ function generateMap(idx){
 
   // ホストはマップデータをゲストに送る
   if (ONLINE.isOnline && ONLINE.isHost) {
-    _sendP2P({ type: 'map_sync', mapIdx: idx, tiles: G.tiles, chests: G.chests });
+    _sendP2P({ type: 'map_sync', mapIdx: idx, tiles: G.tiles, chests: G.chests, doors: G.doors });
   }
 }
 
@@ -2041,9 +2051,11 @@ function updatePlayer(dt){
   const spd=MOVE_SPEED*dt;
   const nx=leader.x+dx*spd, ny=leader.y+dy*spd;
 
-  // Collision check
+  // Collision check（扉に当たったら自動で開放トリガー）
   if(canWalk(nx,leader.y))leader.x=nx;
+  else if(dx!==0)_tryOpenDoorAt(leader.x+dx*G.TILE*0.6,leader.y);
   if(canWalk(leader.x,ny))leader.y=ny;
+  else if(dy!==0)_tryOpenDoorAt(leader.x,leader.y+dy*G.TILE*0.6);
 
   // 移動方向を記録（スプライト行の切り替えに使用）
   // 0=下, 1=左, 2=右, 3=上
@@ -2086,11 +2098,20 @@ function canWalk(px,py){
     const tx=Math.floor(cx/G.TILE),ty=Math.floor(cy/G.TILE);
     if(ty<0||ty>=MAP_H||tx<0||tx>=MAP_W)return false;
     const t=G.tiles[ty][tx];
-    if(t===T.WALL||t===T.TREE||t===T.CHEST)return false;
+    if(t===T.WALL||t===T.TREE||t===T.CHEST||t===T.DOOR)return false;
     // Boss gate blocks unless cleared
     if(t===T.BOSS_GATE&&!G.clearedDungeons[G.mapIdx])return false;
   }
   return true;
+}
+
+function _tryOpenDoorAt(px,py){
+  if(G.doorAnim||performance.now()-_doorMoveTrigger<500)return;
+  const tx=Math.floor(px/G.TILE),ty=Math.floor(py/G.TILE);
+  if(G.tiles[ty]?.[tx]===T.DOOR){
+    const door=G.doors.find(d=>d.x===tx&&d.y===ty);
+    if(door&&!door.opened){_doorMoveTrigger=performance.now();startDoorAnim(tx,ty);}
+  }
 }
 
 function handleTileAt(tx,ty){
@@ -2193,42 +2214,57 @@ function render(){
       const t=G.tiles[ty]?.[tx]; if(t===undefined)continue;
       const sx=tx*TILE-G.cam.x, sy=ty*TILE-G.cam.y;
 
-      // Floor base
-      ctx.fillStyle=t===T.WALL?(map.wall||'#3a2a1a'):map.bg;
-      ctx.fillRect(sx,sy,TILE,TILE);
+      // ─── ベースタイル（タイルセット画像 or ソリッドカラーフォールバック）───
+      const baseChip=getImg(BASECHIP);
+      const tDef=TILE_DEF[map.type]||TILE_DEF.field;
+      if(baseChip.complete&&baseChip.naturalWidth){
+        const[tc,tr]=(t===T.WALL)?tDef.wall:tDef.floor;
+        ctx.drawImage(baseChip,tc*32,tr*32,32,32,sx,sy,TILE,TILE);
+      }else{
+        ctx.fillStyle=(t===T.WALL)?(map.wall||'#3a2a1a'):map.bg;
+        ctx.fillRect(sx,sy,TILE,TILE);
+      }
 
-      // Tile details
+      // ─── タイル固有のオーバーレイ ───
       if(t===T.WALL){
-        ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(sx,sy,TILE,2);
-        ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fillRect(sx,sy+TILE-2,TILE,2);
-      } else if(t===T.TREE){
-        ctx.fillStyle=map.bg;ctx.fillRect(sx,sy,TILE,TILE);
-        // Draw tree as circles
+        ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(sx,sy,TILE,2);
+        ctx.fillStyle='rgba(255,255,255,0.06)';ctx.fillRect(sx,sy+TILE-2,TILE,2);
+      }else if(t===T.TREE){
         ctx.fillStyle='#1a5a1a';ctx.beginPath();ctx.arc(sx+TILE/2,sy+TILE/2,TILE/2-2,0,Math.PI*2);ctx.fill();
         ctx.fillStyle='#2a7a2a';ctx.beginPath();ctx.arc(sx+TILE/2-2,sy+TILE/2-2,TILE/2-5,0,Math.PI*2);ctx.fill();
-      } else if(t===T.NPC){
+      }else if(t===T.NPC){
         const npc=G.npcsOnMap.find(n=>n.x===tx&&n.y===ty);
         if(npc?.chipImg){
           const nf=Math.floor(performance.now()/400)%3;
-          drawCharaChip(ctx,npc.chipImg,sx+TILE/2,sy+TILE/2,TILE*0.85,TILE*0.85,0,nf) || drawTileEmoji(npc.icon||'👤',sx,sy,TILE);
-        } else { drawTileEmoji(npc?.icon||'👤',sx,sy,TILE); }
-      } else if(t===T.EXIT){ctx.fillStyle=TILE_COLORS[t];ctx.fillRect(sx,sy,TILE,TILE);drawTileEmoji('🚪',sx,sy,TILE);}
-      else if(t===T.STAIR_D){ctx.fillStyle='#554422';ctx.fillRect(sx,sy,TILE,TILE);drawTileEmoji('🔽',sx,sy,TILE);}
-      else if(t===T.STAIR_U){ctx.fillStyle='#554422';ctx.fillRect(sx,sy,TILE,TILE);drawTileEmoji('🔼',sx,sy,TILE);}
-      else if(t===T.BOSS_GATE){
-        ctx.fillStyle='#440022';ctx.fillRect(sx,sy,TILE,TILE);
+          drawCharaChip(ctx,npc.chipImg,sx+TILE/2,sy+TILE/2,TILE*0.85,TILE*0.85,0,nf)||drawTileEmoji(npc.icon||'👤',sx,sy,TILE);
+        }else{drawTileEmoji(npc?.icon||'👤',sx,sy,TILE);}
+      }else if(t===T.EXIT){
+        ctx.fillStyle='rgba(180,180,30,0.5)';ctx.fillRect(sx,sy,TILE,TILE);
+        drawTileEmoji('🚪',sx,sy,TILE);
+      }else if(t===T.STAIR_D){
+        ctx.fillStyle='rgba(80,60,20,0.6)';ctx.fillRect(sx,sy,TILE,TILE);
+        drawTileEmoji('🔽',sx,sy,TILE);
+      }else if(t===T.STAIR_U){
+        ctx.fillStyle='rgba(80,60,20,0.6)';ctx.fillRect(sx,sy,TILE,TILE);
+        drawTileEmoji('🔼',sx,sy,TILE);
+      }else if(t===T.BOSS_GATE){
+        ctx.fillStyle='rgba(60,0,30,0.7)';ctx.fillRect(sx,sy,TILE,TILE);
         if(G.clearedDungeons[G.mapIdx]){ctx.fillStyle='rgba(0,255,100,0.2)';ctx.fillRect(sx,sy,TILE,TILE);}
         drawTileEmoji('⛩️',sx,sy,TILE);
-      }
-      else if(t===T.CHEST){
+      }else if(t===T.CHEST){
         const ch=G.chests.find(c=>c.x===tx&&c.y===ty);
         const chestImg=getImg('treasureBox/pipo-etcchara001.png');
         if(chestImg.complete&&chestImg.naturalWidth){
           const animRow=(G.chestAnim&&G.chestAnim.x===tx&&G.chestAnim.y===ty)?G.chestAnim.frame:(ch?.opened?2:0);
           ctx.drawImage(chestImg,64,animRow*32,32,32,sx,sy,TILE,TILE);
-        } else {
-          drawTileEmoji(ch?.opened?'📭':'🎁',sx,sy,TILE);
-        }
+        }else{drawTileEmoji(ch?.opened?'📭':'🎁',sx,sy,TILE);}
+      }else if(t===T.DOOR){
+        // 扉アニメーションフレームの描画（Door1=閉,Door2=開き中,Door3=全開）
+        const fr=(G.doorAnim?.x===tx&&G.doorAnim?.y===ty)?G.doorAnim.frame:0;
+        const doorImg=getImg(DOOR_FRAMES[fr]);
+        if(doorImg.complete&&doorImg.naturalWidth){
+          ctx.drawImage(doorImg,DOOR_FRAME_SRC[0]*32,DOOR_FRAME_SRC[1]*32,32,32,sx,sy,TILE,TILE);
+        }else{drawTileEmoji('🚪',sx,sy,TILE);}
       }
     }
   }
@@ -2299,6 +2335,34 @@ function getImg(url){
 function drawTileEmoji(emoji,sx,sy,size){
   ctx.font=`${size*0.65}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(emoji,sx+size/2,sy+size/2);
 }
+
+// ============================================================
+// タイルセット & 扉アニメーション設定
+// ============================================================
+const BASECHIP = 'Map/MapChip/[Base]BaseChip_pipo.png';
+
+// [Base]BaseChip_pipo.png内のタイル座標 [列, 行] (各32×32px、全8列×249行)
+// ★ここの値を変更してマップの見た目を調整できます★
+//   floor = 床タイルの座標, wall = 壁タイルの座標
+const TILE_DEF = {
+  town:    {floor:[0,0], wall:[0,2]},
+  field:   {floor:[2,0], wall:[1,2]},
+  dungeon: {floor:[4,0], wall:[3,2]},
+  desert:  {floor:[6,0], wall:[5,2]},
+  mountain:{floor:[4,2], wall:[6,2]},
+  castle:  {floor:[2,2], wall:[7,2]},
+};
+
+// 扉アニメーション画像（フレーム0=閉,1=開き中,2=全開）
+const DOOR_FRAMES = [
+  'Map/doorAnimation/Door1_pipo.png',
+  'Map/doorAnimation/Door2_pipo.png',
+  'Map/doorAnimation/Door3_pipo.png',
+];
+// 各扉画像内の使用タイル位置 [列, 行]（32x32px単位）
+const DOOR_FRAME_SRC = [0, 0];
+
+let _doorMoveTrigger = 0; // 移動による扉開放のクールダウン用
 
 // Minimap
 const mmCanvas=document.getElementById('mm-canvas');
@@ -3134,6 +3198,11 @@ function handleSearch(){
       if(ch&&!ch.opened){startChestAnim(nx,ny);return;}
       if(ch&&ch.opened){addChat('宝箱はすでに空だ…',null,true);return;}
     }
+    if(G.tiles[ny]?.[nx]===T.DOOR){
+      const door=G.doors.find(d=>d.x===nx&&d.y===ny);
+      if(door&&!door.opened){startDoorAnim(nx,ny);return;}
+      if(door&&door.opened){addChat('扉はすでに開いている',null,true);return;}
+    }
   }
   if(Math.random()<.25){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});showItemPop(item);}
   else addChat('何も見つからなかった…',null,true);
@@ -3168,6 +3237,18 @@ function openChestAt(tx,ty){
   else if(r<.7){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});addChat('✨ '+item.name+'を手に入れた！',null,true);showItemPop(item);}
   else{const tier=Math.min(G.mapIdx,5);const pool=EQUIP_CATALOG.filter(e=>e.price<=1500*(tier+1));const e=(pool.length?pool:EQUIP_CATALOG)[Math.floor(Math.random()*(pool.length?pool.length:EQUIP_CATALOG.length))];if(!G.party[0].inventory.includes(e.id))G.party[0].inventory.push(e.id);addChat('✨ '+e.name+'を手に入れた！',null,true);showItemPop({icon:e.icon,name:e.name});}
 }
+// 扉開閉アニメーション（Door1→Door2→Door3の順に切り替え、完了で通行可に）
+function startDoorAnim(tx,ty){
+  if(G.doorAnim)return;
+  const door=G.doors.find(d=>d.x===tx&&d.y===ty);
+  if(!door||door.opened)return;
+  G.doorAnim={x:tx,y:ty,frame:0};
+  addChat('🚪 扉が開いた！',null,true);
+  setTimeout(()=>{if(G.doorAnim?.x===tx)G.doorAnim.frame=1;},200);
+  setTimeout(()=>{if(G.doorAnim?.x===tx)G.doorAnim.frame=2;},450);
+  setTimeout(()=>{G.doorAnim=null;door.opened=true;G.tiles[ty][tx]=T.FLOOR;},800);
+}
+
 function startChestAnim(tx,ty){
   if(G.chestAnim)return;
   const ch=G.chests.find(c=>c.x===tx&&c.y===ty);
