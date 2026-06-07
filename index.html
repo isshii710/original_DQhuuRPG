@@ -1003,12 +1003,13 @@ const G = {
   tiles:[], tileW:0, tileH:0,
   TILE:32,
   npcsOnMap:[],
+  pendingSpawn:null,
   // Sync
   syncInterval:null, lastSync:0,
 };
 
 // Tile IDs
-const T={FLOOR:0,WALL:1,TREE:3,NPC:4,EXIT:5,STAIR_D:6,STAIR_U:7,BOSS_GATE:8,CHEST:10,DOOR:11};
+const T={FLOOR:0,WALL:1,TREE:3,NPC:4,EXIT:5,STAIR_D:6,STAIR_U:7,BOSS_GATE:8,CHEST:10,DOOR:11,ENTER:12};
 
 // ============================================================
 // CANVAS SETUP
@@ -1906,72 +1907,104 @@ function initGame(){
   }
 }
 
+// ─── 固定マップレイアウトビルダー ────────────────────────────
+function buildVillageTiles(){
+  const F=T.FLOOR,W=T.WALL,Tr=T.TREE,X=T.EXIT;
+  const g=[];
+  for(let y=0;y<MAP_H;y++){g[y]=[];for(let x=0;x<MAP_W;x++)g[y][x]=F;}
+  for(let x=0;x<MAP_W;x++){g[0][x]=W;g[MAP_H-1][x]=W;}
+  for(let y=0;y<MAP_H;y++){g[y][0]=W;g[y][MAP_W-1]=W;}
+  // 建物A: 村長の家（elder NPC x:3,y:3, 扉 x:3,y:5）
+  [[2,2],[3,2],[4,2],[2,3],[4,3],[2,4],[4,4],[2,5],[4,5]].forEach(([x,y])=>g[y][x]=W);
+  // 建物B: 宿屋（inn NPC x:12,y:4, 扉 x:12,y:5）
+  [[11,2],[12,2],[13,2],[11,3],[13,3],[11,4],[13,4],[11,5],[13,5]].forEach(([x,y])=>g[y][x]=W);
+  // 建物C: 倉庫（chest配置用, 入口 x:18,y:14）
+  [[17,11],[18,11],[19,11],[20,11],[17,12],[20,12],[17,13],[20,13],[17,14],[19,14],[20,14]].forEach(([x,y])=>g[y][x]=W);
+  // 木々の装飾
+  [[6,6],[16,6],[3,12],[8,12],[15,3]].forEach(([x,y])=>{if(g[y][x]===F)g[y][x]=Tr;});
+  // 東の出口（フィールドへ）row9, col22
+  g[9][MAP_W-2]=X;
+  return g;
+}
+
+function buildFieldTiles(){
+  const F=T.FLOOR,W=T.WALL,Tr=T.TREE,X=T.EXIT,En=T.ENTER;
+  const g=[];
+  for(let y=0;y<MAP_H;y++){g[y]=[];for(let x=0;x<MAP_W;x++)g[y][x]=F;}
+  for(let x=0;x<MAP_W;x++){g[0][x]=W;g[MAP_H-1][x]=W;}
+  for(let y=0;y<MAP_H;y++){g[y][0]=W;g[y][MAP_W-1]=W;}
+  // 岩山（通路 row9 を塞がない位置に配置）
+  [[5,3],[6,3],[5,4],[6,4],[18,5],[19,5],[18,6],[19,6],[9,10],[10,10],[9,11],[10,11],[15,14],[16,14]].forEach(([x,y])=>g[y][x]=W);
+  // 木々（フィールドらしく点在）
+  [[3,2],[13,3],[20,4],[8,7],[16,8],[4,12],[12,13],[7,15],[17,7],[20,11]].forEach(([x,y])=>{if(g[y][x]===F)g[y][x]=Tr;});
+  // 西の入口（村への帰還）row9, col1
+  g[9][1]=En;
+  // 北東の出口（ダンジョンへ）row1, col22
+  g[1][MAP_W-2]=X;
+  return g;
+}
+
 function generateMap(idx){
   G.mapIdx=idx;
   const map=MAPS_DEF[idx];
-  G.tiles=[];
-  G.npcsOnMap=[];
-  G.chests=[];
-  G.doors=[];
-  G.doorAnim=null;
-  G.mapEnemies=[];
-
-  for(let y=0;y<MAP_H;y++){G.tiles[y]=[];for(let x=0;x<MAP_W;x++)G.tiles[y][x]=(x===0||y===0||x===MAP_W-1||y===MAP_H-1)?T.WALL:T.FLOOR;}
-
+  G.tiles=[];G.npcsOnMap=[];G.chests=[];G.doors=[];G.doorAnim=null;G.mapEnemies=[];
   const rng=n=>Math.floor(Math.random()*n);
-  if(map.type==='dungeon'){
-    // Dungeon: random walls
-    for(let i=0;i<15;i++){const w=rng(3)+1,h=rng(3)+1,wx=rng(MAP_W-w-2)+1,wy=rng(MAP_H-h-2)+1;
-      for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){if(Math.abs(wx+xx-12)<3&&Math.abs(wy+yy-14)<3)continue;G.tiles[wy+yy][wx+xx]=T.WALL;}}
-    G.tiles[14][12]=T.FLOOR; // spawn clear
-    G.tiles[15][12]=T.STAIR_U;
-    const isLast=(G.dungeonFloor===map.floors-1);
-    if(isLast){G.tiles[2][12]=T.BOSS_GATE;}
-    else{let sx,sy,t=0;do{sx=rng(MAP_W-4)+2;sy=rng(5)+1;t++;}while(G.tiles[sy][sx]!==T.FLOOR&&t<60);G.tiles[sy][sx]=T.STAIR_D;}
-    // Chests
-    for(let i=0;i<2;i++){let cx,cy,t2=0;do{cx=rng(MAP_W-2)+1;cy=rng(MAP_H-2)+1;t2++;}while(G.tiles[cy][cx]!==T.FLOOR&&t2<40);if(G.tiles[cy][cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});}}
-    setPlayerPos(12,14);
-  } else {
-    // Field/Town
-    if(map.type==='field'){
-      for(let i=0;i<10;i++){const wx=rng(MAP_W-2)+1,wy=rng(MAP_H-2)+1;if(Math.abs(wx-12)<2&&Math.abs(wy-9)<2)continue;G.tiles[wy][wx]=T.WALL;}
-      for(let i=0;i<8;i++){const tx=rng(MAP_W-2)+1,ty=rng(MAP_H-2)+1;if(G.tiles[ty][tx]===T.FLOOR)G.tiles[ty][tx]=T.TREE;}
-      if(idx<MAPS_DEF.length-1)G.tiles[1][MAP_W-2]=T.EXIT;
+
+  if(idx===0){
+    // ─── 固定レイアウト: 村 ────────────────────────────────────
+    G.tiles=buildVillageTiles();
+    NPCS.forEach(n=>{if(G.tiles[n.y]?.[n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
+    for(const[cx,cy] of [[19,13],[18,13],[7,13]]){
+      if(G.tiles[cy]?.[cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
     }
-    if(map.type==='town'){
-      // Town: structured
-      for(let i=0;i<6;i++){const wx=rng(MAP_W-4)+2,wy=rng(MAP_H-4)+2;
-        if(Math.abs(wx-12)<3&&Math.abs(wy-9)<3)continue;
-        const w=rng(3)+2,h=rng(2)+2;
-        for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)if(wx+xx<MAP_W-1&&wy+yy<MAP_H-1)G.tiles[wy+yy][wx+xx]=T.WALL;}
-      for(let i=0;i<5;i++){const tx=rng(MAP_W-2)+1,ty=rng(MAP_H-2)+1;if(G.tiles[ty][tx]===T.FLOOR)G.tiles[ty][tx]=T.TREE;}
-      // NPCs
-      NPCS.forEach(n=>{if(G.tiles[n.y][n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
-      // 村の宝箱（固定位置候補から最初に空いているマスに配置）
-      for(const [cx,cy] of [[8,13],[6,13],[10,13],[8,11],[6,11],[10,11]]){
-        if(G.tiles[cy][cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
-      }
-      if(idx<MAPS_DEF.length-1)G.tiles[1][MAP_W-2]=T.EXIT;
-      // 扉の配置（候補位置が空き床なら設置）
-      [[15,3],[4,14],[17,12],[9,2],[20,8]].forEach(([dx,dy])=>{
-        if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false});}
-      });
-    }
+    [[12,5],[3,5]].forEach(([dx,dy])=>{
+      if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false});}
+    });
     setPlayerPos(12,9);
+
+  } else if(idx===1){
+    // ─── 固定レイアウト: フィールド ──────────────────────────
+    G.tiles=buildFieldTiles();
+    setPlayerPos(3,9);
+
+  } else {
+    // ─── 手続き生成 (idx >= 2: ダンジョン・その他) ────────────
+    for(let y=0;y<MAP_H;y++){G.tiles[y]=[];for(let x=0;x<MAP_W;x++)G.tiles[y][x]=(x===0||y===0||x===MAP_W-1||y===MAP_H-1)?T.WALL:T.FLOOR;}
+    if(map.type==='dungeon'){
+      for(let i=0;i<15;i++){const w=rng(3)+1,h=rng(3)+1,wx=rng(MAP_W-w-2)+1,wy=rng(MAP_H-h-2)+1;
+        for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){if(Math.abs(wx+xx-12)<3&&Math.abs(wy+yy-14)<3)continue;G.tiles[wy+yy][wx+xx]=T.WALL;}}
+      G.tiles[14][12]=T.FLOOR;
+      G.tiles[15][12]=T.STAIR_U;
+      const isLast=(G.dungeonFloor===map.floors-1);
+      if(isLast){G.tiles[2][12]=T.BOSS_GATE;}
+      else{let sx,sy,t=0;do{sx=rng(MAP_W-4)+2;sy=rng(5)+1;t++;}while(G.tiles[sy][sx]!==T.FLOOR&&t<60);G.tiles[sy][sx]=T.STAIR_D;}
+      for(let i=0;i<2;i++){let cx,cy,t2=0;do{cx=rng(MAP_W-2)+1;cy=rng(MAP_H-2)+1;t2++;}while(G.tiles[cy][cx]!==T.FLOOR&&t2<40);if(G.tiles[cy][cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});}}
+      setPlayerPos(12,14);
+    } else {
+      if(map.type==='field'){
+        for(let i=0;i<10;i++){const wx=rng(MAP_W-2)+1,wy=rng(MAP_H-2)+1;if(Math.abs(wx-12)<2&&Math.abs(wy-9)<2)continue;G.tiles[wy][wx]=T.WALL;}
+        for(let i=0;i<8;i++){const tx=rng(MAP_W-2)+1,ty=rng(MAP_H-2)+1;if(G.tiles[ty][tx]===T.FLOOR)G.tiles[ty][tx]=T.TREE;}
+        if(idx<MAPS_DEF.length-1)G.tiles[1][MAP_W-2]=T.EXIT;
+      }
+      setPlayerPos(12,9);
+    }
   }
 
-  // Spawn roaming enemies
+  // ─── ゲート通過時のカスタムスポーン ─────────────────────────
+  if(G.pendingSpawn){setPlayerPos(G.pendingSpawn.tx,G.pendingSpawn.ty);G.pendingSpawn=null;}
+
+  // ─── エネミースポーン（村 encounter:0 はスキップ）────────────
   if(map.encounter>0){
     const count=3+G.mapIdx*2;
     for(let i=0;i<count;i++) spawnMapEnemy();
   }
 
   document.getElementById('map-label').textContent=
+    idx===0?`🏘️ ${map.name}`:idx===1?`🌿 ${map.name}`:
     map.type==='dungeon'?`🏰 ${map.name} B${G.dungeonFloor+1}F`:`🗺️ ${map.name}`;
 
-  // ホストはマップデータをゲストに送る
-  if (ONLINE.isOnline && ONLINE.isHost) {
-    _sendP2P({ type: 'map_sync', mapIdx: idx, tiles: G.tiles, chests: G.chests, doors: G.doors });
+  if(ONLINE.isOnline&&ONLINE.isHost){
+    _sendP2P({type:'map_sync',mapIdx:idx,tiles:G.tiles,chests:G.chests,doors:G.doors});
   }
 }
 
@@ -2118,7 +2151,11 @@ function handleTileAt(tx,ty){
   if(G.transitioning)return;
   if(ty<0||ty>=MAP_H||tx<0||tx>=MAP_W)return;
   const t=G.tiles[ty][tx];
-  if(t===T.EXIT){changeMap(G.mapIdx+1);}
+  if(t===T.EXIT){
+    if(G.mapIdx===0)changeMap(1,2,9); // 村→フィールド: フィールド西入口付近に出現
+    else changeMap(G.mapIdx+1);
+  }
+  else if(t===T.ENTER){changeMap(0,MAP_W-3,9);} // フィールド→村: 村の東ゲート付近に出現
   else if(t===T.STAIR_D){descendFloor();}
   else if(t===T.STAIR_U){ascendFloor();}
   else if(t===T.BOSS_GATE&&G.clearedDungeons[G.mapIdx]){/* pass through */}
@@ -2180,13 +2217,14 @@ const TILE_COLORS={
   [T.WALL]:'',
   [T.TREE]:'',
   [T.EXIT]:'#aaaa22',
+  [T.ENTER]:'#22aa55',
   [T.STAIR_D]:'#553311',
   [T.STAIR_U]:'#553311',
   [T.BOSS_GATE]:'#440022',
   [T.CHEST]:'',
 };
 const TILE_EMOJI={
-  [T.EXIT]:'🚪',[T.STAIR_D]:'🔽',[T.STAIR_U]:'🔼',[T.BOSS_GATE]:'⛩️',
+  [T.EXIT]:'🚪',[T.ENTER]:'🏠',[T.STAIR_D]:'🔽',[T.STAIR_U]:'🔼',[T.BOSS_GATE]:'⛩️',
 };
 
 function updateCamera(){
@@ -2265,6 +2303,9 @@ function render(){
         if(doorImg.complete&&doorImg.naturalWidth){
           ctx.drawImage(doorImg,DOOR_FRAME_SRC[0]*32,DOOR_FRAME_SRC[1]*32,32,32,sx,sy,TILE,TILE);
         }else{drawTileEmoji('🚪',sx,sy,TILE);}
+      }else if(t===T.ENTER){
+        ctx.fillStyle='rgba(50,200,100,0.5)';ctx.fillRect(sx,sy,TILE,TILE);
+        drawTileEmoji('🏠',sx,sy,TILE);
       }
     }
   }
@@ -3263,8 +3304,10 @@ function resetJoy(){
   G.joy={active:false,id:-1,dx:0,dy:0};
   joyKnob.style.transform='translate(-50%,-50%)';
 }
-function changeMap(idx){
+function changeMap(idx,spawnTx,spawnTy){
   if(idx>=MAPS_DEF.length)idx=0;
+  if(idx<0)idx=0;
+  G.pendingSpawn=(spawnTx!==undefined)?{tx:spawnTx,ty:spawnTy}:null;
   fadeIn(()=>{G.prevMapIdx=G.mapIdx;G.dungeonFloor=0;generateMap(idx);addChat('📍 '+MAPS_DEF[idx].name+'に移動した',null,true);});
 }
 function descendFloor(){
