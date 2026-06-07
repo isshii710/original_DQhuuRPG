@@ -127,8 +127,8 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .tmenu-btn:active,.tmenu-btn:hover{background:linear-gradient(180deg,rgba(60,100,200,.9),rgba(28,60,150,.9));border-color:var(--gold);color:var(--gold);transform:translateX(4px);}
 .tmenu-arrow{color:var(--gold);font-size:11px;}
 
-#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#0d2244,#020810);align-items:flex-start;padding:12px 8px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-.lobby-box{width:min(400px,98vw);margin:auto;}
+#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#0d2244,#020810);align-items:center;justify-content:flex-start;padding:12px 8px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.lobby-box{width:min(400px,98vw);flex-shrink:0;}
 .lfield{margin-bottom:12px;}
 .lfield label{display:block;font-size:10px;color:var(--white);letter-spacing:2px;margin-bottom:4px;}
 .linput{width:100%;background:rgba(10,20,70,.9);border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;font-size:16px;padding:9px 12px;border-radius:2px;outline:none;}
