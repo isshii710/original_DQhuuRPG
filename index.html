@@ -901,6 +901,8 @@ const G = {
   pendingLvlUps:[],
   // Joystick
   joy:{active:false,id:-1,dx:0,dy:0},
+  // Map transition lock (prevents handleTileAt from firing every frame)
+  transitioning:false,
   // Input
   keys:{},
   // Canvas
@@ -1789,6 +1791,7 @@ function canWalk(px,py){
 }
 
 function handleTileAt(tx,ty){
+  if(G.transitioning)return;
   if(ty<0||ty>=MAP_H||tx<0||tx>=MAP_W)return;
   const t=G.tiles[ty][tx];
   if(t===T.EXIT){changeMap(G.mapIdx+1);}
@@ -2598,6 +2601,10 @@ function openChestAt(tx,ty){
   else{const tier=Math.min(G.mapIdx,5);const pool=EQUIP_CATALOG.filter(e=>e.price<=1500*(tier+1));const e=(pool.length?pool:EQUIP_CATALOG)[Math.floor(Math.random()*(pool.length?pool.length:EQUIP_CATALOG.length))];if(!G.party[0].inventory.includes(e.id))G.party[0].inventory.push(e.id);showItemPop({icon:e.icon,name:e.name});}
 }
 
+function resetJoy(){
+  G.joy={active:false,id:-1,dx:0,dy:0};
+  joyKnob.style.transform='translate(-50%,-50%)';
+}
 function changeMap(idx){
   if(idx>=MAPS_DEF.length)idx=0;
   fadeIn(()=>{G.prevMapIdx=G.mapIdx;G.dungeonFloor=0;generateMap(idx);addChat('📍 '+MAPS_DEF[idx].name+'に移動した',null,true);});
@@ -2611,8 +2618,9 @@ function ascendFloor(){
   G.dungeonFloor--;fadeIn(()=>{generateMap(G.mapIdx);addChat('🔼 地下'+(G.dungeonFloor+1)+'階に戻った',null,true);});
 }
 function fadeIn(cb){
+  G.transitioning=true;
   const t=document.getElementById('transition');t.classList.add('in');
-  setTimeout(()=>{cb();setTimeout(()=>t.classList.remove('in'),350);},350);
+  setTimeout(()=>{cb();resetJoy();setTimeout(()=>{t.classList.remove('in');G.transitioning=false;},350);},350);
 }
 
 // ============================================================
