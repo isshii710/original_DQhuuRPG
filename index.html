@@ -128,7 +128,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .tmenu-arrow{color:var(--gold);font-size:11px;}
 
 #lobby-screen{background:radial-gradient(ellipse at 50% 0%,#0d2244,#020810);overflow:hidden;padding:0;align-items:stretch;justify-content:stretch;}
-.lobby-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 8px 32px;}
+.lobby-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 8px 32px;touch-action:pan-y;}
 .lobby-box{width:min(400px,98vw);margin:0 auto;}
 .lfield{margin-bottom:8px;}
 .lfield label{display:block;font-size:10px;color:var(--white);letter-spacing:2px;margin-bottom:3px;}
@@ -743,14 +743,14 @@ const CLASSES = {
 };
 
 const SPELLS = {
-  warrior: [{name:'ためる',mp:0,power:0,type:'buff'},{name:'かまいたち',mp:4,power:1.5,type:'atk'}],
-  mage:    [{name:'メラ',mp:4,power:1.2,type:'atk'},{name:'ギラ',mp:6,power:1.5,type:'atk'},{name:'イオ',mp:8,power:1.3,type:'all'},{name:'マホトーン',mp:5,power:0,type:'debuff'}],
-  priest:  [{name:'ホイミ',mp:3,power:0,type:'heal'},{name:'ベホイミ',mp:6,power:0,type:'heal2'},{name:'キアリー',mp:5,power:0,type:'cure'},{name:'スカラ',mp:6,power:0,type:'buff'}],
-  ranger:  [{name:'スラップ',mp:3,power:1.3,type:'atk'},{name:'フォース',mp:5,power:0,type:'buff'},{name:'ドルクマ',mp:7,power:1.4,type:'atk'}],
-  paladin: [{name:'ガード',mp:4,power:0,type:'buff'},{name:'しんこく',mp:6,power:2.0,type:'atk'},{name:'ベホイミ',mp:6,power:0,type:'heal2'}],
-  sage:    [{name:'メラミ',mp:10,power:2.0,type:'atk'},{name:'イオラ',mp:12,power:1.8,type:'all'},{name:'ベホマ',mp:15,power:0,type:'healfull'},{name:'ルカナン',mp:7,power:0,type:'debuff'}],
-  thief:   [{name:'しのびあし',mp:3,power:0,type:'buff'},{name:'ぬすむ',mp:4,power:0,type:'steal'},{name:'さみだれ斬り',mp:6,power:0.8,type:'multi'}],
-  dancer:  [{name:'まどわし',mp:4,power:0,type:'debuff'},{name:'なきまね',mp:5,power:0,type:'debuff'},{name:'いやしの踊り',mp:8,power:0,type:'healall'}],
+  warrior: [{name:'力溜め',mp:0,power:0,type:'buff'},{name:'空斬り',mp:4,power:1.5,type:'atk'}],
+  mage:    [{name:'炎弾',mp:4,power:1.2,type:'atk'},{name:'爆炎',mp:6,power:1.5,type:'atk'},{name:'星砕',mp:8,power:1.3,type:'all'},{name:'封魔術',mp:5,power:0,type:'debuff'}],
+  priest:  [{name:'癒光',mp:3,power:0,type:'heal'},{name:'大癒光',mp:6,power:0,type:'heal2'},{name:'浄化',mp:5,power:0,type:'cure'},{name:'守護陣',mp:6,power:0,type:'buff'}],
+  ranger:  [{name:'奇襲',mp:3,power:1.3,type:'atk'},{name:'鼓舞',mp:5,power:0,type:'buff'},{name:'束縛矢',mp:7,power:1.4,type:'atk'}],
+  paladin: [{name:'鉄壁',mp:4,power:0,type:'buff'},{name:'天罰撃',mp:6,power:2.0,type:'atk'},{name:'大癒光',mp:6,power:0,type:'heal2'}],
+  sage:    [{name:'烈炎',mp:10,power:2.0,type:'atk'},{name:'星砕閃',mp:12,power:1.8,type:'all'},{name:'完全癒光',mp:15,power:0,type:'healfull'},{name:'弱体術',mp:7,power:0,type:'debuff'}],
+  thief:   [{name:'隠密',mp:3,power:0,type:'buff'},{name:'掠奪',mp:4,power:0,type:'steal'},{name:'乱れ斬り',mp:6,power:0.8,type:'multi'}],
+  dancer:  [{name:'惑乱舞',mp:4,power:0,type:'debuff'},{name:'怪声',mp:5,power:0,type:'debuff'},{name:'癒しの舞',mp:8,power:0,type:'healall'}],
 };
 
 const ENEMIES_DATA = [
@@ -763,22 +763,22 @@ const ENEMIES_DATA = [
   {name:'トカゲ戦士',  imgPath:'Monster/pipo-enemy007.png', sprite:'lizard',   hp:55,  atk:20, def:12, exp:40,  gold:25,  color:'#44aa55',spd:1.6},
   {name:'石の番兵',    imgPath:'Monster/pipo-enemy008.png', sprite:'gargoyle', hp:70,  atk:25, def:18, exp:60,  gold:35,  color:'#8899aa',spd:0.9},
   {name:'闇の眷属',    imgPath:'Monster/pipo-boss001.png',  sprite:'reaper',   hp:200, atk:35, def:20, exp:200, gold:100, color:'#aa44dd',spd:1.1,boss:true},
-  {name:'大魔王',      imgPath:'Monster/pipo-boss002.png',  sprite:'demonlord',hp:350, atk:50, def:30, exp:500, gold:250, color:'#cc2244',spd:1.3,boss:true},
+  {name:'闇の帝王',    imgPath:'Monster/pipo-boss002.png',  sprite:'demonlord',hp:350, atk:50, def:30, exp:500, gold:250, color:'#cc2244',spd:1.3,boss:true},
 ];
 
 const EQUIP_CATALOG = [
-  {id:'w1',name:'ひのきのぼう',icon:'🪵',slot:'weapon',atk:4,price:20},
-  {id:'w2',name:'どうのつるぎ',icon:'🗡️',slot:'weapon',atk:9,price:120},
-  {id:'w3',name:'てつのつるぎ',icon:'⚔️',slot:'weapon',atk:16,price:480},
-  {id:'w4',name:'はがねのつるぎ',icon:'🔪',slot:'weapon',atk:25,price:1500},
-  {id:'w5',name:'ほのおのつるぎ',icon:'🔥',slot:'weapon',atk:38,int:5,price:4500},
-  {id:'a1',name:'ぬののふく',icon:'👕',slot:'armor',def:4,price:30},
-  {id:'a2',name:'かわのよろい',icon:'🦺',slot:'armor',def:10,price:150},
-  {id:'a3',name:'てつのよろい',icon:'🛡️',slot:'armor',def:20,price:600},
-  {id:'a4',name:'はがねのよろい',icon:'⛓️',slot:'armor',def:32,price:2000},
-  {id:'c1',name:'ちからのゆびわ',icon:'💍',slot:'accessory',atk:8,price:800},
-  {id:'c2',name:'まもりのゆびわ',icon:'🔮',slot:'accessory',def:8,price:800},
-  {id:'c3',name:'けんじゃのいし',icon:'📿',slot:'accessory',int:12,maxMp:15,price:3000},
+  {id:'w1',name:'粗末な棒',icon:'🪵',slot:'weapon',atk:4,price:20},
+  {id:'w2',name:'青銅の剣',icon:'🗡️',slot:'weapon',atk:9,price:120},
+  {id:'w3',name:'鉄の剣',icon:'⚔️',slot:'weapon',atk:16,price:480},
+  {id:'w4',name:'精鋼の剣',icon:'🔪',slot:'weapon',atk:25,price:1500},
+  {id:'w5',name:'炎の剣',icon:'🔥',slot:'weapon',atk:38,int:5,price:4500},
+  {id:'a1',name:'粗末な服',icon:'👕',slot:'armor',def:4,price:30},
+  {id:'a2',name:'革の鎧',icon:'🦺',slot:'armor',def:10,price:150},
+  {id:'a3',name:'鉄の鎧',icon:'🛡️',slot:'armor',def:20,price:600},
+  {id:'a4',name:'精鋼の鎧',icon:'⛓️',slot:'armor',def:32,price:2000},
+  {id:'c1',name:'力の指輪',icon:'💍',slot:'accessory',atk:8,price:800},
+  {id:'c2',name:'護りの指輪',icon:'🔮',slot:'accessory',def:8,price:800},
+  {id:'c3',name:'天星石',icon:'📿',slot:'accessory',int:12,maxMp:15,price:3000},
 ];
 const getEquip = id => EQUIP_CATALOG.find(e=>e.id===id);
 
@@ -802,10 +802,10 @@ function drawCharaChip(ctx, chipPath, dx, dy, w, h, dir=0, frame=1) {
 }
 
 const ITEMS_DROP = [
-  {name:'やくそう',icon:'🌿',type:'heal',value:30},
-  {name:'まんげつそう',icon:'🌙',type:'heal',value:80},
-  {name:'どくけしそう',icon:'💊',type:'cure'},
-  {name:'まほうのせいすい',icon:'💎',type:'mpitem',value:20},
+  {name:'癒し草',icon:'🌿',type:'heal',value:30},
+  {name:'星光草',icon:'🌙',type:'heal',value:80},
+  {name:'解毒草',icon:'💊',type:'cure'},
+  {name:'魔力の雫',icon:'💎',type:'mpitem',value:20},
 ];
 
 const NPCS = [
@@ -819,10 +819,10 @@ const NPCS = [
 const MAPS_DEF = [
   {name:'はじまりの村',type:'town',bg:'#2d6a30',wall:'#3a2a1a',encounter:0,enemies:[0,1,2]},
   {name:'魔物の森',type:'field',bg:'#1a4a1a',wall:'#0d2a0d',encounter:0.003,enemies:[1,2,4,5]},
-  {name:'試練の洞窟',type:'dungeon',bg:'#1a1426',wall:'#2a1e38',encounter:0.004,enemies:[2,4,5,6],floors:3,boss:8,bossName:'洞窟の主'},
+  {name:'試練の洞窟',type:'dungeon',bg:'#1a1426',wall:'#2a1e38',encounter:0.004,enemies:[2,4,5,6],floors:3,boss:8,bossName:'洞窟の守護者'},
   {name:'砂漠のほこら',type:'field',bg:'#8a7a2a',wall:'#5a4a1a',encounter:0.003,enemies:[2,3,6]},
   {name:'竜の山',type:'dungeon',bg:'#2a1816',wall:'#3a2420',encounter:0.005,enemies:[5,6,7],floors:4,boss:8,bossName:'山の竜'},
-  {name:'魔王の城',type:'dungeon',bg:'#1a0a1a',wall:'#2a142a',encounter:0.006,enemies:[7,8,9],floors:5,boss:9,bossName:'大魔王'},
+  {name:'闇の城塞',type:'dungeon',bg:'#1a0a1a',wall:'#2a142a',encounter:0.006,enemies:[7,8,9],floors:5,boss:9,bossName:'闇の帝王'},
 ];
 
 // ============================================================
@@ -953,7 +953,7 @@ const G = {
   party: [],
   // Map
   mapIdx:0, dungeonFloor:0, prevMapIdx:0,
-  clearedDungeons:{}, chests:[],
+  clearedDungeons:{}, chests:[], chestAnim:null,
   // Enemies on map (sprites)
   mapEnemies:[],
   // Battle
@@ -1930,6 +1930,10 @@ function generateMap(idx){
       for(let i=0;i<5;i++){const tx=rng(MAP_W-2)+1,ty=rng(MAP_H-2)+1;if(G.tiles[ty][tx]===T.FLOOR)G.tiles[ty][tx]=T.TREE;}
       // NPCs
       NPCS.forEach(n=>{if(G.tiles[n.y][n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
+      // 村の宝箱（固定位置候補から最初に空いているマスに配置）
+      for(const [cx,cy] of [[8,13],[6,13],[10,13],[8,11],[6,11],[10,11]]){
+        if(G.tiles[cy][cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
+      }
       if(idx<MAPS_DEF.length-1)G.tiles[1][MAP_W-2]=T.EXIT;
     }
     setPlayerPos(12,9);
@@ -2071,7 +2075,7 @@ function canWalk(px,py){
     const tx=Math.floor(cx/G.TILE),ty=Math.floor(cy/G.TILE);
     if(ty<0||ty>=MAP_H||tx<0||tx>=MAP_W)return false;
     const t=G.tiles[ty][tx];
-    if(t===T.WALL||t===T.TREE)return false;
+    if(t===T.WALL||t===T.TREE||t===T.CHEST)return false;
     // Boss gate blocks unless cleared
     if(t===T.BOSS_GATE&&!G.clearedDungeons[G.mapIdx])return false;
   }
@@ -2086,7 +2090,6 @@ function handleTileAt(tx,ty){
   else if(t===T.STAIR_D){descendFloor();}
   else if(t===T.STAIR_U){ascendFloor();}
   else if(t===T.BOSS_GATE&&G.clearedDungeons[G.mapIdx]){/* pass through */}
-  else if(t===T.CHEST){openChestAt(tx,ty);}
 }
 
 // ============================================================
@@ -2208,7 +2211,13 @@ function render(){
       }
       else if(t===T.CHEST){
         const ch=G.chests.find(c=>c.x===tx&&c.y===ty);
-        drawTileEmoji(ch?.opened?'📭':'🎁',sx,sy,TILE);
+        const chestImg=getImg('treasureBox/pipo-etcchara001.png');
+        if(chestImg.complete&&chestImg.naturalWidth){
+          const animRow=(G.chestAnim&&G.chestAnim.x===tx&&G.chestAnim.y===ty)?G.chestAnim.frame:(ch?.opened?2:0);
+          ctx.drawImage(chestImg,64,animRow*32,32,32,sx,sy,TILE,TILE);
+        } else {
+          drawTileEmoji(ch?.opened?'📭':'🎁',sx,sy,TILE);
+        }
       }
     }
   }
@@ -2990,6 +2999,17 @@ function handleTalk(){
   addChat('話せる相手がそばにいない',null,true);
 }
 function handleSearch(){
+  const leader=G.party[0];if(!leader)return;
+  const tx=Math.floor(leader.x/G.TILE),ty=Math.floor(leader.y/G.TILE);
+  const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
+  for(const [dx,dy] of dirs){
+    const nx=tx+dx,ny=ty+dy;
+    if(G.tiles[ny]?.[nx]===T.CHEST){
+      const ch=G.chests.find(c=>c.x===nx&&c.y===ny);
+      if(ch&&!ch.opened){startChestAnim(nx,ny);return;}
+      if(ch&&ch.opened){addChat('宝箱はすでに空だ…',null,true);return;}
+    }
+  }
   if(Math.random()<.25){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});showItemPop(item);}
   else addChat('何も見つからなかった…',null,true);
 }
@@ -3019,9 +3039,18 @@ function openChestAt(tx,ty){
   if(!ch||ch.opened)return;
   ch.opened=true;
   const r=Math.random();
-  if(r<.4){const g=20+Math.floor(Math.random()*60)+G.dungeonFloor*15;G.party[0].gold+=g;addChat('🎁 '+g+'ゴールドを見つけた！',null,true);}
-  else if(r<.7){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});showItemPop(item);}
-  else{const tier=Math.min(G.mapIdx,5);const pool=EQUIP_CATALOG.filter(e=>e.price<=1500*(tier+1));const e=(pool.length?pool:EQUIP_CATALOG)[Math.floor(Math.random()*(pool.length?pool.length:EQUIP_CATALOG.length))];if(!G.party[0].inventory.includes(e.id))G.party[0].inventory.push(e.id);showItemPop({icon:e.icon,name:e.name});}
+  if(r<.4){const g=20+Math.floor(Math.random()*60)+G.dungeonFloor*15;G.party[0].gold+=g;addChat('✨ ゴールド×'+g+'を手に入れた！',null,true);}
+  else if(r<.7){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});addChat('✨ '+item.name+'を手に入れた！',null,true);showItemPop(item);}
+  else{const tier=Math.min(G.mapIdx,5);const pool=EQUIP_CATALOG.filter(e=>e.price<=1500*(tier+1));const e=(pool.length?pool:EQUIP_CATALOG)[Math.floor(Math.random()*(pool.length?pool.length:EQUIP_CATALOG.length))];if(!G.party[0].inventory.includes(e.id))G.party[0].inventory.push(e.id);addChat('✨ '+e.name+'を手に入れた！',null,true);showItemPop({icon:e.icon,name:e.name});}
+}
+function startChestAnim(tx,ty){
+  if(G.chestAnim)return;
+  const ch=G.chests.find(c=>c.x===tx&&c.y===ty);
+  if(!ch||ch.opened)return;
+  G.chestAnim={x:tx,y:ty,frame:0};
+  setTimeout(()=>{if(G.chestAnim&&G.chestAnim.x===tx)G.chestAnim.frame=1;},180);
+  setTimeout(()=>{if(G.chestAnim&&G.chestAnim.x===tx)G.chestAnim.frame=2;},360);
+  setTimeout(()=>{G.chestAnim=null;openChestAt(tx,ty);},620);
 }
 
 function resetJoy(){
