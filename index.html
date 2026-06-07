@@ -1142,6 +1142,7 @@ let _scoSlot = 1;
 function openSlotConfig(slot){
   _scoSlot = slot;
   document.getElementById('sco-title-text').textContent = (slot===1?'自分':slot+'人目') + ' のキャラ・職業';
+  document.getElementById('lobby-action-bar').style.display='none';
   const chipHTML = PARTY_CHIPS.map((p,pi)=>`
     <canvas class="chip-thumb${slotChip[slot]===pi?' chip-sel':''}"
       id="sco-chip-${pi}" width="36" height="36"
@@ -1169,6 +1170,7 @@ function openSlotConfig(slot){
 }
 function closeSlotConfig(){
   document.getElementById('slot-config-overlay').classList.add('hidden');
+  document.getElementById('lobby-action-bar').style.display='';
   initChipPreviews();
 }
 
@@ -2691,51 +2693,74 @@ function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
   if(actor.mp<spell.mp){setBMsg(`${actor.name}はMPが足りない！`);setTimeout(runNextAction,900);return;}
   actor.mp-=spell.mp;
   const alive=G.battleEnemies.filter(e=>e.curHp>0);
+  const fromEl=document.getElementById('bally-spr-'+pIdx);
 
-  // 味方対象（targetIdx < -1: -(allyIdx+10)）
-  if(targetIdx<=-10){
-    const allyIdx=-(targetIdx+10);
-    const healTgt=G.party[allyIdx];
-    if(!healTgt){runNextAction();return;}
-    const h=spell.type==='healfull'?healTgt.maxHp:Math.floor(actor.int*1.5+(spell.type==='heal2'?30:15)+Math.random()*15);
-    healTgt.hp=Math.min(healTgt.maxHp,healTgt.hp+h);
-    showDmg('+'+h,'dc-heal',true,allyIdx);
-    setBMsg(`${actor.name}が ${spell.name} を唱えた！\n${healTgt.name}のHPが ${h} 回復した！`);
-    renderBattle();setTimeout(runNextAction,1100);
-    return;
-  }
-
-  // 単体敵攻撃
+  // エフェクト対象要素を特定
+  let fxEls=[];
   if(spell.type==='atk'||spell.type==='multi'){
     const t=alive.find(e=>e.idx===targetIdx)||alive[0];
-    if(!t){runNextAction();return;}
-    if(spell.type==='multi'){
-      let tot=0;for(let i=0;i<3;i++){const d=calcDmg(actor.atk,t.def,.7);applyEnemyDmg(t,d);tot+=d;}
-      setBMsg(`${actor.name}が ${spell.name}！\n${t.name}に合計 ${tot} のダメージ！`);
-    } else {
-      const d=calcDmg(actor.int*2,t.def,spell.power);applyEnemyDmg(t,d);
-      setBMsg(`${actor.name}が ${spell.name} を唱えた！\n${t.name}に ${d} のダメージ！`);
-    }
+    if(t)fxEls=[document.getElementById('bspr-'+t.idx)];
+  } else if(spell.type==='all'){
+    fxEls=alive.map(e=>document.getElementById('bspr-'+e.idx)).filter(Boolean);
+  } else if(spell.type==='heal'||spell.type==='heal2'||spell.type==='healfull'||spell.type==='cure'){
+    if(targetIdx<=-10){const ai=-(targetIdx+10);fxEls=[document.getElementById('bally-spr-'+ai)];}
+  } else if(spell.type==='healall'){
+    fxEls=G.party.map((_,i)=>document.getElementById('bally-spr-'+i)).filter(Boolean);
+  } else if(spell.type==='buff'){
+    fxEls=[fromEl];
+  } else if(spell.type==='debuff'||spell.type==='steal'){
+    const t=alive.find(e=>e.idx===targetIdx)||alive[0];
+    if(t)fxEls=[document.getElementById('bspr-'+t.idx)];
   }
-  // 全体敵攻撃
-  else if(spell.type==='all'){
-    let msg=`${actor.name}が ${spell.name}！\n`;
-    alive.forEach(e=>{const d=calcDmg(actor.int*1.8,e.def,spell.power);applyEnemyDmg(e,d);msg+=`${e.name}に${d}　`;});
-    setBMsg(msg);
-  }
-  // 全体回復
-  else if(spell.type==='healall'){
-    G.party.forEach((p,i)=>{if(p.hp>0){const h=Math.floor(actor.int+10+Math.random()*10);p.hp=Math.min(p.maxHp,p.hp+h);showDmg('+'+h,'dc-heal',true,i);}});
-    setBMsg(`${actor.name}が ${spell.name}！全員が回復した！`);
-  }
-  // バフ
-  else if(spell.type==='buff'){
-    actor.buffed=true;setBMsg(`${actor.name}が ${spell.name}！攻撃力が上がった！`);
-  }
-  else{setBMsg(`${actor.name}が ${spell.name} を唱えた！`);}
 
-  renderBattle();
-  checkBattleEnd(()=>setTimeout(runNextAction,1100));
+  setBMsg(`${actor.name}が ${spell.name} を唱えた！`);
+
+  // アニメーション再生 → 完了後にダメージ/回復処理
+  animSpellEffect(fromEl, fxEls, spell.type, ()=>{
+    // 味方対象
+    if(targetIdx<=-10){
+      const allyIdx=-(targetIdx+10);
+      const healTgt=G.party[allyIdx];
+      if(!healTgt){runNextAction();return;}
+      const h=spell.type==='healfull'?healTgt.maxHp:Math.floor(actor.int*1.5+(spell.type==='heal2'?30:15)+Math.random()*15);
+      healTgt.hp=Math.min(healTgt.maxHp,healTgt.hp+h);
+      showDmg('+'+h,'dc-heal',true,allyIdx);
+      setBMsg(`${actor.name}が ${spell.name}！\n${healTgt.name}のHPが ${h} 回復した！`);
+      renderBattle();setTimeout(runNextAction,1000);
+      return;
+    }
+    // 単体攻撃
+    if(spell.type==='atk'||spell.type==='multi'){
+      const t=alive.find(e=>e.idx===targetIdx)||alive[0];
+      if(!t){runNextAction();return;}
+      if(spell.type==='multi'){
+        let tot=0;for(let i=0;i<3;i++){const d=calcDmg(actor.atk,t.def,.7);applyEnemyDmg(t,d);tot+=d;}
+        setBMsg(`${actor.name}が ${spell.name}！\n${t.name}に合計 ${tot} のダメージ！`);
+      } else {
+        const d=calcDmg(actor.int*2,t.def,spell.power);applyEnemyDmg(t,d);
+        setBMsg(`${actor.name}が ${spell.name}！\n${t.name}に ${d} のダメージ！`);
+      }
+    }
+    // 全体攻撃
+    else if(spell.type==='all'){
+      let msg=`${actor.name}が ${spell.name}！\n`;
+      alive.forEach(e=>{const d=calcDmg(actor.int*1.8,e.def,spell.power);applyEnemyDmg(e,d);msg+=`${e.name}に${d}　`;});
+      setBMsg(msg);
+    }
+    // 全体回復
+    else if(spell.type==='healall'){
+      G.party.forEach((p,i)=>{if(p.hp>0){const h=Math.floor(actor.int+10+Math.random()*10);p.hp=Math.min(p.maxHp,p.hp+h);showDmg('+'+h,'dc-heal',true,i);}});
+      setBMsg(`${actor.name}が ${spell.name}！全員が回復した！`);
+    }
+    // バフ
+    else if(spell.type==='buff'){
+      actor.buffed=true;setBMsg(`${actor.name}が ${spell.name}！攻撃力が上がった！`);
+    }
+    else{setBMsg(`${actor.name}が ${spell.name} を唱えた！`);}
+
+    renderBattle();
+    checkBattleEnd(()=>setTimeout(runNextAction,1000));
+  });
 }
 
 function executeEnemyAction(e){
@@ -2770,31 +2795,122 @@ function checkBattleEnd(cont){
   }
 }
 
-// Attack animations
-function animPlayerAttack(actorIdx, enemyIdx, cb){
-  const allyEl=document.getElementById('bally-spr-'+actorIdx);
-  const enmEl=document.getElementById('bspr-'+enemyIdx);
-  if(!allyEl){cb();return;}
-  allyEl.style.animation='none';void allyEl.offsetWidth;
-  allyEl.style.animation='playerAttack .45s ease-in-out forwards';
-  setTimeout(()=>{
-    if(enmEl){enmEl.style.animation='none';void enmEl.offsetWidth;enmEl.style.animation='enemyHit .35s ease-in-out forwards';}
-    allyEl.style.animation='';
-    cb();
-  },400);
+// ============================================================
+// BATTLE ANIMATIONS
+// ============================================================
+
+// 呪文エフェクト設定
+const SPELL_FX={
+  atk:     {count:5,emoji:'🔥',dur:320,spread:16},
+  all:     {count:4,emoji:'✦', dur:420,spread:20},
+  heal:    {count:5,emoji:'💚',dur:370,spread:14},
+  heal2:   {count:7,emoji:'💚',dur:380,spread:18},
+  healfull:{count:9,emoji:'⭐',dur:450,spread:20},
+  buff:    {count:5,emoji:'⚡',dur:300,spread:12},
+  debuff:  {count:4,emoji:'💜',dur:320,spread:14},
+  healall: {count:4,emoji:'💚',dur:400,spread:14},
+  steal:   {count:3,emoji:'💨',dur:270,spread:10},
+  multi:   {count:6,emoji:'⚡',dur:240,spread:12},
+  cure:    {count:5,emoji:'✨',dur:350,spread:14},
+};
+
+function _elCenter(el){
+  const bg=document.getElementById('battle-bg');
+  if(!el||!bg)return null;
+  const bR=bg.getBoundingClientRect();
+  const eR=el.getBoundingClientRect();
+  return{x:eR.left-bR.left+eR.width/2, y:eR.top-bR.top+eR.height/2};
 }
 
-function animEnemyAttack(enemyIdx, actorIdx, cb){
-  const enmEl=document.getElementById('bspr-'+enemyIdx);
+// 呪文エフェクト：パーティクルが飛んでいく
+function animSpellEffect(fromEl,toEls,type,cb){
+  const bg=document.getElementById('battle-bg');
+  if(!bg||!fromEl){cb();return;}
+  const from=_elCenter(fromEl);
+  if(!from){cb();return;}
+  const targets=Array.isArray(toEls)?toEls:(toEls?[toEls]:[fromEl]);
+  const cfg=SPELL_FX[type]||{count:3,emoji:'✨',dur:350,spread:14};
+  let total=0,done=0;
+  const finish=()=>{done++;if(done>=total)cb();};
+  targets.forEach(toEl=>{
+    const to=_elCenter(toEl)||from;
+    for(let i=0;i<cfg.count;i++){
+      total++;
+      const delay=i*60;
+      const ball=document.createElement('div');
+      const sp=(Math.random()-.5)*cfg.spread;
+      ball.style.cssText=`position:absolute;left:${from.x}px;top:${from.y}px;
+        font-size:20px;line-height:1;text-align:center;width:22px;height:22px;
+        pointer-events:none;z-index:20;
+        transform:translate(-50%,-50%) scale(1.2);opacity:1;
+        transition:left ${cfg.dur}ms ease-in ${delay}ms,
+                   top ${cfg.dur}ms ease-in ${delay}ms,
+                   opacity ${cfg.dur*.35}ms ease-out ${delay+cfg.dur*.65}ms,
+                   transform ${cfg.dur}ms ease-in ${delay}ms;`;
+      ball.textContent=cfg.emoji;
+      bg.appendChild(ball);
+      requestAnimationFrame(()=>{
+        ball.style.left=(to.x+sp)+'px';
+        ball.style.top=(to.y+sp)+'px';
+        ball.style.opacity='0';
+        ball.style.transform='translate(-50%,-50%) scale(0.3)';
+      });
+      setTimeout(()=>{if(bg.contains(ball))bg.removeChild(ball);finish();},delay+cfg.dur+80);
+    }
+  });
+  if(total===0)cb();
+}
+
+// 物理攻撃：座標計算で実際に相手の目前まで移動
+function animPlayerAttack(actorIdx,enemyIdx,cb){
+  const allyEl=document.getElementById('bally-spr-'+actorIdx);
+  const enmEl =document.getElementById('bspr-'+enemyIdx);
+  if(!allyEl){cb();return;}
+  let mx=70,my=0;
+  if(enmEl){
+    const aR=allyEl.getBoundingClientRect();
+    const eR=enmEl.getBoundingClientRect();
+    const dx=(eR.left+eR.width/2)-(aR.left+aR.width/2);
+    const dy=(eR.top +eR.height/2)-(aR.top +aR.height/2);
+    mx=dx*.78; my=dy*.78;
+  }
+  // 突進
+  allyEl.style.transition='transform .18s ease-in';
+  allyEl.style.transform=`translate(${mx}px,${my}px) scale(1.18)`;
+  setTimeout(()=>{
+    // 命中フラッシュ
+    if(enmEl){
+      enmEl.style.filter='brightness(4) saturate(0)';
+      enmEl.style.transition='filter .08s';
+      setTimeout(()=>{enmEl.style.filter='';enmEl.classList.add('anim-enemy-hit');setTimeout(()=>enmEl.classList.remove('anim-enemy-hit'),360);},80);
+    }
+    // 戻る
+    allyEl.style.transition='transform .14s ease-out';
+    allyEl.style.transform='translate(0,0) scale(1)';
+    setTimeout(()=>{allyEl.style.transition='';cb();},180);
+  },210);
+}
+
+function animEnemyAttack(enemyIdx,actorIdx,cb){
+  const enmEl =document.getElementById('bspr-'+enemyIdx);
   const allyEl=document.getElementById('bally-spr-'+actorIdx);
   if(!enmEl){cb();return;}
-  enmEl.style.animation='none';void enmEl.offsetWidth;
-  enmEl.style.animation='enemyAttack .45s ease-in-out forwards';
+  let mx=-55,my=0;
+  if(allyEl){
+    const eR=enmEl.getBoundingClientRect();
+    const aR=allyEl.getBoundingClientRect();
+    const dx=(aR.left+aR.width/2)-(eR.left+eR.width/2);
+    const dy=(aR.top +aR.height/2)-(eR.top +eR.height/2);
+    mx=dx*.78; my=dy*.78;
+  }
+  enmEl.style.transition='transform .18s ease-in';
+  enmEl.style.transform=`translate(${mx}px,${my}px) scale(1.12)`;
   setTimeout(()=>{
-    if(allyEl){allyEl.style.animation='none';void allyEl.offsetWidth;allyEl.style.animation='hitShake .3s ease-in-out';}
-    enmEl.style.animation='';
-    cb();
-  },400);
+    if(allyEl){allyEl.classList.add('anim-hit');setTimeout(()=>allyEl.classList.remove('anim-hit'),360);}
+    enmEl.style.transition='transform .14s ease-out';
+    enmEl.style.transform='translate(0,0) scale(1)';
+    setTimeout(()=>{enmEl.style.transition='';cb();},180);
+  },210);
 }
 
 function renderBattle(){
