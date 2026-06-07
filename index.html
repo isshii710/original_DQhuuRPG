@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <!-- PeerJS: P2P通信ライブラリ（完全無料・サーバー不要） -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <title>天星の冒険譚 オンライン</title>
@@ -975,25 +977,12 @@ function showLobby(mode){
   const t=document.getElementById('lobby-title');
   const b=document.getElementById('lobby-body');
   if(mode==='solo'){t.textContent='⚔️ ひとり旅';b.innerHTML=buildLobbyHTML(false,false);}
-  else if(mode==='create'){G.roomCode=genCode();t.textContent='🌐 部屋を作る';b.innerHTML=buildLobbyHTML(true,true);}
+  else if(mode==='create'){t.textContent='🌐 部屋を作る';b.innerHTML=buildLobbyHTML(true,true);}
   else{t.textContent='🤝 仲間に合流';b.innerHTML=buildLobbyHTML(true,false);}
 
-  // URLからの自動参加チェック
-  if(mode==='join'){
-    const parsed=parseJoinUrl();
-    if(parsed){
-      setTimeout(()=>{
-        const codeEl=document.getElementById('join-code');
-        if(codeEl)codeEl.value=parsed.code;
-        if(parsed.partyData){
-          const info=document.createElement('div');
-          info.style.cssText='font-size:10px;color:#88ffbb;padding:6px 0;letter-spacing:1px;';
-          info.textContent='🔗 招待URLから参加：ルームコード '+parsed.code;
-          codeEl?.parentElement?.appendChild(info);
-        }
-      },100);
-    }
-  }
+  // PeerJS 初期化（create=ホスト / join=ゲスト）
+  if(mode==='create') initPeer('host');
+  else if(mode==='join') initPeer('guest');
 }
 function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join('');}
 function genId(){return Math.random().toString(36).substr(2,8).toUpperCase();}
@@ -1025,17 +1014,41 @@ function buildLobbyHTML(online,isHost){
 
   let roomSection='';
   if(online&&isHost){
-    roomSection=`<div class="room-box"><div class="room-code-disp">${G.roomCode}</div><div class="room-hint">このコードを友達に共有</div></div>
-    <div><label style="font-size:10px;color:var(--white);letter-spacing:2px;display:block;margin-bottom:4px;">参加中</label><div class="party-member-list" id="online-party"><div style="font-size:10px;color:var(--white);padding:6px;">待機中…</div></div></div>`;
+    roomSection=`
+    <div class="room-box">
+      <div style="font-size:10px;color:#aaffcc;letter-spacing:2px;margin-bottom:4px;">あなたのID（友達に伝える）</div>
+      <div class="room-code-disp" id="peer-id-disp" style="letter-spacing:4px;">生成中…</div>
+      <button class="btn-sec" style="margin-top:6px;font-size:11px;padding:4px 12px;"
+        onclick="navigator.clipboard.writeText(document.getElementById('peer-id-disp').textContent).then(()=>alert('IDをコピーしました！'))">
+        📋 コピー
+      </button>
+      <div id="peer-connect-status" style="font-size:10px;color:#ffee88;margin-top:8px;">⏳ PeerJS接続待機中…</div>
+      <div id="peer-start-btn-wrap" style="margin-top:4px;">
+        <button id="peer-start-btn" class="btn-prim" disabled onclick="startGame()" style="opacity:0.5;">
+          🌐 接続後に出発
+        </button>
+      </div>
+    </div>`;
   } else if(online&&!isHost){
-    roomSection=`<div><label style="font-size:10px;color:var(--white);letter-spacing:2px;display:block;margin-bottom:4px;">ルームコード</label><input class="linput" id="join-code" placeholder="6文字のコード" maxlength="6" oninput="this.value=this.value.toUpperCase()"></div>`;
+    roomSection=`
+    <div class="room-box">
+      <div style="font-size:10px;color:#aaffcc;letter-spacing:2px;margin-bottom:4px;">ホストのIDを入力</div>
+      <input class="linput" id="join-code" placeholder="ホストのID（例: AB3X7K）"
+        maxlength="8" oninput="this.value=this.value.toUpperCase()" style="text-align:center;letter-spacing:3px;">
+      <button class="btn-sec" style="margin-top:6px;font-size:11px;padding:4px 12px;" onclick="connectToHost()">
+        🔗 接続する
+      </button>
+      <div id="peer-connect-status" style="font-size:10px;color:#ffee88;margin-top:8px;"></div>
+      <div id="peer-id-disp" style="display:none;"></div>
+    </div>`;
   }
 
-  const btnLbl=online?(isHost?'🌐 部屋を作って出発':'🤝 部屋に参加する'):'⚔️ 冒険開始！';
+  const btnLbl = online&&isHost ? '🌐 接続後に出発（上のボタンを使用）' : (online ? '🤝 接続後に出発' : '⚔️ 冒険開始！');
+  const mainBtn = online&&isHost ? '' : `<button class="btn-prim" id="peer-start-btn" ${online?'disabled style="opacity:0.5;"':''} onclick="startGame()">${btnLbl}</button>`;
   return `
     <div class="lfield"><label>パーティを作る（最大4人）</label><div class="party-builder">${partySlots}</div></div>
     ${roomSection}
-    <button class="btn-prim" onclick="startGame()">${btnLbl}</button>
+    ${mainBtn}
     <button class="btn-sec" onclick="backTitle()">← もどる</button>`;
 }
 
@@ -1076,29 +1089,8 @@ async function startGame(){
   // ※ 「冒険を続ける」ボタンからではなく普通に新規で始める場合は上書きしない
   document.getElementById('lobby-screen').classList.add('hidden');
 
-  // ゲストとして参加する場合
-  if(G.mode==='join'){
-    const code=document.getElementById('join-code')?.value?.trim()?.toUpperCase();
-    if(code&&code.length===6){
-      const roomJson=sessionStorage.getItem('dq9_room_'+code);
-      if(roomJson){
-        G.onlinePlayerCount=2;
-        ONLINE.isOnline=true;
-        ONLINE.isHost=false;
-        ONLINE.roomCode=code;
-        const room=JSON.parse(roomJson);
-        const hostParty=decodePartyFromHash(room.hostParty);
-        if(hostParty) ONLINE.remoteParties=[{playerId:'host',name:room.hostName,party:hostParty}];
-        // ゲストをルームに登録
-        room.guests=room.guests||[];
-        room.guests=room.guests.filter(g=>g.playerId!==G.playerId);
-        room.guests.push({playerId:G.playerId,name:G.party[0]?.name||'ゲスト',partyHash:encodePartyToHash(G.party),joinedAt:Date.now()});
-        room.updatedAt=Date.now();
-        sessionStorage.setItem('dq9_room_'+code,JSON.stringify(room));
-        addChat('🌐 ルーム['+code+']に参加しました！',null,true);
-      }
-    }
-  }
+  // ゲストとして参加する場合: PeerJS 接続は showLobby('join') → initPeer('guest') → connectToHost() で確立済み
+  // ここでは mode フラグのみ保持する
 
   fadeIn(()=>{
     document.getElementById('game-screen')?.classList?.remove('hidden');
@@ -1263,21 +1255,41 @@ function directLoadGame(slot, data) {
 }
 
 // ============================================================
-// ONLINE SYSTEM (URLハッシュ + Anthropic API連携)
+// ONLINE SYSTEM  ── PeerJS P2P リアルタイム通信
 // ============================================================
+//
+// 通信プロトコル (P2Pメッセージ type 一覧)
+//   party_update  : パーティ情報を相手に送る
+//   battle_start  : ホスト→ゲスト  バトル開始通知 + 敵データ
+//   battle_cmds   : ゲスト→ホスト  コマンド送信
+//   battle_result : ホスト→ゲスト  ターン結果（敵HP + ログ）
+//   battle_end    : ホスト→ゲスト  バトル終了通知
+//   chat          : 双方向チャット
+//
+// ロール
+//   ホスト … 部屋を作ったプレイヤー。ダメージ計算を担当。
+//   ゲスト … IDを入力して接続したプレイヤー。コマンドを送るだけ。
+// ============================================================
+
 const ONLINE = {
-  isOnline: false,
-  isHost: false,
-  roomCode: '',
-  remoteParties: [], // [{playerId, name, party, joinedAt}]
-  chatLog: [],       // [{name, msg, sys}]
-  pollInterval: null,
+  isOnline:      false,
+  isHost:        false,
+  myPeerId:      '',   // 自分の PeerJS ID
+  remotePeerId:  '',   // 相手の PeerJS ID
+  remoteParties: [],   // [{playerId, name, party}]
+  chatLog:       [],
+  guestCmds:     null, // ゲストから受け取ったコマンド（ホスト側）
 };
 
+// PeerJS インスタンスと DataConnection
+let _peer = null;
+let _conn = null;
+
+// ─── エンコード / デコード ────────────────────────────────
 // パーティデータをURLセーフなBase64に変換
 function encodePartyToHash(party) {
   const minimal = party.map(p => ({
-    name: p.name, class: p.class, icon: p.icon, color: p.color,
+    id: p.id, name: p.name, class: p.class, icon: p.icon, color: p.color,
     lv: p.lv, exp: p.exp, expNext: p.expNext,
     hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp,
     baseAtk: p.baseAtk, baseDef: p.baseDef, baseSpd: p.baseSpd, baseInt: p.baseInt,
@@ -1286,12 +1298,336 @@ function encodePartyToHash(party) {
   }));
   return btoa(encodeURIComponent(JSON.stringify(minimal)));
 }
-
 function decodePartyFromHash(hash) {
   try { return JSON.parse(decodeURIComponent(atob(hash))); } catch(e){ return null; }
 }
 
-// URLハッシュからルームコードとパーティを抽出
+// ─────────────────────────────────────────────────────────────
+//  PeerJS 初期化
+//  ロビーを開いたとき（mode='create' or 'join'）に呼ぶ
+// ─────────────────────────────────────────────────────────────
+function initPeer(role) {
+  if (_peer && !_peer.destroyed) return; // 既に初期化済み
+
+  // 6文字の短いIDを自前で生成（PeerJSデフォルトUUIDより扱いやすい）
+  const myId = genCode();
+  _peer = new Peer(myId, { debug: 0 });
+
+  _peer.on('open', (id) => {
+    ONLINE.myPeerId = id;
+    // ロビー画面上のID表示を更新
+    const disp = document.getElementById('peer-id-disp');
+    if (disp) disp.textContent = id;
+    const statusEl = document.getElementById('peer-connect-status');
+    if (statusEl) statusEl.textContent = '⏳ 相手の接続を待っています…';
+  });
+
+  if (role === 'host') {
+    // ホスト: 相手から接続が来たら受け入れる
+    _peer.on('connection', (c) => {
+      _setupConn(c, true);
+    });
+  }
+
+  _peer.on('error', (err) => {
+    const statusEl = document.getElementById('peer-connect-status');
+    if (statusEl) statusEl.textContent = '⚠️ エラー: ' + err.message;
+    console.error('PeerJS:', err);
+  });
+}
+
+// ─── 接続確立 / DataChannel セットアップ ────────────────
+function _setupConn(c, asHost) {
+  _conn = c;
+  ONLINE.isHost = !!asHost;
+  ONLINE.remotePeerId = c.peer;
+
+  c.on('open', () => {
+    ONLINE.isOnline = true;
+
+    // ロビーのステータス表示を更新
+    const statusEl = document.getElementById('peer-connect-status');
+    if (statusEl) statusEl.textContent = '✅ 接続成功！出発ボタンを押してください';
+    const startBtn = document.getElementById('peer-start-btn');
+    if (startBtn) { startBtn.removeAttribute('disabled'); startBtn.style.opacity = '1'; }
+  });
+
+  c.on('data', (msg) => _handleP2P(msg));
+
+  c.on('close', () => {
+    ONLINE.isOnline = false;
+    ONLINE.remoteParties = [];
+    addChat('⚠️ 接続が切れました', null, true);
+    updatePlayersBadge();
+  });
+
+  c.on('error', (err) => {
+    console.error('DataConnection error:', err);
+  });
+}
+
+// ─── P2P メッセージ送信 ──────────────────────────────────
+function _sendP2P(msg) {
+  if (_conn && _conn.open) {
+    _conn.send(msg);
+  }
+}
+
+// ─── P2P メッセージ受信ハンドラ ─────────────────────────
+function _handleP2P(msg) {
+  switch (msg.type) {
+
+    case 'party_update': {
+      const p = decodePartyFromHash(msg.party);
+      if (p) {
+        ONLINE.remoteParties = [{
+          playerId: ONLINE.remotePeerId,
+          name: p[0]?.name || '相手',
+          party: p,
+        }];
+        updatePlayersBadge();
+        applyOnlineScaling();
+        updateOnlineModal();
+      }
+      break;
+    }
+
+    case 'battle_start': {
+      // ゲストがホストからバトル開始通知を受け取った
+      if (!ONLINE.isHost && !G.inBattle) {
+        const enemies = msg.enemies.map((e, i) => ({ ...e, idx: i }));
+        startBattle(enemies);
+      }
+      break;
+    }
+
+    case 'battle_cmds': {
+      // ホストがゲストのコマンドを受け取った
+      if (ONLINE.isHost) {
+        ONLINE.guestCmds = msg.cmds;
+        G.guestCmdsReceived = true;
+        _onGuestCmdsReceived();
+      }
+      break;
+    }
+
+    case 'battle_result': {
+      // ゲストがホストのターン結果を受け取った
+      if (!ONLINE.isHost && G.inBattle) {
+        msg.enemies.forEach((e, i) => {
+          if (G.battleEnemies[i]) G.battleEnemies[i].curHp = e.curHp;
+        });
+        renderBattle();
+        if (msg.log?.length) setBMsg(msg.log[msg.log.length - 1]);
+        // コマンド選択に戻る（ゲスト側）
+        setTimeout(() => {
+          if (G.battleEnemies.every(e => e.curHp <= 0)) { battleVictory(); return; }
+          if (G.party.every(p => p.hp <= 0)) { gameover(); return; }
+          clearTurnFlags();
+          renderBattle();
+          startCommandSelect();
+        }, 600);
+      }
+      break;
+    }
+
+    case 'battle_end': {
+      if (!ONLINE.isHost && G.inBattle) {
+        endBattle();
+      }
+      break;
+    }
+
+    case 'chat': {
+      addChat(msg.msg, msg.name, false);
+      appendOnlineChatLine({ name: msg.name, msg: msg.msg, sys: false });
+      break;
+    }
+  }
+}
+
+// ─── ゲスト: ロビーから接続ボタンを押したとき ───────────
+function connectToHost() {
+  const hostId = document.getElementById('join-code')?.value?.trim()?.toUpperCase();
+  if (!hostId || hostId.length < 4) {
+    document.getElementById('peer-connect-status').textContent = '⚠️ ホストのIDを入力してください';
+    return;
+  }
+  if (!_peer || _peer.destroyed) {
+    document.getElementById('peer-connect-status').textContent = '⚠️ まずパーティを作成してください';
+    return;
+  }
+  document.getElementById('peer-connect-status').textContent = '🔄 接続中…';
+  const c = _peer.connect(hostId, { reliable: true });
+  _setupConn(c, false); // guest
+}
+
+// ─── バッジ / スケーリング ───────────────────────────────
+function showOnlineBadge() {
+  document.getElementById('online-status-bar').style.display = '';
+  const badge = document.getElementById('online-players-badge');
+  badge.style.display = '';
+  updatePlayersBadge();
+}
+function updatePlayersBadge() {
+  const total = 1 + ONLINE.remoteParties.length;
+  document.getElementById('online-players-badge').textContent = `🌐 ${total}人で冒険中`;
+}
+function applyOnlineScaling() {
+  const total = 1 + ONLINE.remoteParties.length;
+  if (total <= 1) return;
+  G.onlinePlayerCount = total;
+  document.getElementById('online-players-badge').textContent =
+    `🌐 ${total}人で冒険中 ／ 敵強化×${total.toFixed(1)}`;
+}
+function getScaledEnemyGroup(baseEnemies) {
+  const count = G.onlinePlayerCount || 1;
+  if (count <= 1) return baseEnemies;
+  const scaled = baseEnemies.map(e => ({
+    ...e,
+    maxHp: Math.floor(e.hp * (1 + (count-1)*0.6)),
+    curHp: Math.floor(e.hp * (1 + (count-1)*0.6)),
+    atk:   Math.floor(e.atk * (1 + (count-1)*0.3)),
+    def:   Math.floor(e.def * (1 + (count-1)*0.2)),
+    exp:   Math.floor(e.exp * count),
+    gold:  Math.floor(e.gold * count),
+  }));
+  if (count >= 3 && scaled.length < 3) {
+    const extra = { ...baseEnemies[0],
+      maxHp: Math.floor(baseEnemies[0].hp * 0.7 * count),
+      atk:   Math.floor(baseEnemies[0].atk * count * 0.5),
+      idx:   scaled.length,
+    };
+    extra.curHp = extra.maxHp;
+    scaled.push(extra);
+  }
+  return scaled;
+}
+
+// ─── オンラインモーダル ──────────────────────────────────
+function openOnlineModal() {
+  const id = ONLINE.myPeerId;
+  if (id) document.getElementById('om-code').textContent = id;
+  const url = `${location.href.split('#')[0]}#p2p:${id}`;
+  document.getElementById('om-url').textContent = url;
+  updateOnlineModal();
+  document.getElementById('online-modal').classList.remove('hidden');
+}
+function closeOnlineModal() { document.getElementById('online-modal').classList.add('hidden'); }
+function updateOnlineModal() {
+  const listEl = document.getElementById('om-party-list');
+  if (!listEl) return;
+  const all = [
+    { name: (G.party[0]?.name || '自分') + '（あなた）', party: G.party, isMe: true },
+    ...ONLINE.remoteParties.map(r => ({ name: r.name, party: r.party, isMe: false })),
+  ];
+  listEl.innerHTML = all.map(p => `
+    <div class="party-join-card">
+      <div class="join-dot ${p.isMe?'':'wait'}"></div>
+      <span>${p.name}</span>
+      <span style="margin-left:auto;font-size:9px;color:var(--white);">${p.party.length}人パーティ</span>
+    </div>`).join('');
+  const scaleEl = document.getElementById('om-scale-info');
+  if (all.length > 1) {
+    scaleEl.style.display = '';
+    scaleEl.textContent = `⚡ ${all.length}人参加中 ／ 敵HP×${(1+(all.length-1)*0.6).toFixed(1)} ／ 報酬×${all.length}`;
+  } else { scaleEl.style.display = 'none'; }
+}
+function copyJoinUrl() {
+  const id = ONLINE.myPeerId;
+  navigator.clipboard.writeText(id)
+    .then(() => { addChat('📋 あなたのIDをコピーしました！', null, true); closeOnlineModal(); })
+    .catch(() => prompt('このIDを友達に教えてください:', id));
+}
+
+// ─── チャット（P2P 送信）────────────────────────────────
+function sendOnlineChat() {
+  const input = document.getElementById('om-chat-in');
+  const msg = input?.value?.trim();
+  if (!msg) return;
+  input.value = '';
+  const name = G.party[0]?.name || '?';
+  addChat(msg, name, false);
+  appendOnlineChatLine({ name, msg, sys: false });
+  ONLINE.chatLog.push({ name, msg });
+  _sendP2P({ type: 'chat', name, msg });
+}
+function appendOnlineChatLine(m) {
+  const logEl = document.getElementById('online-chat-log');
+  if (!logEl) return;
+  const line = document.createElement('div');
+  line.className = m.sys ? 'oc-line oc-sys' : 'oc-line oc-msg';
+  line.innerHTML = m.sys ? m.msg : `<span class="oc-name">${m.name}:</span> ${m.msg}`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ─── バトル同期（P2P 送信）──────────────────────────────
+
+// ホスト: バトル開始をゲストに通知
+function _syncBattleStart(enemies) {
+  if (!ONLINE.isOnline || !ONLINE.isHost) return;
+  G.guestCmdsReceived = false;
+  _sendP2P({
+    type: 'battle_start',
+    enemies: enemies.map(e => ({
+      name: e.name, curHp: e.curHp, maxHp: e.maxHp,
+      atk: e.atk, def: e.def, exp: e.exp, gold: e.gold,
+      sprite: e.sprite, color: e.color,
+    })),
+  });
+}
+
+// ホスト: ターン結果をゲストに送信
+function _syncBattleAfterTurn(logLines) {
+  if (!ONLINE.isOnline || !ONLINE.isHost) return;
+  _sendP2P({
+    type: 'battle_result',
+    enemies: G.battleEnemies.map(e => ({
+      name: e.name, curHp: e.curHp, maxHp: e.maxHp,
+      atk: e.atk, def: e.def, exp: e.exp, gold: e.gold,
+    })),
+    log: logLines,
+  });
+  G.guestCmdsReceived = false;
+}
+
+// ホスト: バトル終了をゲストに通知
+function _syncBattleEnd() {
+  if (!ONLINE.isOnline || !ONLINE.isHost) return;
+  _sendP2P({ type: 'battle_end' });
+}
+
+// ゲスト: コマンドをホストに送信
+function _submitGuestCmds(cmdQueue) {
+  if (!ONLINE.isOnline || ONLINE.isHost) return Promise.resolve();
+  _sendP2P({
+    type: 'battle_cmds',
+    cmds: cmdQueue.map(q => ({
+      actorId: q.actor.id, type: q.type,
+      targetIdx: q.targetIdx ?? -1, spellIdx: q.spellIdx ?? -1,
+    })),
+  });
+  return Promise.resolve();
+}
+
+// ホスト: ゲストのコマンドが届いたら実行フェーズへ
+function _onGuestCmdsReceived() {
+  if (!G.waitingForGuest) return;
+  G.waitingForGuest = false;
+  setBMsg('✅ パートナーのコマンドを受信！実行中…');
+
+  const guestParty = ONLINE.remoteParties[0]?.party || [];
+  const guestCmds = (ONLINE.guestCmds || []).map(q => {
+    const actor = guestParty.find(p => p.id === q.actorId) ?? guestParty[0];
+    return actor ? { actor, type: q.type, targetIdx: q.targetIdx, spellIdx: q.spellIdx } : null;
+  }).filter(Boolean);
+
+  G.cmdQueue = [...(G.hostCmdsBackup || []), ...guestCmds];
+  _reallyExecuteTurn();
+}
+
+// ─── URL連携（オプション）────────────────────────────────
 function parseJoinUrl() {
   const hash = location.hash.slice(1);
   if (!hash) return null;
@@ -1299,296 +1635,10 @@ function parseJoinUrl() {
   if (!code) return null;
   return { code, partyData: partyHash ? decodePartyFromHash(partyHash) : null };
 }
-
-// 合流URLを生成
 function buildJoinUrl(code, party) {
-  const base = location.href.split('#')[0];
-  const partyHash = encodePartyToHash(party);
-  return `${base}#${code}|${partyHash}`;
+  return `${location.href.split('#')[0]}#${code}|${encodePartyToHash(party)}`;
 }
-
-// ホストとしてオンラインモード開始
-function startOnlineHost(code) {
-  ONLINE.isOnline = true;
-  ONLINE.isHost = true;
-  ONLINE.roomCode = code;
-  ONLINE.remoteParties = [];
-  ONLINE.chatLog = [];
-  G.roomCode = code;
-
-  // セッションストレージにホストデータを保存（同ブラウザ内でゲスト確認用）
-  const hostData = {
-    code,
-    hostParty: encodePartyToHash(G.party),
-    hostName: G.party[0]?.name || 'ホスト',
-    guests: [],
-    chat: [],
-    updatedAt: Date.now(),
-  };
-  sessionStorage.setItem('dq9_room_' + code, JSON.stringify(hostData));
-
-  showOnlineBadge();
-  updateOnlineModal();
-
-  // 30秒ごとに自動セーブ
-  ONLINE.pollInterval = setInterval(() => {
-    autoSyncRoom();
-  }, 5000);
-}
-
-// ゲストとして参加
-function joinRoomAction() {
-  const code = document.getElementById('jm-code').value.trim().toUpperCase();
-  if (code.length !== 6) { document.getElementById('jm-status').textContent = '6文字のコードを入力してください'; return; }
-
-  const statusEl = document.getElementById('jm-status');
-  statusEl.textContent = '🔄 接続中…';
-
-  // セッションストレージから部屋を探す（同デバイス）
-  const roomJson = sessionStorage.getItem('dq9_room_' + code);
-  if (roomJson) {
-    const room = JSON.parse(roomJson);
-    joinRoomWithData(code, room);
-  } else {
-    // URLハッシュから参加（別デバイスの場合はURLを使う）
-    statusEl.textContent = '⚠️ その部屋が見つかりません。\nホストと同じデバイスか、招待URLから参加してください。';
-  }
-}
-
-function joinRoomWithData(code, room) {
-  ONLINE.isOnline = true;
-  ONLINE.isHost = false;
-  ONLINE.roomCode = code;
-
-  // ホストパーティをデコード
-  const hostParty = decodePartyFromHash(room.hostParty);
-  if (hostParty) {
-    ONLINE.remoteParties = [{ playerId: 'host', name: room.hostName, party: hostParty }];
-  }
-
-  document.getElementById('join-modal').classList.add('hidden');
-  showOnlineBadge();
-  addChat('🌐 ルーム['+code+']に参加しました！', null, true);
-
-  // ゲストパーティをルームに登録
-  const room2 = JSON.parse(sessionStorage.getItem('dq9_room_' + code) || '{}');
-  room2.guests = room2.guests || [];
-  const guestEntry = {
-    playerId: G.playerId,
-    name: G.party[0]?.name || 'ゲスト',
-    partyHash: encodePartyToHash(G.party),
-    joinedAt: Date.now(),
-  };
-  room2.guests = room2.guests.filter(g => g.playerId !== G.playerId);
-  room2.guests.push(guestEntry);
-  room2.updatedAt = Date.now();
-  sessionStorage.setItem('dq9_room_' + code, JSON.stringify(room2));
-
-  // バトルスケーリング適用
-  applyOnlineScaling();
-
-  ONLINE.pollInterval = setInterval(autoSyncRoom, 5000);
-}
-
-// オンラインバッジ表示
-function showOnlineBadge() {
-  document.getElementById('online-status-bar').style.display = '';
-  const badge = document.getElementById('online-players-badge');
-  badge.style.display = '';
-  updatePlayersBadge();
-}
-
-function updatePlayersBadge() {
-  const total = 1 + ONLINE.remoteParties.length;
-  const badge = document.getElementById('online-players-badge');
-  badge.textContent = `🌐 ${total}人で冒険中`;
-}
-
-// ルームデータを同期
-function autoSyncRoom() {
-  if (!ONLINE.isOnline) return;
-  const code = ONLINE.roomCode;
-  const roomJson = sessionStorage.getItem('dq9_room_' + code);
-  if (!roomJson) return;
-  const room = JSON.parse(roomJson);
-
-  // ホストなら自分のパーティを更新
-  if (ONLINE.isHost) {
-    room.hostParty = encodePartyToHash(G.party);
-    room.updatedAt = Date.now();
-    sessionStorage.setItem('dq9_room_' + code, JSON.stringify(room));
-  }
-
-  // ゲスト情報を更新
-  const guests = room.guests || [];
-  ONLINE.remoteParties = [];
-  if (!ONLINE.isHost) {
-    const hostParty = decodePartyFromHash(room.hostParty);
-    if (hostParty) ONLINE.remoteParties.push({ playerId: 'host', name: room.hostName, party: hostParty });
-  }
-  guests.filter(g => g.playerId !== G.playerId).forEach(g => {
-    const p = decodePartyFromHash(g.partyHash);
-    if (p) ONLINE.remoteParties.push({ playerId: g.playerId, name: g.name, party: p });
-  });
-
-  // チャット同期
-  if (room.chat && room.chat.length > ONLINE.chatLog.length) {
-    const newMsgs = room.chat.slice(ONLINE.chatLog.length);
-    newMsgs.forEach(m => {
-      addChat(m.msg, m.sys ? null : m.name, m.sys);
-    });
-    ONLINE.chatLog = room.chat;
-  }
-
-  updatePlayersBadge();
-  applyOnlineScaling();
-}
-
-// オンライン時のバトルスケーリング
-function applyOnlineScaling() {
-  const totalPlayers = 1 + ONLINE.remoteParties.length;
-  if (totalPlayers <= 1) return;
-  G.onlinePlayerCount = totalPlayers;
-  const badge = document.getElementById('online-players-badge');
-  badge.textContent = `🌐 ${totalPlayers}人で冒険中 ／ 敵強化×${totalPlayers.toFixed(1)}`;
-}
-
-// オンラインでのバトル開始（敵をスケール）
-function getScaledEnemyGroup(baseEnemies) {
-  const count = G.onlinePlayerCount || 1;
-  if (count <= 1) return baseEnemies;
-  // プレイヤー数に応じて敵を増やし、強化する
-  const scaled = baseEnemies.map(e => ({
-    ...e,
-    maxHp: Math.floor(e.hp * (1 + (count - 1) * 0.6)),
-    curHp: Math.floor(e.hp * (1 + (count - 1) * 0.6)),
-    atk: Math.floor(e.atk * (1 + (count - 1) * 0.3)),
-    def: Math.floor(e.def * (1 + (count - 1) * 0.2)),
-    exp: Math.floor(e.exp * count),
-    gold: Math.floor(e.gold * count),
-  }));
-  // プレイヤーが3人以上なら敵を追加
-  if (count >= 3 && scaled.length < 3) {
-    const extra = {...baseEnemies[0]};
-    extra.maxHp = Math.floor(extra.hp * 0.7 * count);
-    extra.curHp = extra.maxHp;
-    extra.atk = Math.floor(extra.atk * count * 0.5);
-    extra.idx = scaled.length;
-    scaled.push(extra);
-  }
-  return scaled;
-}
-
-// オンラインモーダル表示
-function openOnlineModal() {
-  const code = ONLINE.roomCode || G.roomCode;
-  if (!code) return;
-  document.getElementById('om-code').textContent = code;
-  const url = buildJoinUrl(code, G.party);
-  document.getElementById('om-url').textContent = url;
-  updateOnlineModal();
-  document.getElementById('online-modal').classList.remove('hidden');
-}
-
-function closeOnlineModal() {
-  document.getElementById('online-modal').classList.add('hidden');
-}
-
-function updateOnlineModal() {
-  const listEl = document.getElementById('om-party-list');
-  if (!listEl) return;
-  const allPlayers = [
-    { name: (G.party[0]?.name || '自分') + '（あなた）', party: G.party, isMe: true },
-    ...ONLINE.remoteParties.map(r => ({ name: r.name, party: r.party, isMe: false })),
-  ];
-  listEl.innerHTML = allPlayers.map(p => `
-    <div class="party-join-card">
-      <div class="join-dot ${p.isMe ? '' : 'wait'}"></div>
-      <span>${p.name}</span>
-      <span style="margin-left:auto;font-size:9px;color:var(--white);">${p.party.length}人パーティ</span>
-    </div>`).join('');
-
-  const total = allPlayers.length;
-  const scaleEl = document.getElementById('om-scale-info');
-  if (total > 1) {
-    scaleEl.style.display = '';
-    scaleEl.textContent = `⚡ ${total}人参加中 ／ 敵HP・攻撃×${(1+(total-1)*0.6).toFixed(1)} ／ 報酬×${total}`;
-  } else {
-    scaleEl.style.display = 'none';
-  }
-}
-
-function copyJoinUrl() {
-  const code = ONLINE.roomCode || G.roomCode;
-  const url = buildJoinUrl(code, G.party);
-  navigator.clipboard.writeText(url).then(() => {
-    addChat('📋 URLをコピーしました！', null, true);
-    closeOnlineModal();
-  }).catch(() => {
-    prompt('このURLをコピーしてください:', url);
-  });
-}
-
-function sendOnlineChat() {
-  const input = document.getElementById('om-chat-in');
-  const msg = input?.value?.trim();
-  if (!msg) return;
-  input.value = '';
-
-  const entry = { name: G.party[0]?.name || '?', msg, sys: false, at: Date.now() };
-  ONLINE.chatLog.push(entry);
-  addChat(msg, entry.name, false);
-
-  // ルームのチャットログを更新
-  const code = ONLINE.roomCode;
-  if (code) {
-    const room = JSON.parse(sessionStorage.getItem('dq9_room_' + code) || '{}');
-    room.chat = room.chat || [];
-    room.chat.push(entry);
-    if (room.chat.length > 50) room.chat = room.chat.slice(-50);
-    sessionStorage.setItem('dq9_room_' + code, JSON.stringify(room));
-  }
-
-  // オンラインチャットログUIを更新
-  const logEl = document.getElementById('online-chat-log');
-  if (logEl) {
-    const line = document.createElement('div');
-    line.className = 'oc-line oc-msg';
-    line.innerHTML = `<span class="oc-name">${entry.name}:</span> ${entry.msg}`;
-    logEl.appendChild(line);
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-}
-
-// オンラインで別のプレイヤーのパーティと合体したバトル
-function getOnlineCombinedParty() {
-  if (!ONLINE.isOnline || !ONLINE.remoteParties.length) return G.party;
-  // 自分のパーティ + 各ゲストのパーティを全部結合（最大8人）
-  const all = [...G.party];
-  for (const remote of ONLINE.remoteParties) {
-    if (all.length >= 8) break;
-    for (const p of remote.party) {
-      if (all.length >= 8) break;
-      all.push({ ...p, isRemote: true, remoteId: remote.playerId });
-    }
-  }
-  return all;
-}
-
-// URLハッシュから自動参加を確認
-function checkAutoJoin() {
-  const parsed = parseJoinUrl();
-  if (!parsed) return false;
-
-  // URLから参加データがある → ゲスト参加フロー
-  addChat('🔗 招待URLを検出しました', null, true);
-  G.mode = 'join_url';
-  G.pendingJoinCode = parsed.code;
-  G.pendingHostParty = parsed.partyData;
-
-  // ロビーに招待URLの情報を表示
-  return true;
-}
+function checkAutoJoin() { return false; } // P2P版ではURLからの自動参加は不使用
 
 // ============================================================
 // MAP GENERATION
@@ -1602,25 +1652,30 @@ function initGame(){
   addChat('冒険が始まった！',null,true);
   setTimeout(()=>showDialog('elder'),1500);
 
-  // オンラインモードなら開始処理
-  if(G.mode==='create'&&G.roomCode){
-    startOnlineHost(G.roomCode);
+  // オンラインモードなら接続済みバッジを表示
+  if (ONLINE.isOnline) {
+    showOnlineBadge();
+    applyOnlineScaling();
     document.getElementById('menu-online-btn').style.display='';
-    // セーブボタンの横にオンラインボタンを追加
-    const saveHud=document.getElementById('save-btn-hud');
-    if(saveHud&&!document.getElementById('online-hud-btn')){
-      const btn=document.createElement('button');
-      btn.id='online-hud-btn';
-      btn.className='hud-save-btn';
-      btn.style.cssText='color:#88ffbb;margin-top:4px;';
-      btn.innerHTML='🌐 オンライン';
-      btn.onclick=openOnlineModal;
+  }
+
+  // ゲーム画面に「オンライン」ボタンを追加（ホスト・ゲスト共通）
+  if (G.mode === 'create' || G.mode === 'join') {
+    document.getElementById('menu-online-btn').style.display='';
+    const saveHud = document.getElementById('save-btn-hud');
+    if (saveHud && !document.getElementById('online-hud-btn')) {
+      const btn = document.createElement('button');
+      btn.id = 'online-hud-btn';
+      btn.className = 'hud-save-btn';
+      btn.style.cssText = 'color:#88ffbb;margin-top:4px;';
+      btn.innerHTML = '🌐 P2P';
+      btn.onclick = openOnlineModal;
       saveHud.appendChild(btn);
     }
-  } else if(ONLINE.isOnline){
-    document.getElementById('menu-online-btn').style.display='';
-    showOnlineBadge();
-    ONLINE.pollInterval=setInterval(autoSyncRoom,5000);
+    // 接続済みならパーティ情報を送る
+    if (ONLINE.isOnline) {
+      _sendP2P({ type: 'party_update', party: encodePartyToHash(G.party) });
+    }
   }
 }
 
@@ -2027,31 +2082,28 @@ window.addEventListener('keyup',e=>{G.keys[e.key]=false;});
 // BATTLE SYSTEM
 // ============================================================
 function startBattle(mapEnemies){
-  G.inBattle=true;G.isBoss=false;
-  const bg=document.getElementById('battle-bg');
-  bg.style.background='linear-gradient(180deg,#0a1a3a 0%,#1a3a6a 50%,#3a6a2a 50%,#2a4a1a 100%)';
+  G.inBattle=true; G.isBoss=false; G.battleTurn=0;
+  G.waitingForGuest=false; G.guestCmdsReceived=false;
+  document.getElementById('battle-bg').style.background=
+    'linear-gradient(180deg,#0a1a3a 0%,#1a3a6a 50%,#3a6a2a 50%,#2a4a1a 100%)';
 
-  // オンライン時は敵をスケール
-  const rawEnemies = mapEnemies.map((e,i)=>({...e,curHp:e.curHp!==undefined?e.curHp:e.hp,maxHp:e.hp,idx:i}));
+  // 敵をスケール（オンライン時）
+  const rawEnemies = mapEnemies.map((e,i)=>({
+    ...e, curHp: e.curHp!==undefined ? e.curHp : e.hp, maxHp: e.maxHp||e.hp, idx: i,
+  }));
   G.battleEnemies = ONLINE.isOnline ? getScaledEnemyGroup(rawEnemies) : rawEnemies;
 
-  // オンライン時は合体パーティでバトル（リモートメンバーを追加）
-  if(ONLINE.isOnline && ONLINE.remoteParties.length > 0){
-    G._battlePartyBackup = G.party;
-    G.party = getOnlineCombinedParty();
-    if(!G.isBoss){
-      setBMsg('🌐 オンライン合体パーティで戦闘開始！');
-    }
+  // ホストならバトル開始を P2P でゲストに通知
+  if (ONLINE.isOnline && ONLINE.isHost) {
+    _syncBattleStart(G.battleEnemies); // 非同期 (await 不要)
   }
 
   G.pendingLvlUps=[];
-  // コマンド選択の初期化
-  G.cmdQueue=[];       // [{actor, type, spellIdx}] 各キャラのコマンド
-  G.cmdSelectIdx=0;    // 今コマンドを選んでいるパーティメンバーのindex
-  G.executing=false;
+  G.cmdQueue=[]; G.cmdSelectIdx=0; G.executing=false;
   document.getElementById('battle-screen').classList.remove('hidden');
   renderBattle();
-  setBMsg('⚔️ '+G.battleEnemies.map(e=>e.name).join('と')+' があらわれた！');
+  const who = ONLINE.isOnline && !ONLINE.isHost ? '🌐 ' : '⚔️ ';
+  setBMsg(who + G.battleEnemies.map(e=>e.name).join('と') + ' があらわれた！');
   setTimeout(startCommandSelect, 900);
 }
 
@@ -2223,8 +2275,39 @@ function closeAllyTargetSelect(){
 // ====== 実行フェーズ ======
 function executeTurn(){
   if(G.executing) return;
-  G.executing=true;
   document.getElementById('battle-execute').style.display='none';
+
+  // ─── オンライン: ゲストはコマンドを P2P でホストに送って待機 ───
+  if(ONLINE.isOnline && !ONLINE.isHost){
+    setBMsg('📡 コマンドをパートナーに送信中…');
+    _submitGuestCmds(G.cmdQueue).then(()=>{
+      setBMsg('⏳ パートナーのターン処理を待っています…');
+    });
+    return; // ゲストはここで終了。ホストの結果を P2P (battle_result) で受け取る
+  }
+
+  // ─── オンライン: ホストは自分のコマンドを保存してゲストを待つ ───
+  if(ONLINE.isOnline && ONLINE.isHost){
+    G.hostCmdsBackup = [...G.cmdQueue];
+    if(G.guestCmdsReceived){
+      // すでにゲストのコマンドが届いていたらすぐ実行
+      _onGuestCmdsReceived();
+    } else {
+      G.executing      = false; // onGuestCmdsReceived が true にする
+      G.waitingForGuest = true;
+      setBMsg('⏳ パートナーのコマンドを待っています…');
+      // ホスト側は待機（ゲストのコマンド到着で _onGuestCmdsReceived が呼ばれる）
+    }
+    return;
+  }
+
+  // ─── ソロ: そのまま実行 ───
+  _reallyExecuteTurn();
+}
+
+// 実際にターンを計算・実行する（ホストのみが呼ぶ）
+function _reallyExecuteTurn(){
+  G.executing=true;
 
   // にげる が含まれていたら処理
   const fleeCmd=G.cmdQueue.find(q=>q.type==='flee');
@@ -2241,16 +2324,20 @@ function executeTurn(){
   G.battleEnemies.filter(e=>e.curHp>0).forEach(e=>{
     actors.push({type:'enemy',ref:e,spd:e.spd||5});
   });
-  // 素早さ降順ソート（同値はランダム）
   actors.sort((a,b)=>b.spd-a.spd+((Math.random()-.5)*.5));
 
   G.execQueue=actors;
   G.execIdx=0;
+  G.turnLog=[];  // このターンのログ行を収集
   runNextAction();
 }
 
 function runNextAction(){
   if(G.execIdx>=G.execQueue.length){
+    // ターン終了: オンライン（ホスト）なら結果を書き込む
+    if(ONLINE.isOnline && ONLINE.isHost){
+      _syncBattleAfterTurn(G.turnLog || []);
+    }
     if(G.battleEnemies.every(e=>e.curHp<=0)){battleVictory();return;}
     if(G.party.every(p=>p.hp<=0)){gameover();return;}
     clearTurnFlags();
@@ -2464,7 +2551,14 @@ function renderBattle(){
     </div>`;}).join('');
 }
 
-function setBMsg(t){document.getElementById('battle-msg').textContent=t;}
+function setBMsg(t){
+  document.getElementById('battle-msg').textContent=t;
+  // ホストのターン中はログを収集してゲストへ送る
+  if(ONLINE.isOnline && ONLINE.isHost && G.executing && t){
+    if(!G.turnLog) G.turnLog=[];
+    G.turnLog.push(t);
+  }
+}
 function enableCmds(on){['bc-atk','bc-spl','bc-itm','bc-def','bc-fle'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!on;});}
 
 function calcDmg(atk,def,mult=1){return Math.max(1,Math.floor(Math.max(1,atk-Math.floor(def*.5))*(0.85+Math.random()*.3)*mult));}
@@ -2533,22 +2627,15 @@ function gameover(){
 
 function endBattle(){
   G.inBattle=false;
+  G.waitingForGuest=false;
+  G.guestCmdsReceived=false;
 
-  // オンライン合体パーティを解除（自分のパーティに戻す）
-  if(G._battlePartyBackup){
-    // 自分のメンバーのHPをバトル後の状態に更新
-    G._battlePartyBackup.forEach(p=>{
-      const battled=G.party.find(bp=>bp.id===p.id||bp.name===p.name);
-      if(battled){p.hp=battled.hp;p.mp=battled.mp;p.exp=battled.exp;p.lv=battled.lv;p.gold=battled.gold;}
-    });
-    G.party=G._battlePartyBackup;
-    G._battlePartyBackup=null;
-  }
+  // ホストならバトル終了を P2P でゲストに通知
+  if(ONLINE.isOnline && ONLINE.isHost) _syncBattleEnd();
 
   document.getElementById('battle-screen').classList.add('hidden');
   updatePartyHUD();
-  // Respawn some enemies
-  if(G.mapEnemies.length<3)spawnMapEnemy();
+  if(G.mapEnemies.length<3) spawnMapEnemy();
   startLoop();
 }
 
