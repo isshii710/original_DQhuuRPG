@@ -1054,7 +1054,7 @@ function buildLobbyHTML(online,isHost){
       <span class="cls-icon">${v.icon}</span><div class="cls-name">${v.name}</div>
     </div>`).join('');
 
-  // Party slots — 職業グリッドは折りたたみ式
+  // Party slots — 見た目と職業を1つのトグルで開閉
   const partySlots = [1,2,3,4].map(i=>`
     <div class="party-slot" id="pslot-${i}">
       <div class="party-slot-head">
@@ -1062,20 +1062,21 @@ function buildLobbyHTML(online,isHost){
         <input class="slot-name-in" id="pname-${i}"
           placeholder="${i===1?'名前（8文字）':i+'人目（空白=参加なし）'}"
           maxlength="8">
-        <span class="slot-toggle" id="stog-${i}" onclick="toggleClsRow(${i})">⚔️ 戦士 ▼</span>
+        <span class="slot-toggle" id="stog-${i}" onclick="toggleSlotConfig(${i})">⚔️ 戦士 ▼</span>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;padding:2px 0;">
+      <div style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;" onclick="toggleSlotConfig(${i})">
         <canvas id="chip-canvas-${i}" width="32" height="32"
-          style="image-rendering:pixelated;border:1px solid rgba(60,90,180,.5);border-radius:2px;cursor:pointer;flex-shrink:0;"
-          onclick="toggleChipPicker(${i})"></canvas>
-        <span style="font-size:9px;color:var(--white);cursor:pointer;" onclick="toggleChipPicker(${i})">見た目を選ぶ ▼</span>
+          style="image-rendering:pixelated;border:1px solid rgba(60,90,180,.5);border-radius:2px;flex-shrink:0;pointer-events:none;"></canvas>
+        <span style="font-size:9px;color:var(--white);pointer-events:none;">キャラ・職業を設定 ▼</span>
       </div>
-      <div id="pslot-chip-${i}" style="display:none;overflow-x:auto;white-space:nowrap;padding:4px 0;border-bottom:1px solid rgba(60,90,160,.2);">
-        ${PARTY_CHIPS.map((p,pi)=>`<canvas class="chip-thumb" id="chipth-${i}-${pi}" width="32" height="32"
-          style="image-rendering:pixelated;margin-right:3px;cursor:pointer;border:2px solid transparent;border-radius:2px;display:inline-block;"
-          onclick="selectChip(${i},${pi})" title="${p}"></canvas>`).join('')}
-      </div>
-      <div id="pslot-cls-${i}" style="display:none;margin-top:4px;" data-open="0">
+      <div id="pslot-config-${i}" style="display:none;margin-top:4px;" data-open="0">
+        <div style="font-size:9px;color:#aaffcc;letter-spacing:1px;margin-bottom:3px;">見た目を選ぶ</div>
+        <div style="overflow-x:auto;white-space:nowrap;padding-bottom:4px;margin-bottom:6px;border-bottom:1px solid rgba(60,90,160,.2);">
+          ${PARTY_CHIPS.map((p,pi)=>`<canvas class="chip-thumb" id="chipth-${i}-${pi}" width="32" height="32"
+            style="image-rendering:pixelated;margin-right:3px;cursor:pointer;border:2px solid transparent;border-radius:2px;display:inline-block;vertical-align:top;"
+            onclick="selectChip(${i},${pi})" title="${p}"></canvas>`).join('')}
+        </div>
+        <div style="font-size:9px;color:#aaffcc;letter-spacing:1px;margin-bottom:3px;">職業を選ぶ</div>
         <div class="class-row" id="clsgrid-${i}">
           ${Object.entries(CLASSES).map(([k,v])=>`
             <div class="cls-btn ${k==='warrior'?'sel':''}" onclick="selClsSlot(this,${i},'${k}')" data-cls="${k}">
@@ -1137,37 +1138,32 @@ function selCls(el,cls){el.closest('.class-row')?.querySelectorAll('.cls-btn').f
 function selClsSlot(el,slot,cls){
   slotClass[slot]=cls;
   selCls(el,cls);
-  // 職業を選んだら自動で閉じる
+  // トグルボタンの表示を更新（パネルは閉じない）
   const cd  = CLASSES[cls];
   const tog = document.getElementById('stog-'+slot);
-  if(tog) tog.textContent = (cd?.icon||'') + ' ' + (cd?.name||cls) + ' ▼';
-  const wrap = document.getElementById('pslot-cls-'+slot);
-  if(wrap){ wrap.style.display = 'none'; wrap.dataset.open = '0'; }
+  if(tog) tog.textContent = (cd?.icon||'') + ' ' + (cd?.name||cls) + ' ▲';
 }
-function toggleClsRow(i){
-  const wrap = document.getElementById('pslot-cls-'+i);
+function toggleSlotConfig(i){
+  const wrap = document.getElementById('pslot-config-'+i);
   const tog  = document.getElementById('stog-'+i);
   if(!wrap) return;
   const willOpen = wrap.dataset.open !== '1';
   wrap.dataset.open  = willOpen ? '1' : '0';
   wrap.style.display = willOpen ? 'block' : 'none';
+  if(willOpen) renderChipThumbs(i);
   if(tog){
     const cd = CLASSES[slotClass[i]||'warrior'];
     tog.textContent = (cd?.icon||'') + ' ' + (cd?.name||'') + (willOpen ? ' ▲' : ' ▼');
   }
 }
+// 旧 toggleClsRow は toggleSlotConfig に統合
+function toggleClsRow(i){ toggleSlotConfig(i); }
 function backTitle(){document.getElementById('lobby-screen').classList.add('hidden');document.getElementById('title-screen').classList.remove('hidden');}
 
 // ─── キャラチップ選択 ────────────────────────────────────
 const slotChip = {1:0, 2:1, 3:2, 4:3}; // slot → PARTY_CHIPS index
 
-function toggleChipPicker(i) {
-  const wrap = document.getElementById('pslot-chip-'+i);
-  if (!wrap) return;
-  const willOpen = wrap.style.display === 'none';
-  wrap.style.display = willOpen ? 'block' : 'none';
-  if (willOpen) renderChipThumbs(i);
-}
+function toggleChipPicker(i) { toggleSlotConfig(i); }
 
 function renderChipThumbs(i) {
   PARTY_CHIPS.forEach((path, pi) => {
@@ -1188,13 +1184,8 @@ function renderChipThumbs(i) {
 
 function selectChip(slot, pi) {
   slotChip[slot] = pi;
-  // update preview canvas
   updateChipPreview(slot);
-  // close picker
-  const wrap = document.getElementById('pslot-chip-'+slot);
-  if (wrap) wrap.style.display = 'none';
-  // update highlights
-  renderChipThumbs(slot);
+  renderChipThumbs(slot); // ハイライト更新のみ（パネルは閉じない）
 }
 
 function updateChipPreview(slot) {
@@ -2039,6 +2030,16 @@ function updatePlayer(dt){
   if(canWalk(nx,leader.y))leader.x=nx;
   if(canWalk(leader.x,ny))leader.y=ny;
 
+  // 移動方向を記録（スプライト行の切り替えに使用）
+  // 0=下, 1=左, 2=右, 3=上
+  if(Math.abs(dx)>0.05||Math.abs(dy)>0.05){
+    if(Math.abs(dy)>=Math.abs(dx)){
+      leader.moveDir = dy>0 ? 0 : 3;
+    } else {
+      leader.moveDir = dx<0 ? 1 : 2;
+    }
+  }
+
   // Tile interaction
   const tx=Math.floor(leader.x/G.TILE), ty=Math.floor(leader.y/G.TILE);
   handleTileAt(tx,ty);
@@ -2053,6 +2054,12 @@ function updatePlayer(dt){
       const nx2=me.x+(fdx/fd)*fs, ny2=me.y+(fdy/fd)*fs;
       if(canWalk(nx2,me.y))me.x=nx2;
       if(canWalk(me.x,ny2))me.y=ny2;
+      // フォロワーも移動方向を記録
+      if(Math.abs(fdy)>=Math.abs(fdx)){
+        me.moveDir = fdy>0 ? 0 : 3;
+      } else {
+        me.moveDir = fdx<0 ? 1 : 2;
+      }
     }
   }
 }
