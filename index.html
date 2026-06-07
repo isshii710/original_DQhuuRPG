@@ -754,16 +754,16 @@ const SPELLS = {
 };
 
 const ENEMIES_DATA = [
-  {name:'ぷるりん',sprite:'slime',hp:18,atk:6,def:3,exp:8,gold:5,color:'#4488ff',spd:1.2},
-  {name:'こうもり鬼',sprite:'bat',hp:24,atk:9,def:4,exp:12,gold:8,color:'#9955dd',spd:1.8},
-  {name:'いわトロル',sprite:'golem',hp:36,atk:14,def:8,exp:20,gold:12,color:'#aa7744',spd:0.7},
-  {name:'はがねぷるん',sprite:'metalslime',hp:4,atk:10,def:50,exp:120,gold:30,color:'#bbbbcc',spd:2.5},
-  {name:'もりの虫',sprite:'worm',hp:30,atk:11,def:6,exp:18,gold:10,color:'#55bb44',spd:1.0},
-  {name:'まよえる霊',sprite:'ghost',hp:28,atk:13,def:5,exp:22,gold:14,color:'#bbccff',spd:1.4},
-  {name:'トカゲ戦士',sprite:'lizard',hp:55,atk:20,def:12,exp:40,gold:25,color:'#44aa55',spd:1.6},
-  {name:'石の番兵',sprite:'gargoyle',hp:70,atk:25,def:18,exp:60,gold:35,color:'#8899aa',spd:0.9},
-  {name:'闇の眷属',sprite:'reaper',hp:200,atk:35,def:20,exp:200,gold:100,color:'#aa44dd',spd:1.1,boss:true},
-  {name:'大魔王',sprite:'demonlord',hp:350,atk:50,def:30,exp:500,gold:250,color:'#cc2244',spd:1.3,boss:true},
+  {name:'ぷるりん',    imgPath:'Monster/pipo-enemy001.png', sprite:'slime',    hp:18,  atk:6,  def:3,  exp:8,   gold:5,   color:'#4488ff',spd:1.2},
+  {name:'こうもり鬼',  imgPath:'Monster/pipo-enemy005.png', sprite:'bat',      hp:24,  atk:9,  def:4,  exp:12,  gold:8,   color:'#9955dd',spd:1.8},
+  {name:'いわトロル',  imgPath:'Monster/pipo-enemy003.png', sprite:'golem',    hp:36,  atk:14, def:8,  exp:20,  gold:12,  color:'#aa7744',spd:0.7},
+  {name:'はがねぷるん',imgPath:'Monster/pipo-enemy001b.png',sprite:'metalslime',hp:4,  atk:10, def:50, exp:120, gold:30,  color:'#bbbbcc',spd:2.5},
+  {name:'もりの虫',    imgPath:'Monster/pipo-enemy004.png', sprite:'worm',     hp:30,  atk:11, def:6,  exp:18,  gold:10,  color:'#55bb44',spd:1.0},
+  {name:'まよえる霊',  imgPath:'Monster/pipo-enemy006.png', sprite:'ghost',    hp:28,  atk:13, def:5,  exp:22,  gold:14,  color:'#bbccff',spd:1.4},
+  {name:'トカゲ戦士',  imgPath:'Monster/pipo-enemy007.png', sprite:'lizard',   hp:55,  atk:20, def:12, exp:40,  gold:25,  color:'#44aa55',spd:1.6},
+  {name:'石の番兵',    imgPath:'Monster/pipo-enemy008.png', sprite:'gargoyle', hp:70,  atk:25, def:18, exp:60,  gold:35,  color:'#8899aa',spd:0.9},
+  {name:'闇の眷属',    imgPath:'Monster/pipo-boss001.png',  sprite:'reaper',   hp:200, atk:35, def:20, exp:200, gold:100, color:'#aa44dd',spd:1.1,boss:true},
+  {name:'大魔王',      imgPath:'Monster/pipo-boss002.png',  sprite:'demonlord',hp:350, atk:50, def:30, exp:500, gold:250, color:'#cc2244',spd:1.3,boss:true},
 ];
 
 const EQUIP_CATALOG = [
@@ -782,6 +782,25 @@ const EQUIP_CATALOG = [
 ];
 const getEquip = id => EQUIP_CATALOG.find(e=>e.id===id);
 
+// Party character chips available for selection
+const PARTY_CHIPS = [
+  'Party/pipo-charachip021.png','Party/pipo-charachip022.png',
+  'Party/pipo-charachip023.png','Party/pipo-charachip024.png',
+  'Party/pipo-charachip025.png','Party/pipo-charachip026.png',
+  'Party/pipo-charachip027.png','Party/pipo-charachip028.png',
+  'Party/pipo-charachip029.png','Party/pipo-charachip030.png',
+];
+
+// Draw one cell from a pipo charachip sprite sheet
+// chipPath: 'Party/xxx.png', ctx, dx/dy: center pixel pos, w/h: draw size
+// dir: 0=down 1=left 2=right 3=up, frame: 0-2
+function drawCharaChip(ctx, chipPath, dx, dy, w, h, dir=0, frame=1) {
+  const img = getImg(chipPath);
+  if (!img.complete || !img.naturalWidth) return false;
+  ctx.drawImage(img, frame*32, dir*32, 32, 32, dx-w/2, dy-h/2, w, h);
+  return true;
+}
+
 const ITEMS_DROP = [
   {name:'やくそう',icon:'🌿',type:'heal',value:30},
   {name:'まんげつそう',icon:'🌙',type:'heal',value:80},
@@ -790,10 +809,10 @@ const ITEMS_DROP = [
 ];
 
 const NPCS = [
-  {id:'elder',name:'村長',icon:'👴',x:3,y:3,dialog:['ようこそ、旅人よ。ここは「はじまりの村」じゃ。','世界は今、魔王の影に脅かされておる。','汝らが世界を救う者か…頼んだぞ。']},
-  {id:'inn',name:'宿屋',icon:'🏠',x:12,y:4,dialog:['いらっしゃいませ！','泊まっていかれますか？一泊50Gです。', 'ゆっくりお休みください！（HP・MP全快）']},
-  {id:'shop',name:'武器屋',icon:'⚔️',x:12,y:9,dialog:['いらっしゃい！良い武器が揃ってるよ。','旅人さん、腕に覚えは？']},
-  {id:'girl',name:'村娘',icon:'👧',x:5,y:9,dialog:['最近、夜になると変な音が聞こえるの…','村はずれの洞窟から来てるみたい。怖い！']},
+  {id:'elder', name:'村長',  icon:'👴', chipImg:'Villager/pipo-charachip010.png', x:3,  y:3, dialog:['ようこそ、旅人よ。ここは「はじまりの村」じゃ。','世界は今、魔王の影に脅かされておる。','汝らが世界を救う者か…頼んだぞ。']},
+  {id:'inn',   name:'宿屋',  icon:'🏠', chipImg:'Villager/pipo-charachip001.png', x:12, y:4, dialog:['いらっしゃいませ！','泊まっていかれますか？一泊50Gです。','ゆっくりお休みください！（HP・MP全快）']},
+  {id:'shop',  name:'武器屋',icon:'⚔️', chipImg:'Soldier/pipo-charachip018.png',  x:12, y:9, dialog:['いらっしゃい！良い武器が揃ってるよ。','旅人さん、腕に覚えは？']},
+  {id:'girl',  name:'村娘',  icon:'👧', chipImg:'Villager/pipo-charachip003.png', x:5,  y:9, dialog:['最近、夜になると変な音が聞こえるの…','村はずれの洞窟から来てるみたい。怖い！']},
 ];
 
 // Map types
@@ -1020,6 +1039,7 @@ function showLobby(mode){
   if(mode==='solo'){t.textContent='⚔️ ひとり旅';b.innerHTML=buildLobbyHTML(false,false);}
   else if(mode==='create'){t.textContent='🌐 部屋を作る';b.innerHTML=buildLobbyHTML(true,true);}
   else{t.textContent='🤝 仲間に合流';b.innerHTML=buildLobbyHTML(true,false);}
+  setTimeout(initChipPreviews, 50);
 
   // PeerJS 初期化（create=ホスト / join=ゲスト）
   if(mode==='create') initPeer('host');
@@ -1043,6 +1063,17 @@ function buildLobbyHTML(online,isHost){
           placeholder="${i===1?'名前（8文字）':i+'人目（空白=参加なし）'}"
           maxlength="8">
         <span class="slot-toggle" id="stog-${i}" onclick="toggleClsRow(${i})">⚔️ 戦士 ▼</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:2px 0;">
+        <canvas id="chip-canvas-${i}" width="32" height="32"
+          style="image-rendering:pixelated;border:1px solid rgba(60,90,180,.5);border-radius:2px;cursor:pointer;flex-shrink:0;"
+          onclick="toggleChipPicker(${i})"></canvas>
+        <span style="font-size:9px;color:var(--white);cursor:pointer;" onclick="toggleChipPicker(${i})">見た目を選ぶ ▼</span>
+      </div>
+      <div id="pslot-chip-${i}" style="display:none;overflow-x:auto;white-space:nowrap;padding:4px 0;border-bottom:1px solid rgba(60,90,160,.2);">
+        ${PARTY_CHIPS.map((p,pi)=>`<canvas class="chip-thumb" id="chipth-${i}-${pi}" width="32" height="32"
+          style="image-rendering:pixelated;margin-right:3px;cursor:pointer;border:2px solid transparent;border-radius:2px;display:inline-block;"
+          onclick="selectChip(${i},${pi})" title="${p}"></canvas>`).join('')}
       </div>
       <div id="pslot-cls-${i}" style="display:none;margin-top:4px;" data-open="0">
         <div class="class-row" id="clsgrid-${i}">
@@ -1127,6 +1158,64 @@ function toggleClsRow(i){
 }
 function backTitle(){document.getElementById('lobby-screen').classList.add('hidden');document.getElementById('title-screen').classList.remove('hidden');}
 
+// ─── キャラチップ選択 ────────────────────────────────────
+const slotChip = {1:0, 2:1, 3:2, 4:3}; // slot → PARTY_CHIPS index
+
+function toggleChipPicker(i) {
+  const wrap = document.getElementById('pslot-chip-'+i);
+  if (!wrap) return;
+  const willOpen = wrap.style.display === 'none';
+  wrap.style.display = willOpen ? 'block' : 'none';
+  if (willOpen) renderChipThumbs(i);
+}
+
+function renderChipThumbs(i) {
+  PARTY_CHIPS.forEach((path, pi) => {
+    const cv = document.getElementById('chipth-'+i+'-'+pi);
+    if (!cv) return;
+    const ctx2 = cv.getContext('2d');
+    const img = getImg(path);
+    const draw = () => {
+      ctx2.clearRect(0,0,32,32);
+      ctx2.drawImage(img, 32, 0, 32, 32, 0, 0, 32, 32); // frame=1, dir=0 (front)
+    };
+    if (img.complete && img.naturalWidth) draw();
+    else img.onload = draw;
+    // highlight selected
+    cv.style.borderColor = slotChip[i] === pi ? 'var(--gold)' : 'transparent';
+  });
+}
+
+function selectChip(slot, pi) {
+  slotChip[slot] = pi;
+  // update preview canvas
+  updateChipPreview(slot);
+  // close picker
+  const wrap = document.getElementById('pslot-chip-'+slot);
+  if (wrap) wrap.style.display = 'none';
+  // update highlights
+  renderChipThumbs(slot);
+}
+
+function updateChipPreview(slot) {
+  const cv = document.getElementById('chip-canvas-'+slot);
+  if (!cv) return;
+  const ctx2 = cv.getContext('2d');
+  const path = PARTY_CHIPS[slotChip[slot] || 0];
+  const img = getImg(path);
+  const draw = () => {
+    ctx2.clearRect(0,0,32,32);
+    ctx2.drawImage(img, 32, 0, 32, 32, 0, 0, 32, 32);
+  };
+  if (img.complete && img.naturalWidth) draw();
+  else img.onload = draw;
+}
+
+// Called after lobby body is injected into DOM — render initial previews
+function initChipPreviews() {
+  for (let i = 1; i <= 4; i++) updateChipPreview(i);
+}
+
 function makeChar(slot){
   const nameEl=document.getElementById('pname-'+slot);
   const name=(nameEl?.value.trim())||'';
@@ -1137,6 +1226,7 @@ function makeChar(slot){
   return {
     id,slot,name:name||(cls.name+'の戦士'),
     class:clsKey,icon:cls.icon,color:cls.color,lv:1,exp:0,expNext:30,
+    chipImg: PARTY_CHIPS[slotChip[slot]||0],
     hp:cls.stats.hp,maxHp:cls.stats.hp,mp:cls.stats.mp,maxMp:cls.stats.mp,
     baseAtk:cls.stats.atk,baseDef:cls.stats.def,baseSpd:cls.stats.spd,baseInt:cls.stats.int,baseMaxMp:cls.stats.mp,
     atk:cls.stats.atk,def:cls.stats.def,spd:cls.stats.spd,int:cls.stats.int,
@@ -1543,7 +1633,7 @@ function _handleP2P(msg) {
     }
 
     case 'pos_update': {
-      ONLINE.remotePos = { x: msg.x, y: msg.y, icon: msg.icon, name: msg.name };
+      ONLINE.remotePos = { x: msg.x, y: msg.y, icon: msg.icon, name: msg.name, chipImg: msg.chipImg };
       break;
     }
 
@@ -1794,7 +1884,7 @@ function initGame(){
     setInterval(() => {
       if (G.inBattle || !G.party[0]) return;
       const c = G.party[0];
-      _sendP2P({ type: 'pos_update', x: c.x, y: c.y, icon: c.icon, name: c.name });
+      _sendP2P({ type: 'pos_update', x: c.x, y: c.y, icon: c.icon, name: c.name, chipImg: c.chipImg });
     }, 150);
 
     // ホストは敵位置を 400ms ごとに送る
@@ -2097,7 +2187,10 @@ function render(){
         ctx.fillStyle='#2a7a2a';ctx.beginPath();ctx.arc(sx+TILE/2-2,sy+TILE/2-2,TILE/2-5,0,Math.PI*2);ctx.fill();
       } else if(t===T.NPC){
         const npc=G.npcsOnMap.find(n=>n.x===tx&&n.y===ty);
-        drawTileEmoji(npc?.icon||'👤',sx,sy,TILE);
+        if(npc?.chipImg){
+          const nf=Math.floor(performance.now()/400)%3;
+          drawCharaChip(ctx,npc.chipImg,sx+TILE/2,sy+TILE/2,TILE*0.85,TILE*0.85,0,nf) || drawTileEmoji(npc.icon||'👤',sx,sy,TILE);
+        } else { drawTileEmoji(npc?.icon||'👤',sx,sy,TILE); }
       } else if(t===T.EXIT){ctx.fillStyle=TILE_COLORS[t];ctx.fillRect(sx,sy,TILE,TILE);drawTileEmoji('🚪',sx,sy,TILE);}
       else if(t===T.STAIR_D){ctx.fillStyle='#554422';ctx.fillRect(sx,sy,TILE,TILE);drawTileEmoji('🔽',sx,sy,TILE);}
       else if(t===T.STAIR_U){ctx.fillStyle='#554422';ctx.fillRect(sx,sy,TILE,TILE);drawTileEmoji('🔼',sx,sy,TILE);}
@@ -2123,23 +2216,32 @@ function render(){
     if(e.dead)return;
     const sx=e.x-G.cam.x, sy=e.y-G.cam.y;
     const sz=G.TILE*1.1;
-    const url=getSpriteURL(e.sprite,e.color,sz);
-    const img=getImg(url);
-    if(img.complete)ctx.drawImage(img,sx-sz/2,sy-sz/2,sz,sz);
+    const imgPath = e.imgPath || getSpriteURL(e.sprite||'slime', e.color||'#4488ff', sz);
+    const img=getImg(imgPath);
+    if(img.complete && img.naturalWidth) ctx.drawImage(img,sx-sz/2,sy-sz/2,sz,sz);
+    else if(!img.naturalWidth) {
+      // fallback circle while image loads
+      ctx.fillStyle=e.color||'#4488ff';ctx.beginPath();ctx.arc(sx,sy,sz/2*0.8,0,Math.PI*2);ctx.fill();
+    }
     // HP bar above
     const bw=30,bh=3;
     ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(sx-bw/2,sy-sz/2-6,bw,bh);
     ctx.fillStyle='#ff4444';ctx.fillRect(sx-bw/2,sy-sz/2-6,bw*(e.curHp/e.hp),bh);
   });
 
-  // Party members
+  // Party members — charachip image if available, emoji fallback
+  const wf = Math.floor(performance.now()/200) % 3; // walk frame 0-1-2
   G.party.forEach((c,i)=>{
     const sx=c.x-G.cam.x, sy=c.y-G.cam.y;
     ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(sx,sy+8,10,4,0,0,Math.PI*2);ctx.fill();
-    ctx.font=`${G.TILE*0.75}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(c.icon,sx,sy-2);
+    const cw=G.TILE*0.9, ch=G.TILE*0.9;
+    const drawn = c.chipImg && drawCharaChip(ctx, c.chipImg, sx, sy-2, cw, ch, c.moveDir||0, wf);
+    if(!drawn){
+      ctx.font=`${G.TILE*0.75}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(c.icon,sx,sy-2);
+    }
     if(i===0){
-      ctx.font='9px DotGothic16,serif';ctx.fillStyle='rgba(255,255,255,0.85)';
+      ctx.font='9px DotGothic16,serif';ctx.fillStyle='rgba(255,255,255,0.85)';ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillText(c.name.substr(0,4),sx,sy-G.TILE*0.6);
     }
   });
@@ -2150,8 +2252,11 @@ function render(){
     const rx=rp.x-G.cam.x, ry=rp.y-G.cam.y;
     // 青い影で区別
     ctx.fillStyle='rgba(0,100,255,0.25)';ctx.beginPath();ctx.ellipse(rx,ry+8,12,5,0,0,Math.PI*2);ctx.fill();
-    ctx.font=`${G.TILE*0.75}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(rp.icon||'🧑',rx,ry-2);
+    const rdraw = rp.chipImg && drawCharaChip(ctx, rp.chipImg, rx, ry-2, G.TILE*0.9, G.TILE*0.9, 0, wf);
+    if(!rdraw){
+      ctx.font=`${G.TILE*0.75}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(rp.icon||'🧑',rx,ry-2);
+    }
     // 名前タグ（青色）
     ctx.font='9px DotGothic16,serif';ctx.fillStyle='#88ffcc';
     ctx.fillText((rp.name||'仲間').substr(0,4),rx,ry-G.TILE*0.6);
@@ -2686,10 +2791,10 @@ function renderBattle(){
   ea.innerHTML=G.battleEnemies.map((e,i)=>{
     const base=e.boss?130:90;
     const sz=Math.min(base, Math.floor(window.innerWidth/5));
-    const url=getSpriteURL(e.sprite||'slime',e.color||'#4488ff',sz);
+    const imgSrc = e.imgPath || getSpriteURL(e.sprite||'slime',e.color||'#4488ff',sz);
     return`<div class="battle-enemy ${e.curHp<=0?'dead':''}" id="ben-${i}">
       <div class="b-ehp"><div class="b-ehp-fill" id="bhp-${i}" style="width:${e.curHp/e.maxHp*100}%"></div></div>
-      <img class="enemy-spr" id="bspr-${i}" src="${url}" width="${sz}" height="${sz}" alt="${e.name}"
+      <img class="enemy-spr" id="bspr-${i}" src="${imgSrc}" width="${sz}" height="${sz}" alt="${e.name}"
         style="image-rendering:pixelated;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));">
       <div class="b-ename">${e.name} HP:${e.curHp}</div>
     </div>`;
@@ -2698,9 +2803,21 @@ function renderBattle(){
   const aa=document.getElementById('battle-allies');
   aa.innerHTML=G.party.map((p,i)=>`
     <div class="battle-ally ${p.hp<=0?'dead':''}" id="bally-${i}">
-      <div class="ally-spr" id="bally-spr-${i}">${p.icon}</div>
+      ${p.chipImg
+        ? `<canvas id="bally-spr-${i}" width="48" height="48" style="image-rendering:pixelated;display:block;"></canvas>`
+        : `<div class="ally-spr" id="bally-spr-${i}">${p.icon}</div>`}
       <div class="ally-name-tag">${p.name}</div>
     </div>`).join('');
+  // Draw charachip into each ally canvas
+  G.party.forEach((p,i)=>{
+    if(!p.chipImg) return;
+    const cv=document.getElementById('bally-spr-'+i);
+    if(!cv) return;
+    const ctx2=cv.getContext('2d');
+    const img=getImg(p.chipImg);
+    const draw=()=>{ ctx2.clearRect(0,0,48,48); ctx2.drawImage(img,32,0,32,32,8,8,32,32); };
+    if(img.complete && img.naturalWidth) draw(); else img.onload=draw;
+  });
 
   // パーティステータス欄（コマンド選択中のキャラをハイライト）
   const aliveParty=G.party.filter(p=>p.hp>0);
