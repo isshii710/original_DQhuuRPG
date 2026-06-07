@@ -128,15 +128,15 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .tmenu-arrow{color:var(--gold);font-size:11px;}
 
 /* ========== LOBBY ========== */
-#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#0d2244,#020810);overflow:hidden;padding:0;display:flex;flex-direction:column;align-items:stretch;}
+#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#0d2244,#020810);overflow:hidden;padding:0 !important;display:flex !important;flex-direction:column !important;align-items:stretch !important;justify-content:flex-start !important;width:100%;height:100%;}
 #lobby-title-bar{flex-shrink:0;font-family:'Noto Serif JP',serif;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:2px;text-align:center;padding:7px 16px;border-bottom:1px solid var(--win-bd);}
-.lobby-main{flex:1;min-height:0;overflow:hidden;padding:6px 7px 0;}
-#lobby-body{padding-bottom:100px;}
+.lobby-main{flex:1;min-height:0;overflow:hidden;padding:6px 7px 0;width:100%;box-sizing:border-box;}
+#lobby-body{width:100%;box-sizing:border-box;padding-bottom:100px;}
 .linput{width:100%;background:rgba(10,20,70,.9);border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;font-size:16px;padding:6px 10px;border-radius:2px;outline:none;}
 .linput:focus{border-color:var(--gold);}
 /* 2-column party grid */
-.party-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px;}
-.party-slot{background:rgba(10,20,60,.85);border:1px solid rgba(60,90,180,.55);border-radius:4px;padding:5px 6px;display:flex;flex-direction:column;gap:4px;}
+.party-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-bottom:6px;width:100%;box-sizing:border-box;}
+.party-slot{background:rgba(10,20,60,.85);border:1px solid rgba(60,90,180,.55);border-radius:4px;padding:5px 6px;display:flex;flex-direction:column;gap:4px;min-width:0;width:100%;box-sizing:border-box;overflow:hidden;}
 .ps-top{display:flex;align-items:center;gap:4px;}
 .ps-label{font-size:10px;color:var(--gold);flex-shrink:0;width:26px;}
 .slot-name-in{flex:1;min-width:0;background:rgba(10,20,70,.9);border:1px solid rgba(60,90,180,.5);color:var(--white);font-family:'DotGothic16',serif;font-size:16px;padding:3px 5px;border-radius:2px;outline:none;width:100%;}
