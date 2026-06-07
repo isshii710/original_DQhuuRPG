@@ -127,7 +127,8 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .tmenu-btn:active,.tmenu-btn:hover{background:linear-gradient(180deg,rgba(60,100,200,.9),rgba(28,60,150,.9));border-color:var(--gold);color:var(--gold);transform:translateX(4px);}
 .tmenu-arrow{color:var(--gold);font-size:11px;}
 
-#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#0d2244,#020810);align-items:center;justify-content:flex-start;padding:12px 8px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#0d2244,#020810);overflow:hidden;padding:0;align-items:stretch;justify-content:stretch;}
+.lobby-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 8px 28px;display:flex;justify-content:center;align-items:flex-start;}
 .lobby-box{width:min(400px,98vw);flex-shrink:0;}
 .lfield{margin-bottom:12px;}
 .lfield label{display:block;font-size:10px;color:var(--white);letter-spacing:2px;margin-bottom:4px;}
@@ -149,9 +150,9 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .cls-name{font-size:8px;color:var(--white);letter-spacing:1px;margin-top:1px;}
 .cls-btn.sel .cls-name{color:var(--gold);}
 
-.room-box{background:rgba(20,40,80,.7);border:1px solid rgba(255,215,0,.4);border-radius:4px;padding:10px;text-align:center;margin-bottom:10px;}
-.room-code-disp{font-size:30px;font-weight:900;color:var(--gold);letter-spacing:8px;text-shadow:0 0 10px rgba(255,215,0,.3);}
-.room-hint{font-size:9px;color:var(--white);margin-top:3px;letter-spacing:1px;}
+.room-box{background:rgba(20,40,80,.7);border:1px solid rgba(255,215,0,.4);border-radius:4px;padding:8px 10px;text-align:center;margin-bottom:6px;}
+.room-code-disp{font-size:18px;font-weight:900;color:var(--gold);letter-spacing:4px;text-shadow:0 0 8px rgba(255,215,0,.3);}
+.room-hint{font-size:9px;color:var(--white);margin-top:2px;letter-spacing:1px;}
 .party-member-list{display:flex;flex-direction:column;gap:4px;min-height:40px;}
 .pmember{background:rgba(10,20,60,.8);border:1px solid rgba(60,90,180,.4);border-radius:3px;padding:6px 10px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--white);}
 .pmember .dot{width:6px;height:6px;border-radius:50%;background:#00ff88;box-shadow:0 0 4px #00ff88;flex-shrink:0;}
@@ -160,7 +161,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .btn-prim:active{transform:scale(.98);}
 .btn-sec{background:rgba(10,20,60,.85);border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;font-size:12px;padding:9px;border-radius:2px;cursor:pointer;text-align:center;transition:all .1s;}
 .btn-sec:active{transform:scale(.98);}
-.lobby-body{padding:16px;display:flex;flex-direction:column;gap:10px;}
+.lobby-body{padding:12px 14px 16px;display:flex;flex-direction:column;gap:8px;}
 
 /* ========== BATTLE SCREEN ========== */
 #battle-screen{
@@ -679,9 +680,11 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 
 <!-- ===== LOBBY SCREEN ===== -->
 <div class="screen hidden" id="lobby-screen">
-  <div class="win lobby-box">
-    <div class="win-title" id="lobby-title">⚔️ 新しい冒険</div>
-    <div class="lobby-body" id="lobby-body"></div>
+  <div class="lobby-scroll">
+    <div class="win lobby-box">
+      <div class="win-title" id="lobby-title">⚔️ 新しい冒険</div>
+      <div class="lobby-body" id="lobby-body"></div>
+    </div>
   </div>
 </div>
 
@@ -993,7 +996,7 @@ function buildLobbyHTML(online,isHost){
       <span class="cls-icon">${v.icon}</span><div class="cls-name">${v.name}</div>
     </div>`).join('');
 
-  // Party slots (1 = self, 2-4 = NPC companions) — 職業グリッド常時表示
+  // Party slots — 職業グリッドは折りたたみ式
   const partySlots = [1,2,3,4].map(i=>`
     <div class="party-slot" id="pslot-${i}">
       <div class="party-slot-head">
@@ -1001,8 +1004,9 @@ function buildLobbyHTML(online,isHost){
         <input class="slot-name-in" id="pname-${i}"
           placeholder="${i===1?'名前（8文字）':i+'人目（空白=参加なし）'}"
           maxlength="8">
+        <span class="slot-toggle" id="stog-${i}" onclick="toggleClsRow(${i})">⚔️ 戦士 ▼</span>
       </div>
-      <div id="pslot-cls-${i}">
+      <div id="pslot-cls-${i}" style="display:none;margin-top:4px;">
         <div class="class-row" id="clsgrid-${i}">
           ${Object.entries(CLASSES).map(([k,v])=>`
             <div class="cls-btn ${k==='warrior'?'sel':''}" onclick="selClsSlot(this,${i},'${k}')" data-cls="${k}">
@@ -1016,35 +1020,41 @@ function buildLobbyHTML(online,isHost){
   if(online&&isHost){
     roomSection=`
     <div class="room-box">
-      <div style="font-size:10px;color:#aaffcc;letter-spacing:2px;margin-bottom:4px;">あなたのID（友達に伝える）</div>
-      <div class="room-code-disp" id="peer-id-disp" style="letter-spacing:4px;">生成中…</div>
-      <button class="btn-sec" style="margin-top:6px;font-size:11px;padding:4px 12px;"
-        onclick="navigator.clipboard.writeText(document.getElementById('peer-id-disp').textContent).then(()=>alert('IDをコピーしました！'))">
-        📋 コピー
-      </button>
-      <div id="peer-connect-status" style="font-size:10px;color:#ffee88;margin-top:8px;">⏳ PeerJS接続待機中…</div>
-      <div id="peer-start-btn-wrap" style="margin-top:4px;">
-        <button id="peer-start-btn" class="btn-prim" disabled onclick="startGame()" style="opacity:0.5;">
-          🌐 接続後に出発
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="text-align:left;">
+          <div style="font-size:9px;color:#aaffcc;letter-spacing:1px;">あなたのID</div>
+          <div class="room-code-disp" id="peer-id-disp">生成中…</div>
+        </div>
+        <button class="btn-sec" style="font-size:10px;padding:5px 10px;flex-shrink:0;"
+          onclick="navigator.clipboard.writeText(document.getElementById('peer-id-disp').textContent).then(()=>alert('コピーしました'))">
+          📋 コピー
         </button>
       </div>
+      <div id="peer-connect-status" style="font-size:10px;color:#ffee88;margin-top:6px;text-align:left;">⏳ 相手の接続を待っています…</div>
+      <button id="peer-start-btn" class="btn-prim" disabled onclick="startGame()" style="opacity:0.5;margin-top:8px;width:100%;">
+        🌐 接続後に出発
+      </button>
     </div>`;
   } else if(online&&!isHost){
     roomSection=`
     <div class="room-box">
-      <div style="font-size:10px;color:#aaffcc;letter-spacing:2px;margin-bottom:4px;">ホストのIDを入力</div>
-      <input class="linput" id="join-code" placeholder="ホストのID（例: AB3X7K）"
-        maxlength="8" oninput="this.value=this.value.toUpperCase()" style="text-align:center;letter-spacing:3px;">
-      <button class="btn-sec" style="margin-top:6px;font-size:11px;padding:4px 12px;" onclick="connectToHost()">
-        🔗 接続する
-      </button>
-      <div id="peer-connect-status" style="font-size:10px;color:#ffee88;margin-top:8px;"></div>
+      <div style="font-size:9px;color:#aaffcc;letter-spacing:1px;margin-bottom:4px;">ホストのID</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input class="linput" id="join-code" placeholder="例: AB3X7K"
+          maxlength="8" oninput="this.value=this.value.toUpperCase()" style="text-align:center;letter-spacing:3px;font-size:15px;padding:7px 8px;">
+        <button class="btn-sec" style="font-size:11px;padding:7px 12px;white-space:nowrap;flex-shrink:0;" onclick="connectToHost()">
+          🔗 接続
+        </button>
+      </div>
+      <div id="peer-connect-status" style="font-size:10px;color:#ffee88;margin-top:6px;min-height:16px;"></div>
       <div id="peer-id-disp" style="display:none;"></div>
+      <button id="peer-start-btn" class="btn-prim" disabled onclick="startGame()" style="opacity:0.5;margin-top:8px;width:100%;">
+        🤝 接続後に出発
+      </button>
     </div>`;
   }
 
-  const btnLbl = online&&isHost ? '🌐 接続後に出発（上のボタンを使用）' : (online ? '🤝 接続後に出発' : '⚔️ 冒険開始！');
-  const mainBtn = online&&isHost ? '' : `<button class="btn-prim" id="peer-start-btn" ${online?'disabled style="opacity:0.5;"':''} onclick="startGame()">${btnLbl}</button>`;
+  const mainBtn = online ? '' : `<button class="btn-prim" onclick="startGame()">⚔️ 冒険開始！</button>`;
   return `
     <div class="lfield"><label>パーティを作る（最大4人）</label><div class="party-builder">${partySlots}</div></div>
     ${roomSection}
@@ -1055,7 +1065,24 @@ function buildLobbyHTML(online,isHost){
 // Track per-slot class selection
 const slotClass = {1:'warrior',2:'warrior',3:'warrior',4:'warrior'};
 function selCls(el,cls){el.closest('.class-row')?.querySelectorAll('.cls-btn').forEach(b=>b.classList.remove('sel'));el.classList.add('sel');}
-function selClsSlot(el,slot,cls){slotClass[slot]=cls;selCls(el,cls);}
+function selClsSlot(el,slot,cls){
+  slotClass[slot]=cls;
+  selCls(el,cls);
+  // トグルボタンに選択中職業を反映して自動で閉じる
+  const cls_data = CLASSES[cls];
+  const tog = document.getElementById('stog-'+slot);
+  if(tog) tog.textContent = (cls_data?.icon||'') + ' ' + (cls_data?.name||cls) + ' ▼';
+  const wrap = document.getElementById('pslot-cls-'+slot);
+  if(wrap) wrap.style.display = 'none';
+}
+function toggleClsRow(i){
+  const wrap = document.getElementById('pslot-cls-'+i);
+  const tog  = document.getElementById('stog-'+i);
+  if(!wrap) return;
+  const open = wrap.style.display === 'none';
+  wrap.style.display = open ? '' : 'none';
+  if(tog) tog.textContent = tog.textContent.replace(/[▼▲]$/, open ? '▲' : '▼');
+}
 function backTitle(){document.getElementById('lobby-screen').classList.add('hidden');document.getElementById('title-screen').classList.remove('hidden');}
 
 function makeChar(slot){
