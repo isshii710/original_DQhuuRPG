@@ -1,0 +1,2745 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>DRAGON QUEST IX</title>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Serif+JP:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#FFD700;--gold2:#FFA500;--blue:#1a3a6a;--blue2:#0d2244;--blue3:#061528;
+  --white:#ffffff;--red:#cc2200;--green:#00aa44;
+  --win-bg:rgba(8,16,44,0.97);--win-bd:#3a5a99;--text:#ffffff;--text2:#ccddf0;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none;}
+body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGothic16',serif;color:var(--white);}
+
+/* ========== CANVAS ========== */
+#game-canvas{display:block;width:100%;height:100%;image-rendering:pixelated;}
+#canvas-wrap{position:fixed;inset:0;background:#000;}
+
+/* ========== HUD ========== */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10;}
+
+#party-hud{position:absolute;top:8px;left:8px;display:flex;flex-direction:column;gap:3px;}
+.hud-card{
+  background:rgba(8,16,60,0.95);border:1px solid rgba(60,90,180,0.7);
+  border-radius:3px;padding:4px 8px;display:flex;align-items:center;gap:6px;min-width:140px;
+}
+.hud-icon{font-size:14px;width:18px;text-align:center;}
+.hud-bars{flex:1;}
+.hud-name{font-size:9px;color:var(--white);letter-spacing:1px;margin-bottom:2px;}
+.bar-row{display:flex;align-items:center;gap:3px;margin-bottom:1px;}
+.bar-lbl{font-size:7px;width:12px;color:var(--white);}
+.bar-track{flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
+.bar-hp{height:100%;background:linear-gradient(90deg,#ee4444,#ff8844);border-radius:2px;transition:width .2s;}
+.bar-mp{height:100%;background:linear-gradient(90deg,#4488ee,#88aaff);border-radius:2px;transition:width .2s;}
+.hud-lv{font-size:8px;color:var(--gold);white-space:nowrap;}
+
+#map-label{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  background:rgba(6,12,36,0.85);border:1px solid rgba(60,90,160,0.5);
+  border-radius:3px;padding:4px 14px;font-size:11px;letter-spacing:2px;color:var(--gold);
+  white-space:nowrap;
+}
+
+#chatbox{
+  position:absolute;bottom:130px;left:8px;right:8px;
+  display:flex;flex-direction:column;gap:2px;
+}
+.chat-line{
+  background:rgba(6,12,36,0.8);border:1px solid rgba(60,90,160,0.25);
+  border-radius:2px;padding:2px 8px;font-size:10px;
+  animation:cfade 6s forwards;
+}
+@keyframes cfade{0%{opacity:1}80%{opacity:1}100%{opacity:0}}
+.chat-sys{color:#88ccff;font-style:italic;}
+.chat-name{color:var(--gold);}
+
+/* ========== CONTROLS ========== */
+#controls{
+  position:fixed;bottom:0;left:0;right:0;height:120px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;z-index:20;pointer-events:none;
+}
+
+/* Joystick */
+#joy-wrap{width:110px;height:110px;pointer-events:all;position:relative;}
+#joy-base{
+  width:100%;height:100%;border-radius:50%;
+  background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.18);
+  position:relative;
+}
+#joy-knob{
+  position:absolute;width:42px;height:42px;border-radius:50%;
+  background:rgba(255,255,255,0.22);border:2px solid rgba(255,255,255,0.45);
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  box-shadow:0 0 10px rgba(255,255,255,0.1);
+}
+
+/* Right buttons */
+#right-btns{display:flex;flex-direction:column;gap:6px;pointer-events:all;}
+.act-row{display:flex;gap:6px;}
+.act-btn{
+  background:rgba(20,40,100,0.85);border:1px solid rgba(60,90,160,0.5);
+  border-radius:4px;color:var(--white);font-family:'DotGothic16',serif;
+  font-size:11px;letter-spacing:1px;padding:8px 10px;cursor:pointer;
+  transition:all .08s;white-space:nowrap;pointer-events:all;
+}
+.act-btn:active{background:rgba(60,100,200,0.85);transform:scale(.95);}
+.btn-chat{background:rgba(10,50,30,0.85);border-color:rgba(40,150,80,0.5);}
+.btn-menu{background:rgba(50,20,80,0.85);border-color:rgba(130,60,200,0.5);}
+
+/* ========== WIN SYSTEM ========== */
+.win{
+  background:var(--win-bg);border:2px solid var(--win-bd);border-radius:4px;
+  box-shadow:0 0 0 1px rgba(80,120,255,0.15),inset 0 1px 0 rgba(255,255,255,0.04),0 8px 40px rgba(0,0,0,0.8);
+  position:relative;color:var(--white);
+}
+.win::before{content:'';position:absolute;inset:2px;border:1px solid rgba(80,120,255,0.1);border-radius:2px;pointer-events:none;}
+.win-title{padding:10px 16px;font-family:'Noto Serif JP',serif;font-size:14px;font-weight:700;color:var(--gold);letter-spacing:2px;border-bottom:1px solid var(--win-bd);text-align:center;}
+.win-close{padding:10px;text-align:center;cursor:pointer;font-size:11px;color:var(--white);border-top:1px solid rgba(60,90,160,0.3);transition:background .1s;}
+.win-close:active{background:rgba(255,50,50,0.1);}
+
+/* ========== SCREENS ========== */
+.screen{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.screen.hidden{display:none!important;}
+
+/* Title */
+#title-screen{background:radial-gradient(ellipse at 50% 30%,#0d2244,#020810);overflow:hidden;}
+.title-stars{position:absolute;inset:0;pointer-events:none;}
+.tstar{position:absolute;border-radius:50%;background:#fff;animation:twink var(--d) ease-in-out infinite alternate;}
+@keyframes twink{0%{opacity:.1}100%{opacity:.9}}
+.title-logo{text-align:center;margin-bottom:28px;position:relative;z-index:1;}
+.title-dq{font-size:clamp(13px,3.5vw,22px);color:var(--gold2);letter-spacing:6px;text-shadow:0 0 20px rgba(255,165,0,.4);margin-bottom:6px;}
+.title-main{font-family:'Noto Serif JP',serif;font-size:clamp(32px,9vw,64px);font-weight:900;background:linear-gradient(180deg,#fff9c4,#ffd700 40%,#b8860b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 24px rgba(255,215,0,.4));line-height:1.1;}
+.title-ix{font-family:'Noto Serif JP',serif;font-size:clamp(18px,5vw,40px);font-weight:900;color:var(--gold);letter-spacing:8px;text-shadow:0 0 16px rgba(255,215,0,.4);}
+.title-sub{font-size:10px;letter-spacing:3px;color:rgba(255,200,100,.4);margin-top:6px;}
+.title-menu{display:flex;flex-direction:column;gap:6px;width:220px;position:relative;z-index:1;}
+.tmenu-btn{
+  background:linear-gradient(180deg,rgba(28,56,120,.9),rgba(10,24,58,.9));
+  border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;
+  font-size:15px;padding:11px 20px;text-align:left;cursor:pointer;border-radius:2px;
+  transition:all .1s;display:flex;align-items:center;gap:8px;
+}
+.tmenu-btn:active,.tmenu-btn:hover{background:linear-gradient(180deg,rgba(60,100,200,.9),rgba(28,60,150,.9));border-color:var(--gold);color:var(--gold);transform:translateX(4px);}
+.tmenu-arrow{color:var(--gold);font-size:11px;}
+
+#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#0d2244,#020810);align-items:flex-start;padding:12px 8px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.lobby-box{width:min(400px,98vw);margin:auto;}
+.lfield{margin-bottom:12px;}
+.lfield label{display:block;font-size:10px;color:var(--white);letter-spacing:2px;margin-bottom:4px;}
+.linput{width:100%;background:rgba(10,20,70,.9);border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;font-size:16px;padding:9px 12px;border-radius:2px;outline:none;}
+.linput:focus{border-color:var(--gold);}
+
+/* Party builder — no max-height, just natural flow */
+.party-builder{display:flex;flex-direction:column;gap:4px;}
+.party-slot{background:rgba(10,20,60,.85);border:1px solid rgba(60,90,180,.55);border-radius:3px;padding:6px 8px;}
+.party-slot-head{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.slot-num{font-size:10px;color:var(--gold);letter-spacing:1px;width:30px;flex-shrink:0;}
+.slot-name-in{flex:1;background:rgba(10,20,70,.9);border:1px solid rgba(60,90,180,.5);color:var(--white);font-family:'DotGothic16',serif;font-size:16px;padding:4px 8px;border-radius:2px;outline:none;}
+.slot-name-in:focus{border-color:var(--gold);}
+.slot-toggle{font-size:10px;color:var(--white);cursor:pointer;padding:4px 8px;border:1px solid rgba(60,90,160,.5);border-radius:2px;background:rgba(10,20,60,.7);}
+.class-row{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;}
+.cls-btn{background:rgba(10,20,60,.85);border:1px solid rgba(60,90,180,.5);border-radius:3px;padding:4px 2px;cursor:pointer;text-align:center;transition:all .1s;}
+.cls-btn.sel{border-color:var(--gold);background:rgba(30,60,140,.95);}
+.cls-icon{font-size:16px;display:block;}
+.cls-name{font-size:8px;color:var(--white);letter-spacing:1px;margin-top:1px;}
+.cls-btn.sel .cls-name{color:var(--gold);}
+
+.room-box{background:rgba(20,40,80,.7);border:1px solid rgba(255,215,0,.4);border-radius:4px;padding:10px;text-align:center;margin-bottom:10px;}
+.room-code-disp{font-size:30px;font-weight:900;color:var(--gold);letter-spacing:8px;text-shadow:0 0 10px rgba(255,215,0,.3);}
+.room-hint{font-size:9px;color:var(--white);margin-top:3px;letter-spacing:1px;}
+.party-member-list{display:flex;flex-direction:column;gap:4px;min-height:40px;}
+.pmember{background:rgba(10,20,60,.8);border:1px solid rgba(60,90,180,.4);border-radius:3px;padding:6px 10px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--white);}
+.pmember .dot{width:6px;height:6px;border-radius:50%;background:#00ff88;box-shadow:0 0 4px #00ff88;flex-shrink:0;}
+
+.btn-prim{background:linear-gradient(180deg,#4477ff,#1133cc);border:1px solid #6699ff;color:#fff;font-family:'DotGothic16',serif;font-size:14px;padding:11px;border-radius:2px;cursor:pointer;text-align:center;letter-spacing:1px;margin-bottom:6px;transition:all .1s;}
+.btn-prim:active{transform:scale(.98);}
+.btn-sec{background:rgba(10,20,60,.85);border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;font-size:12px;padding:9px;border-radius:2px;cursor:pointer;text-align:center;transition:all .1s;}
+.btn-sec:active{transform:scale(.98);}
+.lobby-body{padding:16px;display:flex;flex-direction:column;gap:10px;}
+
+/* ========== BATTLE SCREEN ========== */
+#battle-screen{
+  position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;
+}
+#battle-screen.hidden{display:none;}
+#battle-bg{
+  flex:1;min-height:0;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:space-between;
+}
+.battle-field-top{flex:1;display:flex;justify-content:center;align-items:center;gap:20px;padding:16px 12px 8px;flex-wrap:wrap;}
+.battle-field-bot{display:flex;justify-content:center;align-items:flex-end;gap:12px;padding:0 12px 12px;flex-shrink:0;}
+
+/* Enemy sprite */
+.battle-enemy{display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;}
+.battle-enemy.dead{opacity:0;pointer-events:none;transition:opacity .4s;}
+.b-ehp{width:64px;height:5px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;}
+.b-ehp-fill{height:100%;background:linear-gradient(90deg,#ff3333,#ff8833);border-radius:2px;transition:width .25s;}
+.b-ename{font-size:8px;color:var(--white);letter-spacing:1px;}
+.enemy-spr{cursor:pointer;display:block;image-rendering:pixelated;transition:transform .08s;}
+
+/* Ally battle */
+.battle-ally{display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;}
+.battle-ally.dead{opacity:.25;}
+.ally-spr{font-size:28px;display:block;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
+.ally-name-tag{font-size:8px;color:var(--white);letter-spacing:1px;}
+
+/* Battle animations */
+@keyframes playerAttack{
+  0%{transform:translateX(0)}
+  30%{transform:translateX(60px) scaleX(1.1)}
+  50%{transform:translateX(55px)}
+  100%{transform:translateX(0)}
+}
+@keyframes enemyAttack{
+  0%{transform:translateX(0)}
+  30%{transform:translateX(-50px) scaleX(1.1)}
+  50%{transform:translateX(-45px)}
+  100%{transform:translateX(0)}
+}
+@keyframes hitShake{
+  0%{transform:translateX(0)}25%{transform:translateX(-6px) brightness(3)}
+  50%{transform:translateX(6px)}75%{transform:translateX(-4px)}100%{transform:translateX(0)}
+}
+@keyframes enemyHit{
+  0%{filter:brightness(3) drop-shadow(0 0 8px #fff);transform:translateX(0)}
+  25%{transform:translateX(-8px)}
+  50%{filter:brightness(2);transform:translateX(8px)}
+  75%{transform:translateX(-4px)}
+  100%{filter:brightness(1) drop-shadow(0 3px 6px rgba(0,0,0,.5));transform:translateX(0)}
+}
+.anim-player-attack{animation:playerAttack .45s ease-in-out forwards!important;}
+.anim-enemy-attack{animation:enemyAttack .45s ease-in-out forwards!important;}
+.anim-hit{animation:hitShake .3s ease-in-out!important;}
+.anim-enemy-hit{animation:enemyHit .35s ease-in-out!important;}
+
+/* Battle window */
+#battle-win{
+  flex-shrink:0;border-radius:0;border-left:none;border-right:none;border-bottom:none;
+  border-top:2px solid var(--win-bd);
+}
+#battle-msg{padding:10px 14px;min-height:50px;font-size:13px;line-height:1.7;letter-spacing:1px;border-bottom:1px solid rgba(60,90,160,.2);}
+#battle-cmds{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(60,90,160,.12);}
+.bcmd{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:12px;padding:10px 4px;cursor:pointer;transition:background .06s;letter-spacing:1px;text-align:center;}
+.bcmd:active,.bcmd.sel{background:rgba(50,90,200,.6);color:var(--gold);}
+.bcmd:disabled{color:rgba(255,255,255,.2);cursor:not-allowed;}
+#battle-party{display:flex;gap:6px;padding:7px 12px;border-top:1px solid rgba(60,90,160,.2);overflow-x:auto;}
+.bpc{background:rgba(10,20,60,.8);border:1px solid rgba(60,90,180,.4);border-radius:3px;padding:5px 9px;flex-shrink:0;min-width:80px;}
+.bpc-name{font-size:9px;color:var(--white);margin-bottom:2px;letter-spacing:1px;}
+.bpc-hp,.bpc-mp{font-size:8px;display:flex;justify-content:space-between;gap:4px;color:var(--white);}
+.bpc-hp span:first-child{color:#ff9999;}.bpc-mp span:first-child{color:#99bbff;}
+.bpc.cur{border-color:var(--gold);}
+
+/* Damage float */
+.dmg-float{position:fixed;font-family:'DotGothic16',serif;font-size:20px;font-weight:900;pointer-events:none;z-index:100;text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;animation:dfloat 1.1s ease-out forwards;}
+@keyframes dfloat{0%{transform:translateY(0) scale(1.2);opacity:1}100%{transform:translateY(-55px) scale(.8);opacity:0}}
+.dc-hit{color:#ffe055;}.dc-crit{color:#ff6600;font-size:26px;}.dc-heal{color:#44ff88;}.dc-miss{color:#aaa;font-size:14px;}
+
+/* Spell select */
+#spell-screen{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#spell-screen.hidden{display:none;}
+#target-screen{position:fixed;inset:0;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#target-screen.hidden{display:none;}
+#ally-target-screen{position:fixed;inset:0;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#ally-target-screen.hidden{display:none;}
+.tgt-btn{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:13px;padding:11px 14px;cursor:pointer;text-align:left;transition:background .06s;width:100%;display:flex;align-items:center;gap:10px;}
+.tgt-btn:active{background:rgba(50,90,200,.5);color:var(--gold);}
+.tgt-hp-bar{flex:1;height:5px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;max-width:80px;}
+.tgt-hp-fill{height:100%;border-radius:2px;}
+.spell-box{width:100%;max-width:480px;}
+.spell-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:rgba(60,90,160,.12);max-height:200px;overflow-y:auto;}
+.spbtn{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:11px;padding:9px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background .06s;}
+.spbtn:active{background:rgba(50,90,200,.5);color:var(--gold);}
+.spbtn:disabled{color:rgba(255,255,255,.22);cursor:not-allowed;}
+.sp-mp{font-size:9px;color:#88aaff;}
+.sp-cancel{padding:10px;background:rgba(80,20,20,.9);color:var(--text2);cursor:pointer;font-family:'DotGothic16',serif;font-size:11px;text-align:center;border-top:1px solid rgba(255,100,100,.2);transition:background .1s;}
+
+/* Menu */
+#menu-screen{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:flex-end;padding:0 12px;}
+#menu-screen.hidden{display:none;}
+.menu-box{width:min(240px,78vw);}
+.mitem{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:13px;padding:11px 14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:9px;transition:background .06s;width:100%;letter-spacing:1px;}
+.mitem:active{background:rgba(50,90,200,.5);color:var(--gold);}
+
+/* Status */
+#status-screen{position:fixed;inset:0;z-index:65;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#status-screen.hidden{display:none;}
+.status-box{width:100%;max-width:420px;}
+.stat-hd{padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--win-bd);}
+.stat-ico{font-size:36px;}.stat-nm{font-size:17px;color:var(--gold);font-family:'Noto Serif JP',serif;font-weight:700;}
+.stat-cl{font-size:10px;color:var(--text2);letter-spacing:2px;margin-top:2px;}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px;}
+.sg-item{display:flex;flex-direction:column;gap:2px;}
+.sg-lbl{font-size:8px;color:var(--white);letter-spacing:2px;}
+.sg-val{font-size:17px;color:var(--white);}
+
+/* Equip screen */
+#equip-screen{position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#equip-screen.hidden{display:none;}
+.eq-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:90vh;}
+.eq-slots{display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);}
+.eqslot{background:var(--win-bg);border:none;display:flex;align-items:center;gap:9px;padding:9px 12px;cursor:pointer;color:var(--white);font-family:'DotGothic16',serif;font-size:12px;width:100%;text-align:left;transition:background .06s;}
+.eqslot:active,.eqslot.cur{background:rgba(50,90,200,.5);}
+.eq-stype{font-size:8px;color:var(--white);letter-spacing:1px;width:44px;flex-shrink:0;}
+.eq-sico{font-size:18px;}.eq-snm{flex:1;}.eq-sstat{font-size:9px;color:#88ddff;}
+.eq-empty{color:rgba(255,255,255,.3);}
+.eq-stats{padding:7px 12px;display:flex;flex-wrap:wrap;gap:6px 14px;border-top:1px solid rgba(60,90,160,.2);border-bottom:1px solid rgba(60,90,160,.2);font-size:10px;}
+.eq-chip{color:var(--white);}.eq-chip b{color:var(--gold);}
+.eq-list{display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);overflow-y:auto;flex:1;min-height:60px;}
+.eqitem{background:var(--win-bg);border:none;display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;color:var(--white);font-family:'DotGothic16',serif;font-size:11px;width:100%;text-align:left;transition:background .06s;}
+.eqitem:active{background:rgba(50,90,200,.5);}.eqitem.equipped{background:rgba(255,215,0,.1);}
+.eq-delta{font-size:9px;}.dplus{color:#00ff88;}.dminus{color:#ff6666;}
+.eq-badge{font-size:8px;color:var(--gold);}
+
+/* Item popup */
+#item-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:70;padding:18px 28px;text-align:center;animation:ipop 2.4s forwards;}
+#item-popup.hidden{display:none;}
+@keyframes ipop{0%{opacity:0;transform:translate(-50%,-50%) scale(.8)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%)}}
+.ip-ico{font-size:34px;margin-bottom:6px;}.ip-lbl{font-size:9px;color:var(--text2);letter-spacing:3px;margin-bottom:4px;}.ip-nm{font-size:18px;color:var(--gold);font-family:'Noto Serif JP',serif;font-weight:700;}
+
+/* Level up */
+#lvlup-screen{position:fixed;inset:0;z-index:75;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;}
+#lvlup-screen.hidden{display:none;}
+.lu-box{padding:28px;text-align:center;}
+.lu-ico{font-size:44px;margin-bottom:10px;animation:luspin .9s ease-out;}
+@keyframes luspin{from{transform:scale(0) rotate(-180deg)}to{transform:scale(1) rotate(0)}}
+.lu-lbl{font-size:10px;letter-spacing:4px;color:var(--text2);margin-bottom:3px;}
+.lu-nm{font-size:20px;color:var(--gold);font-family:'Noto Serif JP',serif;font-weight:700;margin-bottom:12px;}
+.lu-num{font-size:44px;font-weight:900;color:#fff;text-shadow:0 0 18px rgba(255,215,0,.5);}
+.lu-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:14px;font-size:11px;color:var(--text2);}
+.lu-stats span{color:#00ff88;}
+.lu-ok{margin-top:16px;padding:9px 28px;background:linear-gradient(180deg,#4477ff,#1133cc);border:1px solid #6699ff;color:#fff;font-family:'DotGothic16',serif;font-size:13px;border-radius:2px;cursor:pointer;letter-spacing:2px;}
+
+/* Chat input */
+#chat-input{position:fixed;bottom:0;left:0;right:0;z-index:80;background:rgba(6,12,36,.97);border-top:1px solid rgba(60,90,160,.4);padding:9px 10px;display:flex;gap:7px;}
+#chat-input.hidden{display:none;}
+#chat-txt{flex:1;background:rgba(0,0,0,.4);border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;font-size:16px;padding:7px 10px;border-radius:2px;outline:none;}
+#chat-txt:focus{border-color:var(--gold);}
+.chat-send-btn{background:linear-gradient(180deg,#4477ff,#1133cc);border:1px solid #6699ff;color:#fff;font-family:'DotGothic16',serif;font-size:12px;padding:7px 14px;border-radius:2px;cursor:pointer;}
+
+/* Dialog */
+#dialog{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:7px;}
+#dialog.hidden{display:none;}
+.dialog-inner{padding:12px 14px;min-height:64px;position:relative;background:var(--win-bg);color:var(--white);}
+.dialog-nm{font-size:9px;color:var(--gold);letter-spacing:2px;margin-bottom:3px;}
+.dialog-tx{font-size:13px;line-height:1.7;letter-spacing:1px;color:var(--white);}
+.dialog-next{text-align:right;font-size:10px;color:var(--white);margin-top:6px;}
+
+/* Wave / boss banner */
+#wave-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:35;text-align:center;display:none;pointer-events:none;}
+.wb-txt{font-size:clamp(22px,7vw,44px);font-weight:900;color:var(--gold);font-family:'Noto Serif JP',serif;letter-spacing:4px;text-shadow:0 0 24px rgba(255,215,0,.5);animation:wbp .5s ease-in-out infinite alternate;}
+@keyframes wbp{0%{opacity:.75}100%{opacity:1}}
+.wb-sub{font-size:11px;color:rgba(255,215,0,.5);letter-spacing:3px;margin-top:4px;}
+
+/* Transition */
+#transition{position:fixed;inset:0;z-index:99;background:#000;opacity:0;pointer-events:none;transition:opacity .35s;}
+#transition.in{opacity:1;pointer-events:all;}
+
+/* Loading */
+#loading{position:fixed;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+#loading.hidden{display:none;}
+.ld-title{font-size:14px;color:var(--gold);letter-spacing:4px;}
+.ld-bar{width:180px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
+.ld-fill{height:100%;background:linear-gradient(90deg,#4477ff,#44aaff);animation:ldfill 1.4s ease-in-out infinite;}
+@keyframes ldfill{0%{width:0}100%{width:100%}}
+
+/* ========== MINIMAP ========== */
+#minimap{position:absolute;top:8px;right:8px;width:88px;height:88px;background:rgba(4,8,24,.7);border:1px solid rgba(60,90,160,.4);border-radius:3px;overflow:hidden;}
+#minimap canvas{width:100%;height:100%;}
+
+/* ========== SAVE / ONLINE MODAL ========== */
+#save-modal,#online-modal,#join-modal{
+  position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.75);
+  display:flex;align-items:center;justify-content:center;padding:16px;
+}
+#save-modal.hidden,#online-modal.hidden,#join-modal.hidden{display:none;}
+.modal-box{width:min(420px,96vw);max-height:90vh;overflow-y:auto;}
+.save-slot{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:rgba(10,20,60,.85);border-bottom:1px solid rgba(60,90,160,.3);
+  cursor:pointer;transition:background .08s;color:var(--white);
+}
+.save-slot:active{background:rgba(30,60,160,.8);}
+.save-slot-ico{font-size:22px;width:30px;text-align:center;}
+.save-slot-info{flex:1;}
+.save-slot-title{font-size:12px;color:var(--white);letter-spacing:1px;}
+.save-slot-sub{font-size:9px;color:var(--text2);margin-top:2px;}
+.save-slot-act{font-size:10px;color:var(--gold);}
+.online-url-box{
+  background:rgba(0,0,0,.5);border:1px solid rgba(255,215,0,.3);
+  border-radius:3px;padding:10px 12px;font-size:11px;color:var(--gold);
+  word-break:break-all;letter-spacing:.5px;margin-bottom:8px;
+}
+.online-code-big{
+  font-size:34px;font-weight:900;color:var(--gold);letter-spacing:10px;
+  text-shadow:0 0 14px rgba(255,215,0,.4);text-align:center;padding:10px 0;
+}
+.party-join-card{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:rgba(10,20,60,.8);border-bottom:1px solid rgba(60,90,160,.2);font-size:12px;color:var(--white);
+}
+.join-dot{width:7px;height:7px;border-radius:50%;background:#00ff88;box-shadow:0 0 5px #00ff88;flex-shrink:0;}
+.join-dot.wait{background:#ffaa00;box-shadow:0 0 5px #ffaa00;}
+.scale-badge{
+  display:inline-block;padding:2px 8px;border-radius:2px;font-size:9px;
+  background:rgba(255,100,50,.2);border:1px solid rgba(255,100,50,.4);
+  color:#ff9966;letter-spacing:1px;margin-top:4px;
+}
+#online-chat-log{
+  max-height:140px;overflow-y:auto;padding:6px 0;
+  display:flex;flex-direction:column;gap:3px;
+}
+.oc-line{font-size:10px;padding:2px 12px;}
+.oc-sys{color:#88ccff;font-style:italic;}
+.oc-msg{color:var(--white);}
+.oc-name{color:var(--gold);}
+#save-btn-hud{
+  position:absolute;bottom:130px;right:8px;z-index:15;pointer-events:all;
+}
+.hud-save-btn{
+  background:rgba(20,40,80,.85);border:1px solid rgba(60,90,160,.5);
+  border-radius:3px;color:var(--gold);font-family:'DotGothic16',serif;
+  font-size:10px;padding:5px 8px;cursor:pointer;letter-spacing:1px;
+  display:flex;align-items:center;gap:4px;
+}
+.hud-save-btn:active{background:rgba(60,100,200,.7);}
+.online-status-bar{
+  position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,#00ff88,#00aaff,#8844ff);
+  animation:onbar 2s linear infinite;z-index:5;
+}
+@keyframes onbar{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+.players-count-badge{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  margin-top:38px;
+  background:rgba(0,100,50,.75);border:1px solid rgba(0,200,100,.3);
+  border-radius:3px;padding:3px 10px;font-size:9px;color:#88ffbb;
+  letter-spacing:1px;white-space:nowrap;z-index:11;pointer-events:none;
+}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="ld-title">LOADING...</div><div class="ld-bar"><div class="ld-fill"></div></div></div>
+<div id="transition"></div>
+
+<!-- Canvas -->
+<div id="canvas-wrap"><canvas id="game-canvas"></canvas></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="online-status-bar" class="online-status-bar" style="display:none;"></div>
+  <div id="party-hud"></div>
+  <div id="map-label">🏰 はじまりの村</div>
+  <div id="minimap"><canvas id="mm-canvas" width="88" height="88"></canvas></div>
+  <div id="chatbox"></div>
+  <div id="online-players-badge" class="players-count-badge" style="display:none;">🌐 オンライン中</div>
+  <div id="save-btn-hud">
+    <button class="hud-save-btn" onclick="openSaveModal()">💾 セーブ</button>
+  </div>
+</div>
+
+<!-- Controls -->
+<div id="controls">
+  <div id="joy-wrap"><div id="joy-base"><div id="joy-knob"></div></div></div>
+  <div id="right-btns">
+    <div class="act-row">
+      <button class="act-btn" onclick="handleTalk()">💬 話す</button>
+      <button class="act-btn btn-menu" onclick="openMenu()">📋 メニュー</button>
+    </div>
+    <div class="act-row">
+      <button class="act-btn btn-chat" onclick="openChatInput()">✉ チャット</button>
+      <button class="act-btn" onclick="handleSearch()">🔍 調べる</button>
+    </div>
+  </div>
+</div>
+
+<!-- Dialog -->
+<div id="dialog" class="hidden">
+  <div class="win dialog-inner">
+    <div class="dialog-nm" id="dialog-nm"></div>
+    <div class="dialog-tx" id="dialog-tx"></div>
+    <div class="dialog-next">▼ タップで次へ</div>
+  </div>
+</div>
+
+<!-- Wave banner -->
+<div id="wave-banner"><div class="wb-txt" id="wb-txt"></div><div class="wb-sub" id="wb-sub"></div></div>
+
+<!-- ===== BATTLE ===== -->
+<div id="battle-screen" class="hidden">
+  <div id="battle-bg">
+    <div class="battle-field-top" id="battle-enemies"></div>
+    <div class="battle-field-bot" id="battle-allies"></div>
+  </div>
+  <div class="win" id="battle-win">
+    <div id="battle-msg">どうする？</div>
+    <!-- コマンド選択フェーズ -->
+    <div id="battle-cmd-phase">
+      <div id="battle-cmd-header" style="padding:5px 12px;font-size:10px;color:var(--gold);letter-spacing:2px;border-bottom:1px solid rgba(60,90,160,.2);display:flex;justify-content:space-between;align-items:center;">
+        <span id="cmd-header-txt"></span>
+        <button id="btn-cmd-back" onclick="cmdBack()" style="background:rgba(80,20,20,.7);border:1px solid rgba(255,80,80,.3);color:rgba(255,150,150,.9);font-family:'DotGothic16',serif;font-size:10px;padding:3px 10px;border-radius:2px;cursor:pointer;display:none;">← もどる</button>
+      </div>
+      <div id="battle-cmds">
+        <button class="bcmd" id="bc-atk" onclick="bCmd('attack')">⚔ こうげき</button>
+        <button class="bcmd" id="bc-spl" onclick="bCmd('spell')">✨ じゅもん</button>
+        <button class="bcmd" id="bc-itm" onclick="bCmd('item')">🎒 どうぐ</button>
+        <button class="bcmd" id="bc-def" onclick="bCmd('defend')">🛡 ぼうぎょ</button>
+        <button class="bcmd" id="bc-fle" onclick="bCmd('flee')" style="grid-column:span 4;font-size:11px;">💨 にげる</button>
+      </div>
+    </div>
+    <!-- 実行ボタン（全員選択後に出現） -->
+    <div id="battle-execute" style="display:none;padding:6px 10px;border-top:1px solid rgba(60,90,160,.2);">
+      <button id="btn-execute" onclick="executeTurn()" style="width:100%;background:linear-gradient(180deg,#ff6644,#cc2200);border:1px solid #ff8866;color:#fff;font-family:'DotGothic16',serif;font-size:14px;padding:10px;border-radius:2px;cursor:pointer;letter-spacing:2px;">
+        ▶ 戦闘開始！
+      </button>
+    </div>
+    <div id="battle-party"></div>
+  </div>
+</div>
+
+<!-- Spell screen -->
+<div id="spell-screen" class="hidden">
+  <div class="win spell-box">
+    <div class="win-title" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;">
+      <span>✨ じゅもんを選ぶ</span>
+      <button onclick="closeSpell()" style="background:rgba(80,20,20,.7);border:1px solid rgba(255,80,80,.3);color:rgba(255,150,150,.9);font-family:'DotGothic16',serif;font-size:10px;padding:3px 10px;border-radius:2px;cursor:pointer;">← もどる</button>
+    </div>
+    <div class="spell-grid" id="spell-list"></div>
+  </div>
+</div>
+
+<!-- Enemy target select -->
+<div id="target-screen" class="hidden">
+  <div class="win spell-box">
+    <div class="win-title" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;">
+      <span>🎯 攻撃対象を選ぶ</span>
+      <button onclick="closeTargetSelect()" style="background:rgba(80,20,20,.7);border:1px solid rgba(255,80,80,.3);color:rgba(255,150,150,.9);font-family:'DotGothic16',serif;font-size:10px;padding:3px 10px;border-radius:2px;cursor:pointer;">← もどる</button>
+    </div>
+    <div id="target-list" style="display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);"></div>
+  </div>
+</div>
+
+<!-- Ally target select (heal) -->
+<div id="ally-target-screen" class="hidden">
+  <div class="win spell-box">
+    <div class="win-title" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;">
+      <span>💚 対象を選ぶ</span>
+      <button onclick="closeAllyTargetSelect()" style="background:rgba(80,20,20,.7);border:1px solid rgba(255,80,80,.3);color:rgba(255,150,150,.9);font-family:'DotGothic16',serif;font-size:10px;padding:3px 10px;border-radius:2px;cursor:pointer;">← もどる</button>
+    </div>
+    <div id="ally-target-list" style="display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);"></div>
+  </div>
+</div>
+
+<!-- Menu -->
+<div id="menu-screen" class="hidden">
+  <div class="win menu-box">
+    <div class="win-title">メニュー</div>
+    <div style="display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);">
+      <button class="mitem" onclick="openStatus()">👤 ステータス</button>
+      <button class="mitem" onclick="menuEquip()">⚔️ そうび</button>
+      <button class="mitem" onclick="menuItem()">🎒 どうぐぶくろ</button>
+      <button class="mitem" onclick="closeMenu();openSaveModal()">💾 セーブ / ロード</button>
+      <button class="mitem" id="menu-online-btn" onclick="closeMenu();openOnlineModal()" style="display:none;">🌐 オンライン管理</button>
+      <button class="mitem" onclick="closeMenu()">✖ とじる</button>
+    </div>
+  </div>
+</div>
+
+<!-- Status -->
+<div id="status-screen" class="hidden">
+  <div class="win status-box">
+    <div class="stat-hd">
+      <div class="stat-ico" id="st-ico">⚔️</div>
+      <div><div class="stat-nm" id="st-nm"></div><div class="stat-cl" id="st-cl"></div></div>
+    </div>
+    <div class="stat-grid" id="st-grid"></div>
+    <div class="win-close" onclick="closeStatus()">▶ とじる</div>
+  </div>
+</div>
+
+<!-- Equip -->
+<div id="equip-screen" class="hidden">
+  <div class="win eq-box">
+    <div class="win-title">⚔️ そうび</div>
+    <div class="eq-slots" id="eq-slots"></div>
+    <div class="eq-stats" id="eq-stats"></div>
+    <div style="padding:6px 12px;font-size:9px;color:var(--gold);letter-spacing:2px;" id="eq-list-lbl"></div>
+    <div class="eq-list" id="eq-list"></div>
+    <div class="win-close" onclick="closeEquip()">▶ とじる</div>
+  </div>
+</div>
+
+<!-- Item popup -->
+<div id="item-popup" class="hidden win">
+  <div class="ip-ico" id="ip-ico">💎</div>
+  <div class="ip-lbl">アイテムを手に入れた！</div>
+  <div class="ip-nm" id="ip-nm"></div>
+</div>
+
+<!-- Level up -->
+<div id="lvlup-screen" class="hidden">
+  <div class="win lu-box">
+    <div class="lu-ico">⭐</div>
+    <div class="lu-lbl">LEVEL UP!</div>
+    <div class="lu-nm" id="lu-nm"></div>
+    <div class="lu-num" id="lu-num"></div>
+    <div class="lu-stats" id="lu-stats"></div>
+    <button class="lu-ok" onclick="closeLvlUp()">▶ OK</button>
+  </div>
+</div>
+
+<!-- ===== SAVE MODAL ===== -->
+<div id="save-modal" class="hidden">
+  <div class="win modal-box">
+    <div class="win-title">💾 セーブ / ロード</div>
+    <div id="save-slots-list" style="display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);"></div>
+    <div class="win-close" onclick="closeSaveModal()">▶ とじる</div>
+  </div>
+</div>
+
+<!-- ===== ONLINE MODAL (Host) ===== -->
+<div id="online-modal" class="hidden">
+  <div class="win modal-box">
+    <div class="win-title">🌐 オンライン冒険</div>
+    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+      <div>
+        <div style="font-size:9px;color:var(--white);letter-spacing:2px;margin-bottom:6px;">ルームコード（友達に共有）</div>
+        <div class="online-code-big" id="om-code">------</div>
+        <div style="font-size:9px;color:var(--white);letter-spacing:1px;text-align:center;margin-top:4px;">または下のURLを共有</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--white);letter-spacing:2px;margin-bottom:4px;">参加URL</div>
+        <div class="online-url-box" id="om-url"></div>
+        <button class="btn-prim" style="margin-bottom:0;" onclick="copyJoinUrl()">📋 URLをコピー</button>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--white);letter-spacing:2px;margin-bottom:4px;">参加中のプレイヤー</div>
+        <div id="om-party-list" style="display:flex;flex-direction:column;gap:3px;min-height:44px;"></div>
+        <div id="om-scale-info" class="scale-badge" style="display:none;"></div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--white);letter-spacing:2px;margin-bottom:4px;">チャット</div>
+        <div id="online-chat-log"></div>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <input id="om-chat-in" class="linput" style="font-size:14px;padding:5px 8px;" placeholder="メッセージ…" maxlength="40">
+          <button class="btn-prim" style="margin:0;padding:5px 12px;font-size:12px;" onclick="sendOnlineChat()">送信</button>
+        </div>
+      </div>
+    </div>
+    <div class="win-close" onclick="closeOnlineModal()">▶ とじる（ゲームに戻る）</div>
+  </div>
+</div>
+
+<!-- ===== JOIN MODAL (Guest) ===== -->
+<div id="join-modal" class="hidden">
+  <div class="win modal-box">
+    <div class="win-title">🤝 仲間に合流</div>
+    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+      <div>
+        <div style="font-size:9px;color:var(--white);letter-spacing:2px;margin-bottom:4px;">ルームコード</div>
+        <input id="jm-code" class="linput" placeholder="6文字のコード" maxlength="6" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div id="jm-status" style="font-size:11px;color:var(--white);min-height:20px;"></div>
+      <div id="jm-party-preview" style="display:flex;flex-direction:column;gap:3px;"></div>
+      <button class="btn-prim" onclick="joinRoomAction()">🌐 部屋に参加する</button>
+    </div>
+    <div class="win-close" onclick="document.getElementById('join-modal').classList.add('hidden')">▶ キャンセル</div>
+  </div>
+</div>
+
+<!-- Chat input -->
+<div id="chat-input" class="hidden">
+  <input type="text" id="chat-txt" placeholder="メッセージを入力..." maxlength="40">
+  <button class="chat-send-btn" onclick="sendChat()">送信</button>
+  <button class="btn-sec" style="padding:7px 10px;" onclick="closeChatInput()">✖</button>
+</div>
+
+<!-- ===== TITLE SCREEN ===== -->
+<div class="screen" id="title-screen">
+  <div class="title-stars" id="tstars"></div>
+  <div class="title-logo">
+    <div class="title-dq">DRAGON QUEST</div>
+    <div class="title-main">星空の守り人</div>
+    <div class="title-ix">IX</div>
+    <div class="title-sub">ONLINE EDITION</div>
+  </div>
+  <div style="font-size:44px;margin-bottom:18px;filter:drop-shadow(0 0 10px rgba(255,215,0,.35));position:relative;z-index:1">⚔️</div>
+  <div class="title-menu">
+    <button class="tmenu-btn" id="btn-continue" onclick="showContinue()" style="display:none;border-color:var(--gold);"><span class="tmenu-arrow">★</span>冒険を続ける</button>
+    <button class="tmenu-btn" onclick="showLobby('solo')"><span class="tmenu-arrow">▶</span>ひとりで冒険</button>
+    <button class="tmenu-btn" onclick="showLobby('create')"><span class="tmenu-arrow">▶</span>仲間と冒険（ホスト）</button>
+    <button class="tmenu-btn" onclick="showLobby('join')"><span class="tmenu-arrow">▶</span>仲間に合流（ゲスト）</button>
+  </div>
+</div>
+
+<!-- ===== LOBBY SCREEN ===== -->
+<div class="screen hidden" id="lobby-screen">
+  <div class="win lobby-box">
+    <div class="win-title" id="lobby-title">⚔️ 新しい冒険</div>
+    <div class="lobby-body" id="lobby-body"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ============================================================
+// CONSTANTS
+// ============================================================
+const CLASSES = {
+  warrior: {name:'戦士',icon:'⚔️',color:'#ff8888',stats:{hp:120,mp:20,atk:18,def:15,spd:8,int:5}},
+  mage:    {name:'魔法使い',icon:'🔮',color:'#88aaff',stats:{hp:70,mp:80,atk:8,def:8,spd:10,int:22}},
+  priest:  {name:'僧侶',icon:'✨',color:'#88ffaa',stats:{hp:90,mp:60,atk:10,def:12,spd:9,int:18}},
+  ranger:  {name:'旅芸人',icon:'🎶',color:'#ffdd88',stats:{hp:85,mp:40,atk:14,def:10,spd:15,int:12}},
+  paladin: {name:'パラディン',icon:'🛡️',color:'#ffaaaa',stats:{hp:140,mp:30,atk:15,def:20,spd:6,int:8}},
+  sage:    {name:'賢者',icon:'📖',color:'#ddaaff',stats:{hp:80,mp:90,atk:10,def:10,spd:11,int:25}},
+  thief:   {name:'盗賊',icon:'🗡️',color:'#aaffdd',stats:{hp:80,mp:30,atk:16,def:9,spd:20,int:10}},
+  dancer:  {name:'踊り子',icon:'💃',color:'#ffaadd',stats:{hp:75,mp:50,atk:12,def:8,spd:18,int:15}},
+};
+
+const SPELLS = {
+  warrior: [{name:'ためる',mp:0,power:0,type:'buff'},{name:'かまいたち',mp:4,power:1.5,type:'atk'}],
+  mage:    [{name:'メラ',mp:4,power:1.2,type:'atk'},{name:'ギラ',mp:6,power:1.5,type:'atk'},{name:'イオ',mp:8,power:1.3,type:'all'},{name:'マホトーン',mp:5,power:0,type:'debuff'}],
+  priest:  [{name:'ホイミ',mp:3,power:0,type:'heal'},{name:'ベホイミ',mp:6,power:0,type:'heal2'},{name:'キアリー',mp:5,power:0,type:'cure'},{name:'スカラ',mp:6,power:0,type:'buff'}],
+  ranger:  [{name:'スラップ',mp:3,power:1.3,type:'atk'},{name:'フォース',mp:5,power:0,type:'buff'},{name:'ドルクマ',mp:7,power:1.4,type:'atk'}],
+  paladin: [{name:'ガード',mp:4,power:0,type:'buff'},{name:'しんこく',mp:6,power:2.0,type:'atk'},{name:'ベホイミ',mp:6,power:0,type:'heal2'}],
+  sage:    [{name:'メラミ',mp:10,power:2.0,type:'atk'},{name:'イオラ',mp:12,power:1.8,type:'all'},{name:'ベホマ',mp:15,power:0,type:'healfull'},{name:'ルカナン',mp:7,power:0,type:'debuff'}],
+  thief:   [{name:'しのびあし',mp:3,power:0,type:'buff'},{name:'ぬすむ',mp:4,power:0,type:'steal'},{name:'さみだれ斬り',mp:6,power:0.8,type:'multi'}],
+  dancer:  [{name:'まどわし',mp:4,power:0,type:'debuff'},{name:'なきまね',mp:5,power:0,type:'debuff'},{name:'いやしの踊り',mp:8,power:0,type:'healall'}],
+};
+
+const ENEMIES_DATA = [
+  {name:'ぷるりん',sprite:'slime',hp:18,atk:6,def:3,exp:8,gold:5,color:'#4488ff',spd:1.2},
+  {name:'こうもり鬼',sprite:'bat',hp:24,atk:9,def:4,exp:12,gold:8,color:'#9955dd',spd:1.8},
+  {name:'いわトロル',sprite:'golem',hp:36,atk:14,def:8,exp:20,gold:12,color:'#aa7744',spd:0.7},
+  {name:'はがねぷるん',sprite:'metalslime',hp:4,atk:10,def:50,exp:120,gold:30,color:'#bbbbcc',spd:2.5},
+  {name:'もりの虫',sprite:'worm',hp:30,atk:11,def:6,exp:18,gold:10,color:'#55bb44',spd:1.0},
+  {name:'まよえる霊',sprite:'ghost',hp:28,atk:13,def:5,exp:22,gold:14,color:'#bbccff',spd:1.4},
+  {name:'トカゲ戦士',sprite:'lizard',hp:55,atk:20,def:12,exp:40,gold:25,color:'#44aa55',spd:1.6},
+  {name:'石の番兵',sprite:'gargoyle',hp:70,atk:25,def:18,exp:60,gold:35,color:'#8899aa',spd:0.9},
+  {name:'闇の眷属',sprite:'reaper',hp:200,atk:35,def:20,exp:200,gold:100,color:'#aa44dd',spd:1.1,boss:true},
+  {name:'大魔王',sprite:'demonlord',hp:350,atk:50,def:30,exp:500,gold:250,color:'#cc2244',spd:1.3,boss:true},
+];
+
+const EQUIP_CATALOG = [
+  {id:'w1',name:'ひのきのぼう',icon:'🪵',slot:'weapon',atk:4,price:20},
+  {id:'w2',name:'どうのつるぎ',icon:'🗡️',slot:'weapon',atk:9,price:120},
+  {id:'w3',name:'てつのつるぎ',icon:'⚔️',slot:'weapon',atk:16,price:480},
+  {id:'w4',name:'はがねのつるぎ',icon:'🔪',slot:'weapon',atk:25,price:1500},
+  {id:'w5',name:'ほのおのつるぎ',icon:'🔥',slot:'weapon',atk:38,int:5,price:4500},
+  {id:'a1',name:'ぬののふく',icon:'👕',slot:'armor',def:4,price:30},
+  {id:'a2',name:'かわのよろい',icon:'🦺',slot:'armor',def:10,price:150},
+  {id:'a3',name:'てつのよろい',icon:'🛡️',slot:'armor',def:20,price:600},
+  {id:'a4',name:'はがねのよろい',icon:'⛓️',slot:'armor',def:32,price:2000},
+  {id:'c1',name:'ちからのゆびわ',icon:'💍',slot:'accessory',atk:8,price:800},
+  {id:'c2',name:'まもりのゆびわ',icon:'🔮',slot:'accessory',def:8,price:800},
+  {id:'c3',name:'けんじゃのいし',icon:'📿',slot:'accessory',int:12,maxMp:15,price:3000},
+];
+const getEquip = id => EQUIP_CATALOG.find(e=>e.id===id);
+
+const ITEMS_DROP = [
+  {name:'やくそう',icon:'🌿',type:'heal',value:30},
+  {name:'まんげつそう',icon:'🌙',type:'heal',value:80},
+  {name:'どくけしそう',icon:'💊',type:'cure'},
+  {name:'まほうのせいすい',icon:'💎',type:'mpitem',value:20},
+];
+
+const NPCS = [
+  {id:'elder',name:'村長',icon:'👴',x:3,y:3,dialog:['ようこそ、旅人よ。ここは「はじまりの村」じゃ。','世界は今、魔王の影に脅かされておる。','汝らが世界を救う者か…頼んだぞ。']},
+  {id:'inn',name:'宿屋',icon:'🏠',x:12,y:4,dialog:['いらっしゃいませ！','泊まっていかれますか？一泊50Gです。', 'ゆっくりお休みください！（HP・MP全快）']},
+  {id:'shop',name:'武器屋',icon:'⚔️',x:12,y:9,dialog:['いらっしゃい！良い武器が揃ってるよ。','旅人さん、腕に覚えは？']},
+  {id:'girl',name:'村娘',icon:'👧',x:5,y:9,dialog:['最近、夜になると変な音が聞こえるの…','村はずれの洞窟から来てるみたい。怖い！']},
+];
+
+// Map types
+const MAPS_DEF = [
+  {name:'はじまりの村',type:'town',bg:'#2d6a30',wall:'#3a2a1a',encounter:0,enemies:[0,1,2]},
+  {name:'魔物の森',type:'field',bg:'#1a4a1a',wall:'#0d2a0d',encounter:0.003,enemies:[1,2,4,5]},
+  {name:'試練の洞窟',type:'dungeon',bg:'#1a1426',wall:'#2a1e38',encounter:0.004,enemies:[2,4,5,6],floors:3,boss:8,bossName:'洞窟の主'},
+  {name:'砂漠のほこら',type:'field',bg:'#8a7a2a',wall:'#5a4a1a',encounter:0.003,enemies:[2,3,6]},
+  {name:'竜の山',type:'dungeon',bg:'#2a1816',wall:'#3a2420',encounter:0.005,enemies:[5,6,7],floors:4,boss:8,bossName:'山の竜'},
+  {name:'魔王の城',type:'dungeon',bg:'#1a0a1a',wall:'#2a142a',encounter:0.006,enemies:[7,8,9],floors:5,boss:9,bossName:'大魔王'},
+];
+
+// ============================================================
+// SPRITE PATTERNS (24x24 original pixel art)
+// ============================================================
+const SPRITE_PATTERNS = {
+  slime: [
+    "........................","........................","........................",".........hhhhhh.........",
+    ".......hhOOOOOOhh.......","......hOOOOOOOOOOh......",".....hOOOOhhOOOOOOo.....","....hOOOOhhhhOOOOOOo....",
+    "...hOOOOOOOOOOOOOOOOo...","...OOOOOOOOOOOOOOOOOoo..","..OOOOwwwOOOOwwwOOOOoo..","..OOOwwbwOOOwwbwOOOOOo..",
+    "..OOOwbbwOOOwbbwOOOOOo..",".OOOOwwwOOOOOwwwOOOOOoo.",".OOOOOOOOOOOOOOOOOOOOOo.",".OOOOOOOObbbbOOOOOOOOOo.",
+    ".OOOOOOOObbbbOOOOOOOOOo.","OOOOOOOOOOOOOOOOOOOOOOOo","OOOOOOOOOOOOOOOOOOOOOOOo","OOOOOOOOOOOOOOOOOOOOOOOo",
+    "oOOOOOOOOOOOOOOOOOOOOOoo",".ooOOOOOOOOOOOOOOOOOOoo.","..oooooooooooooooooooo..","....dddd......dddd......",
+  ],
+  metalslime: [
+    "........................","........................","........................",".........SSSSSS.........",
+    ".......SSMMMMMMSS.......","......SMMMMMMMMMMS......",".....SMMMMSSMMMMMMo.....","....SMMMMSSSSMMMMMMo....",
+    "...SMMMMMMMMMMMMMMMMo...","...MMMMMMMMMMMMMMMMMoo..","..MMMMwwwMMMMwwwMMMMoo..","..MMMwwbwMMMwwbwMMMMMo..",
+    "..MMMwbbwMMMwbbwMMMMMo..",".MMMMwwwMMMMMwwwMMMMMoo.",".MMSSMMMMMMMMMMMMSSMMMo.",".MMMMMMMMbbbbMMMMMMMMMo.",
+    ".MMMMMMMMbbbbMMMMMMMMMo.","MMSSMMMMMMMMMMMMMMSSMMMo","MMMMMMMMMMMMMMMMMMMMMMMo","MMMMMMMMMMMMMMMMMMMMMMMo",
+    "oMMMMMMMMMMMMMMMMMMMMMoo",".ooMMMMMMMMMMMMMMMMMMoo.","..oooooooooooooooooooo..","....dddd......dddd......",
+  ],
+  bat: [
+    "........................","oo....................oo.","oOo..................oOo.","oOOo................oOOo",
+    "oOOOo....hhhhhh....oOOOo","oOOOOo.hhOOOOOOhh.oOOOOo","oOOOOOoOOOOOOOOOOoOOOOOo","oOOOOOOOOOOOOOOOOOOOOOOo",
+    "oOOOOOOcOOOOOOOOcOOOOOOo",".oOOOOcOwwwOOwwwOcOOOOo.","..oOOOOwwrwOOwrwwOOOOo..","..oOOOOwrrwOOwrrwOOOOo..",
+    "...oOOOOwwwOOwwwOOOOo...","...oOOOOOOOOOOOOOOOOo...","....oOOOOObbbbOOOOOo....","....oOOOvbbbbbbvOOOo....",
+    ".....oOOvvbbbbvvOOo......","......oOOObbbbOOOo.......",".......oOOOOOOOOo........","........oOOOOOOo........",
+    ".........oOOOOo.........","..........oOOo..........","...........oo...........","........................",
+  ],
+  golem: [
+    "........................","......dddddddddd........",".....dOOOOOOOOOOd.......","....dOOhhOOOOhhOOd......",
+    "....dOhhOOOOOOhhOd......","....dOOOOwwwwOOOOd......","....dOwwbwOOwbwwOd......","....dOwbbwOOwbbwOd......",
+    "....dOOwwwOOwwwOOd......","....dOOOOOOOOOOOOd......","...dOOOOggOOggOOOOd.....","..dOOOOOOOOOOOOOOOOd....",
+    ".dOOOOOOOOOOOOOOOOOOd...","dOOdOOOOOOOOOOOOdOOOd...","dOOdOOOOggggOOOOdOOOd...","dOOdOOOOggggOOOOdOOOd...",
+    ".ddOOOOOOOOOOOOOOddd....","...dOOOOOddOOOOOd.......","...dOOOOd..dOOOOd.......","..dOOOOd....dOOOOd......",
+    "..dOOOd......dOOOd......","..dddd........dddd......","........................","........................",
+  ],
+  worm: [
+    "........................","........................","........hhhhhh..........","......hOOOOOOhh.........",
+    ".....hOOOOOOOOh.........","......OOwwwwwwOOo.......","......OwwbwwbwwOo.......","......OwbbwwbbwOo.......",
+    "......OOwwwwwwOOo.......",".....hOOOOOOOOOOoo......","....hOOgOOOOOOgOOOo.....","...hOOOOgOOOOgOOOOOo....",
+    "..hOOgOOOOggOOOOgOOOo...","..OOOOOgOOOOOOgOOOOOo...","..OOgOOOOggggOOOOgOOo...","...OOOOgOOOOOOgOOOOOo...",
+    "....oOOOOgOOgOOOOOoo....","......ooOOOOOOOOooo.....","......oooooooooooo......","........................",
+    "........................","........................","........................","........................",
+  ],
+  ghost: [
+    "........................","..........hhhh..........","......hhhOOOOOhhh.......","....hhOOOOOOOOOOhh......",
+    "...hOOOOOOOOOOOOOOh.....","..hOOOOOOOOOOOOOOOOh....","..OOOOOOOOOOOOOOOOOOh...","..OOOOwwwwOOOOwwwwOOOo..",
+    "..OOOwwwbwOOOwwwbwOOOo..","..OOOwwbbwOOOwwbbwOOOo..","..OOOwwwwOOOOOwwwwOOOo..","..OOOOOOOOOOOOOOOOOOOo..",
+    "..OOOOOOObbbbbbOOOOOOo..","..OOOOOObbbbbbbbOOOOOo..","..OOOOOOObbbbbbOOOOOOo..","..OOOOOOOOOOOOOOOOOOOo..",
+    "..OOOOOOOOOOOOOOOOOOOo..","..OOOOOOOOOOOOOOOOOOOo..","..OOOOOOOOOOOOOOOOOOOo..","..OOoOOOoOOOoOOOoOOOoo..",
+    "..oo.oo.oo.oo.oo.oo.o...","........................","........................","........................",
+  ],
+  lizard: [
+    "........................","................cc......","...............cOOc.....","..........ccccccOOOc....",
+    ".........cOOOOOOOwbOc...","........cOOOOOOOOwwOc...",".......cOOhhOOOOOOOOc...","......cOOOOOOOOOOOoc....",
+    ".....cOOgOOOOgOOOoc.....","....cOOOOOggOOOOoc......","...cOOgOOOOOOgOOOc......","...cOOOOggggOOOOOc......",
+    "...cOOgOOOOOOgOOc.......","...cOOOOOOOOOOOc........","....cOOOOOOOOOc.........","....cOOcOOcOOc..........",
+    "....cOc.cOc.cc..........","...cOOc.cOOc............","...cOc...cOc............","..cc.....cc.............",
+    ".....................cOc.",".....................cOc.","..................cc....","........................",
+  ],
+  gargoyle: [
+    "........................","..cc..............cc....","..cOc............cOc....","..cOOc..........cOOc....",
+    "..cOOOccccccccccOOOc....","..cOOOOOOOOOOOOOOOOOc...",".cOOOhhOOOOOOOOhhOOOOc..",".cOOhrwOOOOOOOOwrhOOOc..",
+    ".cOOOrrwOOOOOOwrrOOOOc..",".cOOOOOOOOOOOOOOOOOOOc..",".cOOOOObbbbbbbbOOOOOOc..",".cOOOvbObObObObvOOOOOc..",
+    ".cOOOObbbbbbbbbOOOOOOc..","cOOOOOOOOOOOOOOOOOOOOOc.","cOOcOOOOOOOOOOOOOOcOOOc.","cOOcOOOOOOOOOOOOOOcOOOc.",
+    "cOOcOOOOOOOOOOOOOOcOOOc.",".ccOOOOOOOOOOOOOOOccc...","...cOOOOOcccOOOOOc......","...cOOOc...cOOOOc.......",
+    "..cOOc......cOOOc.......","..cc.........ccc........","........................","........................",
+  ],
+  reaper: [
+    ".................sss....","................ssOss...","...............ssOOss...","..............ssOOss....",
+    ".....hhhhhh...ssOss.....","...hhdddddddhssOss......","..hdddddddddddOss.......","..hdddwwwddwwwddd.......",
+    "..hdddwrwddwrwddd.......","..hddwrrwddwrrwdd.......","..hdddwwwddwwwddd.......","..hdddddddddddddd.......",
+    "...hddddddddddddo.......","....hdddddddddddo.......","...hddddddddddddddo.....","..hdddddbbbbbbdddddo....",
+    "..hddddddddddddddddo....","..hdddddbbbbbbddddddo...","...hddddddddddddddo.....","....hdddo.ddd.odddo.....",
+    "....hddo...d...oddo.....","....ho.........oo.......","........................","........................",
+  ],
+  demonlord: [
+    "..cc..............cc....","..cOOc..........cOOc....","..cOOOc........cOOOc....","...cOOOcccccccccOOOc....",
+    "....cOOOOOOOOOOOOOOc....","...cOOOhhOOOOOOhhOOOc...","..cOOOyywOOOOOOwyyOOOc..",".cOOOyrwOOOOOOOOwryOOOc.",
+    ".cOOOOyOOOOOOOOOyOOOOc.",".cOOOOOOOOOOOOOOOOOOOOc.",".cOOOOvbvbvbvbvbvOOOOc.",".cOOOObbbbbbbbbbOOOOOc..",
+    "ccOOOOvbvbvbvbvvOOOOOcc.","cOOcOOOObbbbbbbbOOOOcOOc","cOOcOOOOOOOOOOOOOOOOcOOc","cOOcOOOggOOOOggOOOOOcOOc",
+    "cOOcOOOOOOOOOOOOOOOOcOOc",".ccOOOOOOOOOOOOOOOOOcc..","...cOOOOOcccccOOOOOc....","...cOOOOc.....cOOOOc....",
+    "..cOOOc........cOOOc....","..cOOc..........cOOc....","..cc.............ccc....","........................",
+  ],
+};
+
+// Sprite rendering
+const spriteCache = {};
+function buildPalette(base){
+  const {r,g,b}=hexToRgb(base);
+  const cl=(n)=>Math.max(0,Math.min(255,Math.round(n)));
+  const shade=(f)=>`rgb(${cl(r*f)},${cl(g*f)},${cl(b*f)})`;
+  const tint=(f)=>`rgb(${cl(r+(255-r)*f)},${cl(g+(255-g)*f)},${cl(b+(255-b)*f)})`;
+  return {'O':base,'h':tint(.55),'o':shade(.6),'d':shade(.38),'g':shade(.45),'p':tint(.35),
+    'c':shade(.5),'M':tint(.45),'S':tint(.92),'w':'#f8f8ff','b':'#141118','r':'#ff3b4e',
+    'y':'#ffd633','v':'#fffceb','s':'#c8ccd8','R':shade(.5)};
+}
+function hexToRgb(hex){
+  hex=hex.replace('#','');
+  if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');
+  return{r:parseInt(hex.substr(0,2),16),g:parseInt(hex.substr(2,2),16),b:parseInt(hex.substr(4,2),16)};
+}
+function getSpriteURL(spriteKey,baseColor,displaySize){
+  const k=spriteKey+'_'+baseColor+'_'+displaySize;
+  if(spriteCache[k])return spriteCache[k];
+  const pat=SPRITE_PATTERNS[spriteKey]||SPRITE_PATTERNS.slime;
+  const rows=pat.length,cols=pat[0].length;
+  const px=Math.max(4,Math.ceil(displaySize/cols));
+  const cv=document.createElement('canvas');
+  cv.width=cols*px;cv.height=rows*px;
+  const c=cv.getContext('2d');c.imageSmoothingEnabled=false;
+  const pal=buildPalette(baseColor);
+  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+    const ch=pat[y][x];if(ch==='.')continue;
+    c.fillStyle=pal[ch]||baseColor;c.fillRect(x*px,y*px,px,px);
+  }
+  return spriteCache[k]=cv.toDataURL();
+}
+
+// ============================================================
+// GAME STATE
+// ============================================================
+const G = {
+  mode:'solo', roomCode:'', playerId:'', playerName:'',
+  // Party: array of up to 4 character objects (index 0 = leader/player)
+  party: [],
+  // Map
+  mapIdx:0, dungeonFloor:0, prevMapIdx:0,
+  clearedDungeons:{}, chests:[],
+  // Enemies on map (sprites)
+  mapEnemies:[],
+  // Battle
+  inBattle:false, isBoss:false,
+  battleEnemies:[], battleActorIdx:0,
+  turnOrder:[], turnIdx:0,
+  pendingLvlUps:[],
+  // Joystick
+  joy:{active:false,id:-1,dx:0,dy:0},
+  // Input
+  keys:{},
+  // Canvas
+  cam:{x:0,y:0},
+  // Tiles
+  tiles:[], tileW:0, tileH:0,
+  TILE:32,
+  npcsOnMap:[],
+  // Sync
+  syncInterval:null, lastSync:0,
+};
+
+// Tile IDs
+const T={FLOOR:0,WALL:1,TREE:3,NPC:4,EXIT:5,STAIR_D:6,STAIR_U:7,BOSS_GATE:8,CHEST:10};
+
+// ============================================================
+// CANVAS SETUP
+// ============================================================
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+function resizeCanvas(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ============================================================
+// INIT / TITLE
+// ============================================================
+window.addEventListener('load',()=>{
+  createStars();
+  setTimeout(()=>{
+    document.getElementById('loading').classList.add('hidden');
+    checkExistingSave();
+    // URLハッシュから自動参加
+    if(location.hash && location.hash.length > 1){
+      const parsed=parseJoinUrl();
+      if(parsed){
+        // タイトルに「招待URLで参加」ボタンを表示
+        const btn=document.createElement('button');
+        btn.className='tmenu-btn';
+        btn.style.cssText='border-color:#88ffbb;animation:wbp .8s ease-in-out infinite alternate;';
+        btn.innerHTML='<span class="tmenu-arrow" style="color:#88ffbb">🔗</span>招待URLで参加（'+parsed.code+'）';
+        btn.onclick=()=>showLobby('join');
+        document.querySelector('.title-menu').prepend(btn);
+      }
+    }
+  },1200);
+});
+function createStars(){
+  const c=document.getElementById('tstars');
+  for(let i=0;i<100;i++){
+    const s=document.createElement('div');s.className='tstar';
+    const sz=Math.random()*2.5+.5;
+    s.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${(Math.random()*3+1).toFixed(1)}s;animation-delay:${(Math.random()*3).toFixed(1)}s`;
+    c.appendChild(s);
+  }
+}
+
+// ============================================================
+// LOBBY
+// ============================================================
+function showLobby(mode){
+  G.mode=mode;
+  document.getElementById('title-screen').classList.add('hidden');
+  document.getElementById('lobby-screen').classList.remove('hidden');
+  const t=document.getElementById('lobby-title');
+  const b=document.getElementById('lobby-body');
+  if(mode==='solo'){t.textContent='⚔️ ひとり旅';b.innerHTML=buildLobbyHTML(false,false);}
+  else if(mode==='create'){G.roomCode=genCode();t.textContent='🌐 部屋を作る';b.innerHTML=buildLobbyHTML(true,true);}
+  else{t.textContent='🤝 仲間に合流';b.innerHTML=buildLobbyHTML(true,false);}
+
+  // URLからの自動参加チェック
+  if(mode==='join'){
+    const parsed=parseJoinUrl();
+    if(parsed){
+      setTimeout(()=>{
+        const codeEl=document.getElementById('join-code');
+        if(codeEl)codeEl.value=parsed.code;
+        if(parsed.partyData){
+          const info=document.createElement('div');
+          info.style.cssText='font-size:10px;color:#88ffbb;padding:6px 0;letter-spacing:1px;';
+          info.textContent='🔗 招待URLから参加：ルームコード '+parsed.code;
+          codeEl?.parentElement?.appendChild(info);
+        }
+      },100);
+    }
+  }
+}
+function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join('');}
+function genId(){return Math.random().toString(36).substr(2,8).toUpperCase();}
+
+function buildLobbyHTML(online,isHost){
+  const clsGrid=Object.entries(CLASSES).map(([k,v])=>`
+    <div class="cls-btn ${k==='warrior'?'sel':''}" onclick="selCls(this,'${k}')" data-cls="${k}">
+      <span class="cls-icon">${v.icon}</span><div class="cls-name">${v.name}</div>
+    </div>`).join('');
+
+  // Party slots (1 = self, 2-4 = NPC companions) — 職業グリッド常時表示
+  const partySlots = [1,2,3,4].map(i=>`
+    <div class="party-slot" id="pslot-${i}">
+      <div class="party-slot-head">
+        <span class="slot-num">${i===1?'自分':i+'人目'}</span>
+        <input class="slot-name-in" id="pname-${i}"
+          placeholder="${i===1?'名前（8文字）':i+'人目（空白=参加なし）'}"
+          maxlength="8">
+      </div>
+      <div id="pslot-cls-${i}">
+        <div class="class-row" id="clsgrid-${i}">
+          ${Object.entries(CLASSES).map(([k,v])=>`
+            <div class="cls-btn ${k==='warrior'?'sel':''}" onclick="selClsSlot(this,${i},'${k}')" data-cls="${k}">
+              <span class="cls-icon">${v.icon}</span><div class="cls-name">${v.name}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`).join('');
+
+  let roomSection='';
+  if(online&&isHost){
+    roomSection=`<div class="room-box"><div class="room-code-disp">${G.roomCode}</div><div class="room-hint">このコードを友達に共有</div></div>
+    <div><label style="font-size:10px;color:var(--white);letter-spacing:2px;display:block;margin-bottom:4px;">参加中</label><div class="party-member-list" id="online-party"><div style="font-size:10px;color:var(--white);padding:6px;">待機中…</div></div></div>`;
+  } else if(online&&!isHost){
+    roomSection=`<div><label style="font-size:10px;color:var(--white);letter-spacing:2px;display:block;margin-bottom:4px;">ルームコード</label><input class="linput" id="join-code" placeholder="6文字のコード" maxlength="6" oninput="this.value=this.value.toUpperCase()"></div>`;
+  }
+
+  const btnLbl=online?(isHost?'🌐 部屋を作って出発':'🤝 部屋に参加する'):'⚔️ 冒険開始！';
+  return `
+    <div class="lfield"><label>パーティを作る（最大4人）</label><div class="party-builder">${partySlots}</div></div>
+    ${roomSection}
+    <button class="btn-prim" onclick="startGame()">${btnLbl}</button>
+    <button class="btn-sec" onclick="backTitle()">← もどる</button>`;
+}
+
+// Track per-slot class selection
+const slotClass = {1:'warrior',2:'warrior',3:'warrior',4:'warrior'};
+function selCls(el,cls){el.closest('.class-row')?.querySelectorAll('.cls-btn').forEach(b=>b.classList.remove('sel'));el.classList.add('sel');}
+function selClsSlot(el,slot,cls){slotClass[slot]=cls;selCls(el,cls);}
+function backTitle(){document.getElementById('lobby-screen').classList.add('hidden');document.getElementById('title-screen').classList.remove('hidden');}
+
+function makeChar(slot){
+  const nameEl=document.getElementById('pname-'+slot);
+  const name=(nameEl?.value.trim())||'';
+  if(slot>1&&!name)return null; // optional companion
+  const clsKey=slotClass[slot]||'warrior';
+  const cls=CLASSES[clsKey];
+  const id=genId();
+  return {
+    id,slot,name:name||(cls.name+'の戦士'),
+    class:clsKey,icon:cls.icon,color:cls.color,lv:1,exp:0,expNext:30,
+    hp:cls.stats.hp,maxHp:cls.stats.hp,mp:cls.stats.mp,maxMp:cls.stats.mp,
+    baseAtk:cls.stats.atk,baseDef:cls.stats.def,baseSpd:cls.stats.spd,baseInt:cls.stats.int,baseMaxMp:cls.stats.mp,
+    atk:cls.stats.atk,def:cls.stats.def,spd:cls.stats.spd,int:cls.stats.int,
+    equip:{weapon:null,armor:null,accessory:null},inventory:['w1','a1'],
+    items:[{...ITEMS_DROP[0]},{...ITEMS_DROP[0]}],
+    gold:50,buffed:false,isNPC:slot>1,
+    x:7*G.TILE,y:7*G.TILE, // pixel position on map
+  };
+}
+
+async function startGame(){
+  G.playerId=genId();
+  G.party=[];
+  for(let i=1;i<=4;i++){const c=makeChar(i);if(c)G.party.push(c);}
+  if(!G.party.length)return;
+  G.party.forEach(c=>recalcStats(c));
+
+  // セーブデータがあれば自分のパーティ情報で上書き（継続プレイのため）
+  // ※ 「冒険を続ける」ボタンからではなく普通に新規で始める場合は上書きしない
+  document.getElementById('lobby-screen').classList.add('hidden');
+
+  // ゲストとして参加する場合
+  if(G.mode==='join'){
+    const code=document.getElementById('join-code')?.value?.trim()?.toUpperCase();
+    if(code&&code.length===6){
+      const roomJson=sessionStorage.getItem('dq9_room_'+code);
+      if(roomJson){
+        G.onlinePlayerCount=2;
+        ONLINE.isOnline=true;
+        ONLINE.isHost=false;
+        ONLINE.roomCode=code;
+        const room=JSON.parse(roomJson);
+        const hostParty=decodePartyFromHash(room.hostParty);
+        if(hostParty) ONLINE.remoteParties=[{playerId:'host',name:room.hostName,party:hostParty}];
+        // ゲストをルームに登録
+        room.guests=room.guests||[];
+        room.guests=room.guests.filter(g=>g.playerId!==G.playerId);
+        room.guests.push({playerId:G.playerId,name:G.party[0]?.name||'ゲスト',partyHash:encodePartyToHash(G.party),joinedAt:Date.now()});
+        room.updatedAt=Date.now();
+        sessionStorage.setItem('dq9_room_'+code,JSON.stringify(room));
+        addChat('🌐 ルーム['+code+']に参加しました！',null,true);
+      }
+    }
+  }
+
+  fadeIn(()=>{
+    document.getElementById('game-screen')?.classList?.remove('hidden');
+    initGame();
+  });
+}
+
+// ============================================================
+// SAVE / LOAD SYSTEM
+// ============================================================
+const SAVE_SLOTS = 3;
+const SAVE_KEY_PREFIX = 'dq9_save_';
+
+function getSaveData(slot) {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY_PREFIX + slot)); } catch(e){ return null; }
+}
+function setSaveData(slot, data) {
+  localStorage.setItem(SAVE_KEY_PREFIX + slot, JSON.stringify(data));
+}
+function deleteSaveData(slot) {
+  localStorage.removeItem(SAVE_KEY_PREFIX + slot);
+}
+
+function buildSaveSnapshot() {
+  return {
+    version: 2,
+    savedAt: Date.now(),
+    mapIdx: G.mapIdx,
+    dungeonFloor: G.dungeonFloor,
+    clearedDungeons: G.clearedDungeons,
+    party: G.party.map(p => ({...p})),
+  };
+}
+
+function restoreFromSnapshot(snap) {
+  G.mapIdx = snap.mapIdx || 0;
+  G.dungeonFloor = snap.dungeonFloor || 0;
+  G.clearedDungeons = snap.clearedDungeons || {};
+  G.party = snap.party.map(p => ({...p}));
+  G.party.forEach(c => recalcStats(c));
+}
+
+function openSaveModal() {
+  renderSaveSlots();
+  document.getElementById('save-modal').classList.remove('hidden');
+}
+function closeSaveModal() {
+  document.getElementById('save-modal').classList.add('hidden');
+}
+
+function renderSaveSlots() {
+  const el = document.getElementById('save-slots-list');
+  let html = '';
+  for (let s = 1; s <= SAVE_SLOTS; s++) {
+    const data = getSaveData(s);
+    if (data) {
+      const leader = data.party[0];
+      const d = new Date(data.savedAt);
+      const dtStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+      const mapName = MAPS_DEF[data.mapIdx]?.name || '不明';
+      html += `<div class="save-slot">
+        <div class="save-slot-ico">${leader?.icon||'⚔️'}</div>
+        <div class="save-slot-info">
+          <div class="save-slot-title">${leader?.name||'???'} Lv.${leader?.lv||1} ／ ${mapName}</div>
+          <div class="save-slot-sub">パーティ${data.party.length}人 ・ ${dtStr}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <button onclick="loadGame(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">📂 ロード</button>
+          <button onclick="saveGame(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;color:#88ccff;">💾 上書き</button>
+          <button onclick="confirmDeleteSave(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;color:#ff8888;">🗑 削除</button>
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="save-slot">
+        <div class="save-slot-ico">📭</div>
+        <div class="save-slot-info">
+          <div class="save-slot-title" style="color:var(--white);">スロット ${s}（空き）</div>
+        </div>
+        <button onclick="saveGame(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">💾 セーブ</button>
+      </div>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+function saveGame(slot) {
+  const snap = buildSaveSnapshot();
+  setSaveData(slot, snap);
+  addChat('💾 スロット'+slot+'にセーブしました！', null, true);
+  closeSaveModal();
+  // オートセーブ通知
+  showAutoSaveFlash();
+}
+
+function loadGame(slot) {
+  const data = getSaveData(slot);
+  if (!data) { addChat('セーブデータがありません', null, true); return; }
+  closeSaveModal();
+  // タイトル画面が表示されている場合も隠す
+  document.getElementById('title-screen').classList.add('hidden');
+  if (!G.playerId) G.playerId = genId();
+  if (!G.mode) G.mode = 'solo';
+  fadeIn(() => {
+    restoreFromSnapshot(data);
+    initGame();
+    addChat('📂 スロット' + slot + 'からロードしました！', null, true);
+  });
+}
+
+function confirmDeleteSave(slot) {
+  if (confirm('スロット'+slot+'のデータを削除しますか？')) {
+    deleteSaveData(slot);
+    renderSaveSlots();
+  }
+}
+
+function showAutoSaveFlash() {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;bottom:140px;right:10px;z-index:200;background:rgba(0,100,50,.85);border:1px solid rgba(0,200,100,.4);border-radius:3px;padding:5px 10px;font-family:DotGothic16,serif;font-size:10px;color:#88ffbb;letter-spacing:1px;animation:cfade 3s forwards;';
+  el.textContent = '💾 セーブ完了';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// タイトル画面でセーブデータ確認
+function checkExistingSave() {
+  for (let s = 1; s <= SAVE_SLOTS; s++) {
+    if (getSaveData(s)) {
+      document.getElementById('btn-continue').style.display = '';
+      return;
+    }
+  }
+}
+
+function showContinue() {
+  // セーブスロットを調べて、1つなら直接ロード、複数なら選択モーダル
+  const slots = [];
+  for (let s = 1; s <= SAVE_SLOTS; s++) {
+    const d = getSaveData(s);
+    if (d) slots.push({ slot: s, data: d });
+  }
+  if (slots.length === 1) {
+    // 1スロットのみ → 直接ロード
+    directLoadGame(slots[0].slot, slots[0].data);
+  } else {
+    // 複数 → モーダルで選択（タイトル上に表示）
+    renderSaveSlots();
+    document.getElementById('save-modal').classList.remove('hidden');
+  }
+}
+
+function directLoadGame(slot, data) {
+  // タイトル画面を隠してゲームを起動
+  document.getElementById('title-screen').classList.add('hidden');
+  G.playerId = genId();
+  G.mode = 'solo';
+  fadeIn(() => {
+    restoreFromSnapshot(data);
+    initGame();
+    addChat('📂 スロット' + slot + 'からロードしました！', null, true);
+  });
+}
+
+// ============================================================
+// ONLINE SYSTEM (URLハッシュ + Anthropic API連携)
+// ============================================================
+const ONLINE = {
+  isOnline: false,
+  isHost: false,
+  roomCode: '',
+  remoteParties: [], // [{playerId, name, party, joinedAt}]
+  chatLog: [],       // [{name, msg, sys}]
+  pollInterval: null,
+};
+
+// パーティデータをURLセーフなBase64に変換
+function encodePartyToHash(party) {
+  const minimal = party.map(p => ({
+    name: p.name, class: p.class, icon: p.icon, color: p.color,
+    lv: p.lv, exp: p.exp, expNext: p.expNext,
+    hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp,
+    baseAtk: p.baseAtk, baseDef: p.baseDef, baseSpd: p.baseSpd, baseInt: p.baseInt,
+    baseMaxMp: p.baseMaxMp, atk: p.atk, def: p.def, spd: p.spd, int: p.int,
+    equip: p.equip, inventory: p.inventory, gold: p.gold,
+  }));
+  return btoa(encodeURIComponent(JSON.stringify(minimal)));
+}
+
+function decodePartyFromHash(hash) {
+  try { return JSON.parse(decodeURIComponent(atob(hash))); } catch(e){ return null; }
+}
+
+// URLハッシュからルームコードとパーティを抽出
+function parseJoinUrl() {
+  const hash = location.hash.slice(1);
+  if (!hash) return null;
+  const [code, partyHash] = hash.split('|');
+  if (!code) return null;
+  return { code, partyData: partyHash ? decodePartyFromHash(partyHash) : null };
+}
+
+// 合流URLを生成
+function buildJoinUrl(code, party) {
+  const base = location.href.split('#')[0];
+  const partyHash = encodePartyToHash(party);
+  return `${base}#${code}|${partyHash}`;
+}
+
+// ホストとしてオンラインモード開始
+function startOnlineHost(code) {
+  ONLINE.isOnline = true;
+  ONLINE.isHost = true;
+  ONLINE.roomCode = code;
+  ONLINE.remoteParties = [];
+  ONLINE.chatLog = [];
+  G.roomCode = code;
+
+  // セッションストレージにホストデータを保存（同ブラウザ内でゲスト確認用）
+  const hostData = {
+    code,
+    hostParty: encodePartyToHash(G.party),
+    hostName: G.party[0]?.name || 'ホスト',
+    guests: [],
+    chat: [],
+    updatedAt: Date.now(),
+  };
+  sessionStorage.setItem('dq9_room_' + code, JSON.stringify(hostData));
+
+  showOnlineBadge();
+  updateOnlineModal();
+
+  // 30秒ごとに自動セーブ
+  ONLINE.pollInterval = setInterval(() => {
+    autoSyncRoom();
+  }, 5000);
+}
+
+// ゲストとして参加
+function joinRoomAction() {
+  const code = document.getElementById('jm-code').value.trim().toUpperCase();
+  if (code.length !== 6) { document.getElementById('jm-status').textContent = '6文字のコードを入力してください'; return; }
+
+  const statusEl = document.getElementById('jm-status');
+  statusEl.textContent = '🔄 接続中…';
+
+  // セッションストレージから部屋を探す（同デバイス）
+  const roomJson = sessionStorage.getItem('dq9_room_' + code);
+  if (roomJson) {
+    const room = JSON.parse(roomJson);
+    joinRoomWithData(code, room);
+  } else {
+    // URLハッシュから参加（別デバイスの場合はURLを使う）
+    statusEl.textContent = '⚠️ その部屋が見つかりません。\nホストと同じデバイスか、招待URLから参加してください。';
+  }
+}
+
+function joinRoomWithData(code, room) {
+  ONLINE.isOnline = true;
+  ONLINE.isHost = false;
+  ONLINE.roomCode = code;
+
+  // ホストパーティをデコード
+  const hostParty = decodePartyFromHash(room.hostParty);
+  if (hostParty) {
+    ONLINE.remoteParties = [{ playerId: 'host', name: room.hostName, party: hostParty }];
+  }
+
+  document.getElementById('join-modal').classList.add('hidden');
+  showOnlineBadge();
+  addChat('🌐 ルーム['+code+']に参加しました！', null, true);
+
+  // ゲストパーティをルームに登録
+  const room2 = JSON.parse(sessionStorage.getItem('dq9_room_' + code) || '{}');
+  room2.guests = room2.guests || [];
+  const guestEntry = {
+    playerId: G.playerId,
+    name: G.party[0]?.name || 'ゲスト',
+    partyHash: encodePartyToHash(G.party),
+    joinedAt: Date.now(),
+  };
+  room2.guests = room2.guests.filter(g => g.playerId !== G.playerId);
+  room2.guests.push(guestEntry);
+  room2.updatedAt = Date.now();
+  sessionStorage.setItem('dq9_room_' + code, JSON.stringify(room2));
+
+  // バトルスケーリング適用
+  applyOnlineScaling();
+
+  ONLINE.pollInterval = setInterval(autoSyncRoom, 5000);
+}
+
+// オンラインバッジ表示
+function showOnlineBadge() {
+  document.getElementById('online-status-bar').style.display = '';
+  const badge = document.getElementById('online-players-badge');
+  badge.style.display = '';
+  updatePlayersBadge();
+}
+
+function updatePlayersBadge() {
+  const total = 1 + ONLINE.remoteParties.length;
+  const badge = document.getElementById('online-players-badge');
+  badge.textContent = `🌐 ${total}人で冒険中`;
+}
+
+// ルームデータを同期
+function autoSyncRoom() {
+  if (!ONLINE.isOnline) return;
+  const code = ONLINE.roomCode;
+  const roomJson = sessionStorage.getItem('dq9_room_' + code);
+  if (!roomJson) return;
+  const room = JSON.parse(roomJson);
+
+  // ホストなら自分のパーティを更新
+  if (ONLINE.isHost) {
+    room.hostParty = encodePartyToHash(G.party);
+    room.updatedAt = Date.now();
+    sessionStorage.setItem('dq9_room_' + code, JSON.stringify(room));
+  }
+
+  // ゲスト情報を更新
+  const guests = room.guests || [];
+  ONLINE.remoteParties = [];
+  if (!ONLINE.isHost) {
+    const hostParty = decodePartyFromHash(room.hostParty);
+    if (hostParty) ONLINE.remoteParties.push({ playerId: 'host', name: room.hostName, party: hostParty });
+  }
+  guests.filter(g => g.playerId !== G.playerId).forEach(g => {
+    const p = decodePartyFromHash(g.partyHash);
+    if (p) ONLINE.remoteParties.push({ playerId: g.playerId, name: g.name, party: p });
+  });
+
+  // チャット同期
+  if (room.chat && room.chat.length > ONLINE.chatLog.length) {
+    const newMsgs = room.chat.slice(ONLINE.chatLog.length);
+    newMsgs.forEach(m => {
+      addChat(m.msg, m.sys ? null : m.name, m.sys);
+    });
+    ONLINE.chatLog = room.chat;
+  }
+
+  updatePlayersBadge();
+  applyOnlineScaling();
+}
+
+// オンライン時のバトルスケーリング
+function applyOnlineScaling() {
+  const totalPlayers = 1 + ONLINE.remoteParties.length;
+  if (totalPlayers <= 1) return;
+  G.onlinePlayerCount = totalPlayers;
+  const badge = document.getElementById('online-players-badge');
+  badge.textContent = `🌐 ${totalPlayers}人で冒険中 ／ 敵強化×${totalPlayers.toFixed(1)}`;
+}
+
+// オンラインでのバトル開始（敵をスケール）
+function getScaledEnemyGroup(baseEnemies) {
+  const count = G.onlinePlayerCount || 1;
+  if (count <= 1) return baseEnemies;
+  // プレイヤー数に応じて敵を増やし、強化する
+  const scaled = baseEnemies.map(e => ({
+    ...e,
+    maxHp: Math.floor(e.hp * (1 + (count - 1) * 0.6)),
+    curHp: Math.floor(e.hp * (1 + (count - 1) * 0.6)),
+    atk: Math.floor(e.atk * (1 + (count - 1) * 0.3)),
+    def: Math.floor(e.def * (1 + (count - 1) * 0.2)),
+    exp: Math.floor(e.exp * count),
+    gold: Math.floor(e.gold * count),
+  }));
+  // プレイヤーが3人以上なら敵を追加
+  if (count >= 3 && scaled.length < 3) {
+    const extra = {...baseEnemies[0]};
+    extra.maxHp = Math.floor(extra.hp * 0.7 * count);
+    extra.curHp = extra.maxHp;
+    extra.atk = Math.floor(extra.atk * count * 0.5);
+    extra.idx = scaled.length;
+    scaled.push(extra);
+  }
+  return scaled;
+}
+
+// オンラインモーダル表示
+function openOnlineModal() {
+  const code = ONLINE.roomCode || G.roomCode;
+  if (!code) return;
+  document.getElementById('om-code').textContent = code;
+  const url = buildJoinUrl(code, G.party);
+  document.getElementById('om-url').textContent = url;
+  updateOnlineModal();
+  document.getElementById('online-modal').classList.remove('hidden');
+}
+
+function closeOnlineModal() {
+  document.getElementById('online-modal').classList.add('hidden');
+}
+
+function updateOnlineModal() {
+  const listEl = document.getElementById('om-party-list');
+  if (!listEl) return;
+  const allPlayers = [
+    { name: (G.party[0]?.name || '自分') + '（あなた）', party: G.party, isMe: true },
+    ...ONLINE.remoteParties.map(r => ({ name: r.name, party: r.party, isMe: false })),
+  ];
+  listEl.innerHTML = allPlayers.map(p => `
+    <div class="party-join-card">
+      <div class="join-dot ${p.isMe ? '' : 'wait'}"></div>
+      <span>${p.name}</span>
+      <span style="margin-left:auto;font-size:9px;color:var(--white);">${p.party.length}人パーティ</span>
+    </div>`).join('');
+
+  const total = allPlayers.length;
+  const scaleEl = document.getElementById('om-scale-info');
+  if (total > 1) {
+    scaleEl.style.display = '';
+    scaleEl.textContent = `⚡ ${total}人参加中 ／ 敵HP・攻撃×${(1+(total-1)*0.6).toFixed(1)} ／ 報酬×${total}`;
+  } else {
+    scaleEl.style.display = 'none';
+  }
+}
+
+function copyJoinUrl() {
+  const code = ONLINE.roomCode || G.roomCode;
+  const url = buildJoinUrl(code, G.party);
+  navigator.clipboard.writeText(url).then(() => {
+    addChat('📋 URLをコピーしました！', null, true);
+    closeOnlineModal();
+  }).catch(() => {
+    prompt('このURLをコピーしてください:', url);
+  });
+}
+
+function sendOnlineChat() {
+  const input = document.getElementById('om-chat-in');
+  const msg = input?.value?.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const entry = { name: G.party[0]?.name || '?', msg, sys: false, at: Date.now() };
+  ONLINE.chatLog.push(entry);
+  addChat(msg, entry.name, false);
+
+  // ルームのチャットログを更新
+  const code = ONLINE.roomCode;
+  if (code) {
+    const room = JSON.parse(sessionStorage.getItem('dq9_room_' + code) || '{}');
+    room.chat = room.chat || [];
+    room.chat.push(entry);
+    if (room.chat.length > 50) room.chat = room.chat.slice(-50);
+    sessionStorage.setItem('dq9_room_' + code, JSON.stringify(room));
+  }
+
+  // オンラインチャットログUIを更新
+  const logEl = document.getElementById('online-chat-log');
+  if (logEl) {
+    const line = document.createElement('div');
+    line.className = 'oc-line oc-msg';
+    line.innerHTML = `<span class="oc-name">${entry.name}:</span> ${entry.msg}`;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+}
+
+// オンラインで別のプレイヤーのパーティと合体したバトル
+function getOnlineCombinedParty() {
+  if (!ONLINE.isOnline || !ONLINE.remoteParties.length) return G.party;
+  // 自分のパーティ + 各ゲストのパーティを全部結合（最大8人）
+  const all = [...G.party];
+  for (const remote of ONLINE.remoteParties) {
+    if (all.length >= 8) break;
+    for (const p of remote.party) {
+      if (all.length >= 8) break;
+      all.push({ ...p, isRemote: true, remoteId: remote.playerId });
+    }
+  }
+  return all;
+}
+
+// URLハッシュから自動参加を確認
+function checkAutoJoin() {
+  const parsed = parseJoinUrl();
+  if (!parsed) return false;
+
+  // URLから参加データがある → ゲスト参加フロー
+  addChat('🔗 招待URLを検出しました', null, true);
+  G.mode = 'join_url';
+  G.pendingJoinCode = parsed.code;
+  G.pendingHostParty = parsed.partyData;
+
+  // ロビーに招待URLの情報を表示
+  return true;
+}
+
+// ============================================================
+// MAP GENERATION
+// ============================================================
+const MAP_W=24, MAP_H=18;
+
+function initGame(){
+  generateMap(G.mapIdx||0);
+  startLoop();
+  updatePartyHUD();
+  addChat('冒険が始まった！',null,true);
+  setTimeout(()=>showDialog('elder'),1500);
+
+  // オンラインモードなら開始処理
+  if(G.mode==='create'&&G.roomCode){
+    startOnlineHost(G.roomCode);
+    document.getElementById('menu-online-btn').style.display='';
+    // セーブボタンの横にオンラインボタンを追加
+    const saveHud=document.getElementById('save-btn-hud');
+    if(saveHud&&!document.getElementById('online-hud-btn')){
+      const btn=document.createElement('button');
+      btn.id='online-hud-btn';
+      btn.className='hud-save-btn';
+      btn.style.cssText='color:#88ffbb;margin-top:4px;';
+      btn.innerHTML='🌐 オンライン';
+      btn.onclick=openOnlineModal;
+      saveHud.appendChild(btn);
+    }
+  } else if(ONLINE.isOnline){
+    document.getElementById('menu-online-btn').style.display='';
+    showOnlineBadge();
+    ONLINE.pollInterval=setInterval(autoSyncRoom,5000);
+  }
+}
+
+function generateMap(idx){
+  G.mapIdx=idx;
+  const map=MAPS_DEF[idx];
+  G.tiles=[];
+  G.npcsOnMap=[];
+  G.chests=[];
+  G.mapEnemies=[];
+
+  for(let y=0;y<MAP_H;y++){G.tiles[y]=[];for(let x=0;x<MAP_W;x++)G.tiles[y][x]=(x===0||y===0||x===MAP_W-1||y===MAP_H-1)?T.WALL:T.FLOOR;}
+
+  const rng=n=>Math.floor(Math.random()*n);
+  if(map.type==='dungeon'){
+    // Dungeon: random walls
+    for(let i=0;i<15;i++){const w=rng(3)+1,h=rng(3)+1,wx=rng(MAP_W-w-2)+1,wy=rng(MAP_H-h-2)+1;
+      for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){if(Math.abs(wx+xx-12)<3&&Math.abs(wy+yy-14)<3)continue;G.tiles[wy+yy][wx+xx]=T.WALL;}}
+    G.tiles[14][12]=T.FLOOR; // spawn clear
+    G.tiles[15][12]=T.STAIR_U;
+    const isLast=(G.dungeonFloor===map.floors-1);
+    if(isLast){G.tiles[2][12]=T.BOSS_GATE;}
+    else{let sx,sy,t=0;do{sx=rng(MAP_W-4)+2;sy=rng(5)+1;t++;}while(G.tiles[sy][sx]!==T.FLOOR&&t<60);G.tiles[sy][sx]=T.STAIR_D;}
+    // Chests
+    for(let i=0;i<2;i++){let cx,cy,t2=0;do{cx=rng(MAP_W-2)+1;cy=rng(MAP_H-2)+1;t2++;}while(G.tiles[cy][cx]!==T.FLOOR&&t2<40);if(G.tiles[cy][cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});}}
+    setPlayerPos(12,14);
+  } else {
+    // Field/Town
+    if(map.type==='field'){
+      for(let i=0;i<10;i++){const wx=rng(MAP_W-2)+1,wy=rng(MAP_H-2)+1;if(Math.abs(wx-12)<2&&Math.abs(wy-9)<2)continue;G.tiles[wy][wx]=T.WALL;}
+      for(let i=0;i<8;i++){const tx=rng(MAP_W-2)+1,ty=rng(MAP_H-2)+1;if(G.tiles[ty][tx]===T.FLOOR)G.tiles[ty][tx]=T.TREE;}
+      if(idx<MAPS_DEF.length-1)G.tiles[1][MAP_W-2]=T.EXIT;
+    }
+    if(map.type==='town'){
+      // Town: structured
+      for(let i=0;i<6;i++){const wx=rng(MAP_W-4)+2,wy=rng(MAP_H-4)+2;
+        if(Math.abs(wx-12)<3&&Math.abs(wy-9)<3)continue;
+        const w=rng(3)+2,h=rng(2)+2;
+        for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)if(wx+xx<MAP_W-1&&wy+yy<MAP_H-1)G.tiles[wy+yy][wx+xx]=T.WALL;}
+      for(let i=0;i<5;i++){const tx=rng(MAP_W-2)+1,ty=rng(MAP_H-2)+1;if(G.tiles[ty][tx]===T.FLOOR)G.tiles[ty][tx]=T.TREE;}
+      // NPCs
+      NPCS.forEach(n=>{if(G.tiles[n.y][n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
+      if(idx<MAPS_DEF.length-1)G.tiles[1][MAP_W-2]=T.EXIT;
+    }
+    setPlayerPos(12,9);
+  }
+
+  // Spawn roaming enemies
+  if(map.encounter>0){
+    const count=3+G.mapIdx*2;
+    for(let i=0;i<count;i++) spawnMapEnemy();
+  }
+
+  document.getElementById('map-label').textContent=
+    map.type==='dungeon'?`🏰 ${map.name} B${G.dungeonFloor+1}F`:`🗺️ ${map.name}`;
+}
+
+function setPlayerPos(tx,ty){
+  const px=tx*G.TILE+G.TILE/2, py=ty*G.TILE+G.TILE/2;
+  G.party.forEach((c,i)=>{c.x=px+(i%2)*12;c.y=py+Math.floor(i/2)*12;});
+}
+
+// Spawn a roaming enemy on the map
+function spawnMapEnemy(){
+  const map=MAPS_DEF[G.mapIdx];
+  const eIdx=map.enemies[Math.floor(Math.random()*map.enemies.length)];
+  const tmpl=ENEMIES_DATA[eIdx];
+  let tx,ty,tries=0;
+  do{tx=Math.floor(Math.random()*(MAP_W-2))+1;ty=Math.floor(Math.random()*(MAP_H-2))+1;tries++;}
+  while((G.tiles[ty]?.[tx]!==T.FLOOR||Math.hypot(tx-12,ty-9)<5)&&tries<60);
+  if(G.tiles[ty]?.[tx]!==T.FLOOR)return;
+
+  const angle=Math.random()*Math.PI*2;
+  G.mapEnemies.push({
+    ...tmpl,idx:eIdx,
+    x:tx*G.TILE+G.TILE/2, y:ty*G.TILE+G.TILE/2,
+    vx:Math.cos(angle)*tmpl.spd*0.6,
+    vy:Math.sin(angle)*tmpl.spd*0.6,
+    dirTimer:0,
+    curHp:tmpl.hp,
+    dead:false,
+    scale:1,
+  });
+}
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+let lastTime=0, animId=null;
+
+function startLoop(){
+  if(animId)cancelAnimationFrame(animId);
+  lastTime=performance.now();
+  animId=requestAnimationFrame(loop);
+}
+
+function loop(now){
+  animId=requestAnimationFrame(loop);
+  if(G.inBattle)return;
+  const dt=Math.min((now-lastTime)/1000,.05);
+  lastTime=now;
+  updatePlayer(dt);
+  updateMapEnemies(dt);
+  checkEnemyContact();
+  updateCamera();
+  render();
+  drawMinimap();
+}
+
+// ============================================================
+// PLAYER MOVEMENT (smooth joystick)
+// ============================================================
+const MOVE_SPEED=120; // px/sec
+
+function updatePlayer(dt){
+  const leader=G.party[0];
+  if(!leader)return;
+
+  // Joystick input
+  let dx=G.joy.dx, dy=G.joy.dy;
+  // Keyboard fallback
+  if(G.keys.ArrowLeft||G.keys.a)dx=-1;
+  if(G.keys.ArrowRight||G.keys.d)dx=1;
+  if(G.keys.ArrowUp||G.keys.w)dy=-1;
+  if(G.keys.ArrowDown||G.keys.s)dy=1;
+
+  // Normalize diagonal
+  const len=Math.hypot(dx,dy);
+  if(len>1){dx/=len;dy/=len;}
+
+  const spd=MOVE_SPEED*dt;
+  const nx=leader.x+dx*spd, ny=leader.y+dy*spd;
+
+  // Collision check
+  if(canWalk(nx,leader.y))leader.x=nx;
+  if(canWalk(leader.x,ny))leader.y=ny;
+
+  // Tile interaction
+  const tx=Math.floor(leader.x/G.TILE), ty=Math.floor(leader.y/G.TILE);
+  handleTileAt(tx,ty);
+
+  // Followers trail leader
+  for(let i=1;i<G.party.length;i++){
+    const prev=G.party[i-1], me=G.party[i];
+    const fdx=prev.x-me.x, fdy=prev.y-me.y;
+    const fd=Math.hypot(fdx,fdy);
+    if(fd>G.TILE*0.8){
+      const fs=Math.min(spd*1.1,fd);
+      const nx2=me.x+(fdx/fd)*fs, ny2=me.y+(fdy/fd)*fs;
+      if(canWalk(nx2,me.y))me.x=nx2;
+      if(canWalk(me.x,ny2))me.y=ny2;
+    }
+  }
+}
+
+function canWalk(px,py){
+  const TL=4; // lookahead
+  const checks=[[px-TL,py-TL],[px+TL,py-TL],[px-TL,py+TL],[px+TL,py+TL]];
+  for(const [cx,cy] of checks){
+    const tx=Math.floor(cx/G.TILE),ty=Math.floor(cy/G.TILE);
+    if(ty<0||ty>=MAP_H||tx<0||tx>=MAP_W)return false;
+    const t=G.tiles[ty][tx];
+    if(t===T.WALL||t===T.TREE)return false;
+    // Boss gate blocks unless cleared
+    if(t===T.BOSS_GATE&&!G.clearedDungeons[G.mapIdx])return false;
+  }
+  return true;
+}
+
+function handleTileAt(tx,ty){
+  if(ty<0||ty>=MAP_H||tx<0||tx>=MAP_W)return;
+  const t=G.tiles[ty][tx];
+  if(t===T.EXIT){changeMap(G.mapIdx+1);}
+  else if(t===T.STAIR_D){descendFloor();}
+  else if(t===T.STAIR_U){ascendFloor();}
+  else if(t===T.BOSS_GATE&&G.clearedDungeons[G.mapIdx]){/* pass through */}
+  else if(t===T.CHEST){openChestAt(tx,ty);}
+}
+
+// ============================================================
+// MAP ENEMY AI
+// ============================================================
+function updateMapEnemies(dt){
+  const TILE=G.TILE;
+  G.mapEnemies.forEach(e=>{
+    if(e.dead)return;
+    e.dirTimer-=dt;
+    if(e.dirTimer<=0){
+      // Wander randomly
+      const angle=Math.random()*Math.PI*2;
+      const spd=e.spd*(35+Math.random()*25);
+      e.vx=Math.cos(angle)*spd/100*TILE;
+      e.vy=Math.sin(angle)*spd/100*TILE;
+      e.dirTimer=1+Math.random()*2;
+    }
+
+    const nx=e.x+e.vx*dt, ny=e.y+e.vy*dt;
+    const tx=Math.floor(nx/TILE),ty=Math.floor(ny/TILE);
+
+    // Bounce off walls
+    if(ty>=0&&ty<MAP_H&&tx>=0&&tx<MAP_W&&G.tiles[ty]?.[tx]!==T.WALL&&G.tiles[ty]?.[tx]!==T.TREE){
+      e.x=nx;e.y=ny;
+    } else {
+      e.vx*=-1;e.vy*=-1;
+    }
+
+    // Stay in bounds
+    e.x=Math.max(G.TILE,Math.min((MAP_W-1)*G.TILE,e.x));
+    e.y=Math.max(G.TILE,Math.min((MAP_H-1)*G.TILE,e.y));
+  });
+}
+
+function checkEnemyContact(){
+  if(G.inBattle)return;
+  const leader=G.party[0];if(!leader)return;
+  for(let i=G.mapEnemies.length-1;i>=0;i--){
+    const e=G.mapEnemies[i];if(e.dead)continue;
+    if(Math.hypot(leader.x-e.x,leader.y-e.y)<G.TILE*0.75){
+      G.mapEnemies.splice(i,1);
+      startBattle([e]);
+      return;
+    }
+  }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+const TILE_COLORS={
+  [T.FLOOR]:'',// set per-map
+  [T.WALL]:'',
+  [T.TREE]:'',
+  [T.EXIT]:'#aaaa22',
+  [T.STAIR_D]:'#553311',
+  [T.STAIR_U]:'#553311',
+  [T.BOSS_GATE]:'#440022',
+  [T.CHEST]:'',
+};
+const TILE_EMOJI={
+  [T.EXIT]:'🚪',[T.STAIR_D]:'🔽',[T.STAIR_U]:'🔼',[T.BOSS_GATE]:'⛩️',
+};
+
+function updateCamera(){
+  const leader=G.party[0];if(!leader)return;
+  const tw=canvas.width,th=canvas.height-120; // controls height
+  G.cam.x=leader.x-tw/2;
+  G.cam.y=leader.y-th/2;
+  const maxX=MAP_W*G.TILE-tw, maxY=MAP_H*G.TILE-th;
+  G.cam.x=Math.max(0,Math.min(maxX,G.cam.x));
+  G.cam.y=Math.max(0,Math.min(maxY,G.cam.y));
+}
+
+function render(){
+  const map=MAPS_DEF[G.mapIdx];
+  const TILE=G.TILE;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Draw tiles
+  const startX=Math.floor(G.cam.x/TILE), startY=Math.floor(G.cam.y/TILE);
+  const endX=Math.min(MAP_W,startX+Math.ceil(canvas.width/TILE)+1);
+  const endY=Math.min(MAP_H,startY+Math.ceil((canvas.height-120)/TILE)+1);
+
+  for(let ty=startY;ty<endY;ty++){
+    for(let tx=startX;tx<endX;tx++){
+      const t=G.tiles[ty]?.[tx]; if(t===undefined)continue;
+      const sx=tx*TILE-G.cam.x, sy=ty*TILE-G.cam.y;
+
+      // Floor base
+      ctx.fillStyle=t===T.WALL?(map.wall||'#3a2a1a'):map.bg;
+      ctx.fillRect(sx,sy,TILE,TILE);
+
+      // Tile details
+      if(t===T.WALL){
+        ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(sx,sy,TILE,2);
+        ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fillRect(sx,sy+TILE-2,TILE,2);
+      } else if(t===T.TREE){
+        ctx.fillStyle=map.bg;ctx.fillRect(sx,sy,TILE,TILE);
+        // Draw tree as circles
+        ctx.fillStyle='#1a5a1a';ctx.beginPath();ctx.arc(sx+TILE/2,sy+TILE/2,TILE/2-2,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#2a7a2a';ctx.beginPath();ctx.arc(sx+TILE/2-2,sy+TILE/2-2,TILE/2-5,0,Math.PI*2);ctx.fill();
+      } else if(t===T.NPC){
+        const npc=G.npcsOnMap.find(n=>n.x===tx&&n.y===ty);
+        drawTileEmoji(npc?.icon||'👤',sx,sy,TILE);
+      } else if(t===T.EXIT){ctx.fillStyle=TILE_COLORS[t];ctx.fillRect(sx,sy,TILE,TILE);drawTileEmoji('🚪',sx,sy,TILE);}
+      else if(t===T.STAIR_D){ctx.fillStyle='#554422';ctx.fillRect(sx,sy,TILE,TILE);drawTileEmoji('🔽',sx,sy,TILE);}
+      else if(t===T.STAIR_U){ctx.fillStyle='#554422';ctx.fillRect(sx,sy,TILE,TILE);drawTileEmoji('🔼',sx,sy,TILE);}
+      else if(t===T.BOSS_GATE){
+        ctx.fillStyle='#440022';ctx.fillRect(sx,sy,TILE,TILE);
+        if(G.clearedDungeons[G.mapIdx]){ctx.fillStyle='rgba(0,255,100,0.2)';ctx.fillRect(sx,sy,TILE,TILE);}
+        drawTileEmoji('⛩️',sx,sy,TILE);
+      }
+      else if(t===T.CHEST){
+        const ch=G.chests.find(c=>c.x===tx&&c.y===ty);
+        drawTileEmoji(ch?.opened?'📭':'🎁',sx,sy,TILE);
+      }
+    }
+  }
+
+  // Grid lines (subtle)
+  ctx.strokeStyle='rgba(0,0,0,0.08)';ctx.lineWidth=0.5;
+  for(let ty=startY;ty<=endY;ty++){ctx.beginPath();ctx.moveTo(0,ty*TILE-G.cam.y);ctx.lineTo(canvas.width,ty*TILE-G.cam.y);ctx.stroke();}
+  for(let tx=startX;tx<=endX;tx++){ctx.beginPath();ctx.moveTo(tx*TILE-G.cam.x,0);ctx.lineTo(tx*TILE-G.cam.x,canvas.height-120);ctx.stroke();}
+
+  // Map enemies
+  G.mapEnemies.forEach(e=>{
+    if(e.dead)return;
+    const sx=e.x-G.cam.x, sy=e.y-G.cam.y;
+    const sz=G.TILE*1.1;
+    const url=getSpriteURL(e.sprite,e.color,sz);
+    const img=getImg(url);
+    if(img.complete)ctx.drawImage(img,sx-sz/2,sy-sz/2,sz,sz);
+    // HP bar above
+    const bw=30,bh=3;
+    ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(sx-bw/2,sy-sz/2-6,bw,bh);
+    ctx.fillStyle='#ff4444';ctx.fillRect(sx-bw/2,sy-sz/2-6,bw*(e.curHp/e.hp),bh);
+  });
+
+  // Party members
+  G.party.forEach((c,i)=>{
+    const sx=c.x-G.cam.x, sy=c.y-G.cam.y;
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(sx,sy+8,10,4,0,0,Math.PI*2);ctx.fill();
+    // Character
+    ctx.font=`${G.TILE*0.75}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(c.icon,sx,sy-2);
+    // Name (leader only)
+    if(i===0){
+      ctx.font='9px DotGothic16,serif';ctx.fillStyle='rgba(255,255,255,0.85)';
+      ctx.fillText(c.name.substr(0,4),sx,sy-G.TILE*0.6);
+    }
+  });
+}
+
+// Image cache for sprites
+const imgCache={};
+function getImg(url){
+  if(!imgCache[url]){const img=new Image();img.src=url;imgCache[url]=img;}
+  return imgCache[url];
+}
+function drawTileEmoji(emoji,sx,sy,size){
+  ctx.font=`${size*0.65}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(emoji,sx+size/2,sy+size/2);
+}
+
+// Minimap
+const mmCanvas=document.getElementById('mm-canvas');
+const mmCtx=mmCanvas.getContext('2d');
+function drawMinimap(){
+  mmCtx.clearRect(0,0,88,88);
+  mmCtx.fillStyle='rgba(0,20,0,0.6)';mmCtx.fillRect(0,0,88,88);
+  const sx=88/MAP_W,sy=88/MAP_H;
+  G.mapEnemies.forEach(e=>{
+    if(e.dead)return;
+    const ex=e.x/G.TILE*sx,ey=e.y/G.TILE*sy;
+    mmCtx.fillStyle='#ff4444';mmCtx.fillRect(ex-1.5,ey-1.5,3,3);
+  });
+  if(G.party[0]){
+    const lx=G.party[0].x/G.TILE*sx,ly=G.party[0].y/G.TILE*sy;
+    mmCtx.fillStyle='#00ffaa';mmCtx.beginPath();mmCtx.arc(lx,ly,3,0,Math.PI*2);mmCtx.fill();
+  }
+}
+
+// ============================================================
+// JOYSTICK
+// ============================================================
+const joyWrap=document.getElementById('joy-wrap');
+const joyBase=document.getElementById('joy-base');
+const joyKnob=document.getElementById('joy-knob');
+const JOY_R=34;
+
+function joyOffset(touch){
+  const r=joyBase.getBoundingClientRect();
+  return{x:touch.clientX-r.left-r.width/2,y:touch.clientY-r.top-r.height/2};
+}
+joyWrap.addEventListener('touchstart',e=>{
+  e.preventDefault();const t=e.changedTouches[0];
+  G.joy={active:true,id:t.identifier,dx:0,dy:0};
+},{passive:false});
+document.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    if(G.joy.active&&t.identifier===G.joy.id){
+      const o=joyOffset(t);const len=Math.hypot(o.x,o.y);
+      const cl=Math.min(len,JOY_R);const ang=Math.atan2(o.y,o.x);
+      G.joy.dx=Math.cos(ang)*cl/JOY_R;G.joy.dy=Math.sin(ang)*cl/JOY_R;
+      joyKnob.style.transform=`translate(calc(-50% + ${Math.cos(ang)*cl}px),calc(-50% + ${Math.sin(ang)*cl}px))`;
+    }
+  }
+},{passive:false});
+document.addEventListener('touchend',e=>{
+  for(const t of e.changedTouches){
+    if(G.joy.active&&t.identifier===G.joy.id){
+      G.joy={active:false,id:-1,dx:0,dy:0};
+      joyKnob.style.transform='translate(-50%,-50%)';
+    }
+  }
+});
+
+// Keyboard
+window.addEventListener('keydown',e=>{G.keys[e.key]=true;if(e.key==='Enter')handleTalk();});
+window.addEventListener('keyup',e=>{G.keys[e.key]=false;});
+
+// ============================================================
+// BATTLE SYSTEM
+// ============================================================
+function startBattle(mapEnemies){
+  G.inBattle=true;G.isBoss=false;
+  const bg=document.getElementById('battle-bg');
+  bg.style.background='linear-gradient(180deg,#0a1a3a 0%,#1a3a6a 50%,#3a6a2a 50%,#2a4a1a 100%)';
+
+  // オンライン時は敵をスケール
+  const rawEnemies = mapEnemies.map((e,i)=>({...e,curHp:e.curHp!==undefined?e.curHp:e.hp,maxHp:e.hp,idx:i}));
+  G.battleEnemies = ONLINE.isOnline ? getScaledEnemyGroup(rawEnemies) : rawEnemies;
+
+  // オンライン時は合体パーティでバトル（リモートメンバーを追加）
+  if(ONLINE.isOnline && ONLINE.remoteParties.length > 0){
+    G._battlePartyBackup = G.party;
+    G.party = getOnlineCombinedParty();
+    if(!G.isBoss){
+      setBMsg('🌐 オンライン合体パーティで戦闘開始！');
+    }
+  }
+
+  G.pendingLvlUps=[];
+  // コマンド選択の初期化
+  G.cmdQueue=[];       // [{actor, type, spellIdx}] 各キャラのコマンド
+  G.cmdSelectIdx=0;    // 今コマンドを選んでいるパーティメンバーのindex
+  G.executing=false;
+  document.getElementById('battle-screen').classList.remove('hidden');
+  renderBattle();
+  setBMsg('⚔️ '+G.battleEnemies.map(e=>e.name).join('と')+' があらわれた！');
+  setTimeout(startCommandSelect, 900);
+}
+
+// ====== コマンド選択フェーズ ======
+function startCommandSelect(){
+  G.executing=false;
+  G.cmdQueue=[];
+  G.cmdSelectIdx=0;
+  selectCommandFor(0);
+}
+
+function selectCommandFor(idx){
+  const alive=G.party.filter(p=>p.hp>0);
+  if(idx>=alive.length){
+    showExecuteBtn();
+    return;
+  }
+  G.cmdSelectIdx=idx;
+  G.battleActorIdx=G.party.indexOf(alive[idx]);
+  const actor=alive[idx];
+  renderBattle();
+  setBMsg(`${actor.icon} ${actor.name}のコマンドを選んでください`);
+  showCmdPhase(true);
+  // 「もどる」ボタンは2人目以降のみ表示
+  document.getElementById('btn-cmd-back').style.display=idx>0?'':'none';
+  document.getElementById('cmd-header-txt').textContent=`${idx+1}人目 / ${alive.length}人`;
+}
+
+function cmdBack(){
+  // 前のキャラのコマンドを取り消して選び直し
+  if(G.cmdSelectIdx<=0) return;
+  G.cmdQueue.pop();
+  G.cmdSelectIdx--;
+  selectCommandFor(G.cmdSelectIdx);
+}
+
+function showCmdPhase(on){
+  document.getElementById('battle-cmd-phase').style.display=on?'':'none';
+  document.getElementById('battle-execute').style.display='none';
+  enableCmds(on);
+}
+
+function showExecuteBtn(){
+  document.getElementById('battle-cmd-phase').style.display='none';
+  document.getElementById('battle-execute').style.display='block';
+  const labels={attack:'こうげき',spell:'じゅもん',item:'どうぐ',defend:'ぼうぎょ',flee:'にげる'};
+  const summary=G.cmdQueue.map(q=>`${q.actor.icon}${labels[q.type]||q.type}`).join('　');
+  setBMsg('コマンド確認:\n'+summary+'\n▼ 戦闘開始を押してください');
+}
+
+// 現在の選択中スペル（対象選択前に保持）
+let pendingSpellIdx=-1;
+
+function bCmd(cmd){
+  if(G.executing) return;
+  const aliveParty=G.party.filter(p=>p.hp>0);
+  const actor=aliveParty[G.cmdSelectIdx];
+  if(!actor) return;
+  enableCmds(false);
+
+  if(cmd==='spell'){
+    openSpellForSelect(actor);
+    return;
+  }
+  if(cmd==='attack'){
+    // 攻撃対象を選ぶ
+    openTargetSelect(actor, 'attack', -1);
+    return;
+  }
+  // 防御・道具・にげる はそのままキューへ
+  G.cmdQueue.push({actor, type:cmd, targetIdx:-1, spellIdx:-1});
+  selectCommandFor(G.cmdSelectIdx+1);
+}
+
+// ---- 呪文選択 ----
+function openSpellForSelect(actor){
+  const spells=SPELLS[actor.class]||[];
+  document.getElementById('spell-list').innerHTML=spells.map((s,i)=>`
+    <button class="spbtn" ${actor.mp<s.mp?'disabled':''} onclick="onSpellSelected(${i})">
+      <span>${s.name}<br><span style="font-size:8px;color:var(--white)">${spellTypeLabel(s.type)}</span></span>
+      <span class="sp-mp">${s.mp}MP</span>
+    </button>`).join('');
+  document.getElementById('spell-screen').classList.remove('hidden');
+}
+function spellTypeLabel(t){
+  if(t==='all')return '全体攻撃';
+  if(t==='atk')return '単体攻撃';
+  if(t==='heal'||t==='heal2'||t==='healfull')return '単体回復';
+  if(t==='healall')return '全体回復';
+  if(t==='buff')return '強化';
+  if(t==='debuff')return '弱体';
+  if(t==='multi')return '連続攻撃';
+  return '';
+}
+function onSpellSelected(idx){
+  document.getElementById('spell-screen').classList.add('hidden');
+  const aliveParty=G.party.filter(p=>p.hp>0);
+  const actor=aliveParty[G.cmdSelectIdx];
+  const spells=SPELLS[actor.class]||[];
+  const spell=spells[idx];
+  if(!spell){enableCmds(true);return;}
+  pendingSpellIdx=idx;
+
+  // 対象選択が必要か判断
+  const needsEnemyTarget=['atk','multi'].includes(spell.type);
+  const needsAllyTarget=['heal','heal2','healfull'].includes(spell.type);
+  const isAll=['all','healall','buff','debuff'].includes(spell.type);
+
+  if(needsEnemyTarget){
+    openTargetSelect(actor, 'spell', idx);
+  } else if(needsAllyTarget){
+    openAllyTargetSelect(actor, idx);
+  } else {
+    // 全体 or 特殊 → 対象選択不要
+    G.cmdQueue.push({actor, type:'spell', spellIdx:idx, targetIdx:-1});
+    selectCommandFor(G.cmdSelectIdx+1);
+  }
+}
+function closeSpell(){
+  document.getElementById('spell-screen').classList.add('hidden');
+  enableCmds(true);
+}
+
+// ---- 敵対象選択 ----
+function openTargetSelect(actor, cmdType, spellIdx){
+  const alive=G.battleEnemies.filter(e=>e.curHp>0);
+  document.getElementById('target-list').innerHTML=alive.map(e=>`
+    <button class="tgt-btn" onclick="onTargetSelected(${e.idx}, '${cmdType}', ${spellIdx})">
+      <span>${e.name}</span>
+      <div class="tgt-hp-bar"><div class="tgt-hp-fill" style="width:${e.curHp/e.maxHp*100}%;background:linear-gradient(90deg,#ff3333,#ff8833);"></div></div>
+      <span style="font-size:10px;color:var(--white)">HP ${e.curHp}/${e.maxHp}</span>
+    </button>`).join('');
+  document.getElementById('target-screen').classList.remove('hidden');
+}
+function onTargetSelected(targetIdx, cmdType, spellIdx){
+  document.getElementById('target-screen').classList.add('hidden');
+  const aliveParty=G.party.filter(p=>p.hp>0);
+  const actor=aliveParty[G.cmdSelectIdx];
+  G.cmdQueue.push({actor, type:cmdType, targetIdx, spellIdx});
+  selectCommandFor(G.cmdSelectIdx+1);
+}
+function closeTargetSelect(){
+  document.getElementById('target-screen').classList.add('hidden');
+  enableCmds(true);
+}
+
+// ---- 味方対象選択（回復） ----
+function openAllyTargetSelect(actor, spellIdx){
+  document.getElementById('ally-target-list').innerHTML=G.party.map((p,i)=>`
+    <button class="tgt-btn" onclick="onAllyTargetSelected(${i}, ${spellIdx})" ${p.hp<=0?'disabled':''}>
+      <span>${p.icon} ${p.name}</span>
+      <div class="tgt-hp-bar"><div class="tgt-hp-fill" style="width:${p.hp/p.maxHp*100}%;background:linear-gradient(90deg,#44ff88,#44ddcc);"></div></div>
+      <span style="font-size:10px;color:var(--white)">HP ${Math.floor(p.hp)}/${p.maxHp}</span>
+    </button>`).join('');
+  document.getElementById('ally-target-screen').classList.remove('hidden');
+}
+function onAllyTargetSelected(allyIdx, spellIdx){
+  document.getElementById('ally-target-screen').classList.add('hidden');
+  const aliveParty=G.party.filter(p=>p.hp>0);
+  const actor=aliveParty[G.cmdSelectIdx];
+  G.cmdQueue.push({actor, type:'spell', spellIdx, targetIdx:-(allyIdx+10)}); // 負値で味方を示す
+  selectCommandFor(G.cmdSelectIdx+1);
+}
+function closeAllyTargetSelect(){
+  document.getElementById('ally-target-screen').classList.add('hidden');
+  enableCmds(true);
+}
+
+// ====== 実行フェーズ ======
+function executeTurn(){
+  if(G.executing) return;
+  G.executing=true;
+  document.getElementById('battle-execute').style.display='none';
+
+  // にげる が含まれていたら処理
+  const fleeCmd=G.cmdQueue.find(q=>q.type==='flee');
+  if(fleeCmd){
+    if(Math.random()<0.6){setBMsg('うまく逃げられた！');setTimeout(endBattle,1200);return;}
+    else{setBMsg('逃げられなかった！');}
+  }
+
+  // 素早さ順にアクター並べる（プレイヤー側コマンド＋敵）
+  const actors=[];
+  G.cmdQueue.filter(q=>q.type!=='flee').forEach(q=>{
+    actors.push({type:'player',ref:q.actor,spd:q.actor.spd,cmd:q});
+  });
+  G.battleEnemies.filter(e=>e.curHp>0).forEach(e=>{
+    actors.push({type:'enemy',ref:e,spd:e.spd||5});
+  });
+  // 素早さ降順ソート（同値はランダム）
+  actors.sort((a,b)=>b.spd-a.spd+((Math.random()-.5)*.5));
+
+  G.execQueue=actors;
+  G.execIdx=0;
+  runNextAction();
+}
+
+function runNextAction(){
+  if(G.execIdx>=G.execQueue.length){
+    if(G.battleEnemies.every(e=>e.curHp<=0)){battleVictory();return;}
+    if(G.party.every(p=>p.hp<=0)){gameover();return;}
+    clearTurnFlags();
+    renderBattle();
+    setTimeout(startCommandSelect, 600);
+    return;
+  }
+
+  const act=G.execQueue[G.execIdx++];
+
+  // 既に倒れていたらスキップ
+  if(act.type==='player'&&act.ref.hp<=0){runNextAction();return;}
+  if(act.type==='enemy'&&act.ref.curHp<=0){runNextAction();return;}
+
+  if(act.type==='player'){
+    executePlayerCmd(act.cmd, act.ref);
+  } else {
+    executeEnemyAction(act.ref);
+  }
+}
+
+function executePlayerCmd(cmd, actor){
+  const alive=G.battleEnemies.filter(e=>e.curHp>0);
+  const pIdx=G.party.indexOf(actor);
+
+  if(cmd.type==='defend'){
+    actor.defending=true;
+    setBMsg(`${actor.name}は身を守っている！\n（このターンのダメージが半減）`);
+    setTimeout(runNextAction,1000);
+    return;
+  }
+
+  if(cmd.type==='attack'){
+    if(!alive.length){runNextAction();return;}
+    // targetIdx で指定された敵、なければ先頭
+    const tgt=alive.find(e=>e.idx===cmd.targetIdx)||alive[0];
+    animPlayerAttack(pIdx, tgt.idx, ()=>{
+      const dmg=calcDmg(actor.atk+(actor.buffed?Math.floor(actor.atk*.5):0),tgt.def);
+      actor.buffed=false;
+      applyEnemyDmg(tgt,dmg);
+      setBMsg(`${actor.name}の攻撃！\n${tgt.name}に ${dmg} のダメージ！`);
+      renderBattle();
+      checkBattleEnd(()=>setTimeout(runNextAction,1000));
+    });
+    return;
+  }
+
+  if(cmd.type==='spell'){
+    executeSpellCmd(actor, pIdx, cmd.spellIdx, cmd.targetIdx);
+    return;
+  }
+
+  if(cmd.type==='item'){
+    const items=actor.items.filter(i=>i.type==='heal');
+    if(!items.length){setBMsg(`${actor.name}は道具がない！`);setTimeout(runNextAction,900);return;}
+    const item=items[0];actor.items.splice(actor.items.indexOf(item),1);
+    const h=item.value||30;actor.hp=Math.min(actor.maxHp,actor.hp+h);
+    showDmg('+'+h,'dc-heal',true,pIdx);
+    setBMsg(`${actor.name}が ${item.icon}${item.name} を使った！\nHPが ${h} 回復！`);
+    renderBattle();setTimeout(runNextAction,1000);
+    return;
+  }
+}
+
+function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
+  const spells=SPELLS[actor.class]||[];
+  const spell=spells[spellIdx];
+  if(!spell){runNextAction();return;}
+  if(actor.mp<spell.mp){setBMsg(`${actor.name}はMPが足りない！`);setTimeout(runNextAction,900);return;}
+  actor.mp-=spell.mp;
+  const alive=G.battleEnemies.filter(e=>e.curHp>0);
+
+  // 味方対象（targetIdx < -1: -(allyIdx+10)）
+  if(targetIdx<=-10){
+    const allyIdx=-(targetIdx+10);
+    const healTgt=G.party[allyIdx];
+    if(!healTgt){runNextAction();return;}
+    const h=spell.type==='healfull'?healTgt.maxHp:Math.floor(actor.int*1.5+(spell.type==='heal2'?30:15)+Math.random()*15);
+    healTgt.hp=Math.min(healTgt.maxHp,healTgt.hp+h);
+    showDmg('+'+h,'dc-heal',true,allyIdx);
+    setBMsg(`${actor.name}が ${spell.name} を唱えた！\n${healTgt.name}のHPが ${h} 回復した！`);
+    renderBattle();setTimeout(runNextAction,1100);
+    return;
+  }
+
+  // 単体敵攻撃
+  if(spell.type==='atk'||spell.type==='multi'){
+    const t=alive.find(e=>e.idx===targetIdx)||alive[0];
+    if(!t){runNextAction();return;}
+    if(spell.type==='multi'){
+      let tot=0;for(let i=0;i<3;i++){const d=calcDmg(actor.atk,t.def,.7);applyEnemyDmg(t,d);tot+=d;}
+      setBMsg(`${actor.name}が ${spell.name}！\n${t.name}に合計 ${tot} のダメージ！`);
+    } else {
+      const d=calcDmg(actor.int*2,t.def,spell.power);applyEnemyDmg(t,d);
+      setBMsg(`${actor.name}が ${spell.name} を唱えた！\n${t.name}に ${d} のダメージ！`);
+    }
+  }
+  // 全体敵攻撃
+  else if(spell.type==='all'){
+    let msg=`${actor.name}が ${spell.name}！\n`;
+    alive.forEach(e=>{const d=calcDmg(actor.int*1.8,e.def,spell.power);applyEnemyDmg(e,d);msg+=`${e.name}に${d}　`;});
+    setBMsg(msg);
+  }
+  // 全体回復
+  else if(spell.type==='healall'){
+    G.party.forEach((p,i)=>{if(p.hp>0){const h=Math.floor(actor.int+10+Math.random()*10);p.hp=Math.min(p.maxHp,p.hp+h);showDmg('+'+h,'dc-heal',true,i);}});
+    setBMsg(`${actor.name}が ${spell.name}！全員が回復した！`);
+  }
+  // バフ
+  else if(spell.type==='buff'){
+    actor.buffed=true;setBMsg(`${actor.name}が ${spell.name}！攻撃力が上がった！`);
+  }
+  else{setBMsg(`${actor.name}が ${spell.name} を唱えた！`);}
+
+  renderBattle();
+  checkBattleEnd(()=>setTimeout(runNextAction,1100));
+}
+
+function executeEnemyAction(e){
+  const partyAlive=G.party.filter(p=>p.hp>0);
+  if(!partyAlive.length){gameover();return;}
+  const tgt=partyAlive[Math.floor(Math.random()*partyAlive.length)];
+  const tgtIdx=G.party.indexOf(tgt);
+  animEnemyAttack(e.idx,tgtIdx,()=>{
+    let dmg=calcDmg(e.atk,tgt.def);
+    if(tgt.defending){dmg=Math.max(1,Math.floor(dmg/2));}
+    tgt.hp=Math.max(0,tgt.hp-dmg);
+    const defMsg=tgt.defending?' (ぼうぎょ中！)':'';
+    setBMsg(`${e.name}の攻撃！\n${tgt.name}に ${dmg} のダメージ！${defMsg}`);
+    showDmg(dmg,'dc-hit',true,tgtIdx);
+    renderBattle();
+    if(G.party.every(p=>p.hp<=0)){setTimeout(gameover,1000);return;}
+    setTimeout(runNextAction,1000);
+  });
+}
+
+function clearTurnFlags(){
+  // ターン終了時に防御フラグをリセット
+  G.party.forEach(p=>p.defending=false);
+}
+
+// 敵全滅チェック（途中で全滅したら即終了）
+function checkBattleEnd(cont){
+  if(G.battleEnemies.every(e=>e.curHp<=0)){
+    setTimeout(battleVictory,800);
+  } else {
+    cont();
+  }
+}
+
+// Attack animations
+function animPlayerAttack(actorIdx, enemyIdx, cb){
+  const allyEl=document.getElementById('bally-spr-'+actorIdx);
+  const enmEl=document.getElementById('bspr-'+enemyIdx);
+  if(!allyEl){cb();return;}
+  allyEl.style.animation='none';void allyEl.offsetWidth;
+  allyEl.style.animation='playerAttack .45s ease-in-out forwards';
+  setTimeout(()=>{
+    if(enmEl){enmEl.style.animation='none';void enmEl.offsetWidth;enmEl.style.animation='enemyHit .35s ease-in-out forwards';}
+    allyEl.style.animation='';
+    cb();
+  },400);
+}
+
+function animEnemyAttack(enemyIdx, actorIdx, cb){
+  const enmEl=document.getElementById('bspr-'+enemyIdx);
+  const allyEl=document.getElementById('bally-spr-'+actorIdx);
+  if(!enmEl){cb();return;}
+  enmEl.style.animation='none';void enmEl.offsetWidth;
+  enmEl.style.animation='enemyAttack .45s ease-in-out forwards';
+  setTimeout(()=>{
+    if(allyEl){allyEl.style.animation='none';void allyEl.offsetWidth;allyEl.style.animation='hitShake .3s ease-in-out';}
+    enmEl.style.animation='';
+    cb();
+  },400);
+}
+
+function renderBattle(){
+  const ea=document.getElementById('battle-enemies');
+  ea.innerHTML=G.battleEnemies.map((e,i)=>{
+    const sz=e.boss?130:90;
+    const url=getSpriteURL(e.sprite||'slime',e.color||'#4488ff',sz);
+    return`<div class="battle-enemy ${e.curHp<=0?'dead':''}" id="ben-${i}">
+      <div class="b-ehp"><div class="b-ehp-fill" id="bhp-${i}" style="width:${e.curHp/e.maxHp*100}%"></div></div>
+      <img class="enemy-spr" id="bspr-${i}" src="${url}" width="${sz}" height="${sz}" alt="${e.name}"
+        style="image-rendering:pixelated;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));">
+      <div class="b-ename">${e.name} HP:${e.curHp}</div>
+    </div>`;
+  }).join('');
+
+  const aa=document.getElementById('battle-allies');
+  aa.innerHTML=G.party.map((p,i)=>`
+    <div class="battle-ally ${p.hp<=0?'dead':''}" id="bally-${i}">
+      <div class="ally-spr" id="bally-spr-${i}">${p.icon}</div>
+      <div class="ally-name-tag">${p.name}</div>
+    </div>`).join('');
+
+  // パーティステータス欄（コマンド選択中のキャラをハイライト）
+  const aliveParty=G.party.filter(p=>p.hp>0);
+  const curSelectActor=!G.executing&&aliveParty[G.cmdSelectIdx];
+  const bp=document.getElementById('battle-party');
+  bp.innerHTML=G.party.map((p,i)=>{
+    const isCur=p===curSelectActor;
+    // 選択済みコマンドを表示
+    const queued=G.cmdQueue?.find(q=>q.actor===p);
+    const cmdBadge=queued?`<span style="font-size:8px;color:var(--gold);margin-left:4px;">[${queued.type==='attack'?'攻':queued.type==='spell'?'呪':queued.type==='item'?'道':'逃'}]</span>`:'';
+    return`<div class="bpc ${isCur?'cur':''}" id="bpc-${i}">
+      <div class="bpc-name">${p.icon}${p.name}${cmdBadge}</div>
+      <div class="bpc-hp"><span>HP</span><span>${Math.max(0,Math.floor(p.hp))}/${p.maxHp}</span></div>
+      <div class="bpc-mp"><span>MP</span><span>${Math.max(0,Math.floor(p.mp))}/${p.maxMp}</span></div>
+    </div>`;}).join('');
+}
+
+function setBMsg(t){document.getElementById('battle-msg').textContent=t;}
+function enableCmds(on){['bc-atk','bc-spl','bc-itm','bc-def','bc-fle'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!on;});}
+
+function calcDmg(atk,def,mult=1){return Math.max(1,Math.floor(Math.max(1,atk-Math.floor(def*.5))*(0.85+Math.random()*.3)*mult));}
+
+function applyEnemyDmg(enemy,dmg){
+  enemy.curHp=Math.max(0,enemy.curHp-dmg);
+  const fill=document.getElementById('bhp-'+enemy.idx);
+  if(fill)fill.style.width=(enemy.curHp/enemy.maxHp*100)+'%';
+  const el=document.getElementById('ben-'+enemy.idx);
+  if(el){el.querySelector('.b-ename').textContent=enemy.name+' HP:'+enemy.curHp;if(enemy.curHp<=0)setTimeout(()=>el.classList.add('dead'),300);}
+  showDmg(dmg,'dc-hit',false,enemy.idx);
+}
+
+function showDmg(val,cls,isAlly,idx){
+  const el=document.createElement('div');
+  el.className='dmg-float '+cls;el.textContent=val===0?'MISS':(typeof val==='string'?val:val);
+  const bg=document.getElementById('battle-bg').getBoundingClientRect();
+  el.style.left=(bg.left+bg.width*(isAlly?(.15+idx*.18):(.35+idx*.2)))+'px';
+  el.style.top=(bg.top+bg.height*(isAlly?.72:.32))+'px';
+  document.body.appendChild(el);setTimeout(()=>el.remove(),1100);
+}
+
+function battleVictory(){
+  let totalExp=0,totalGold=0;
+  G.battleEnemies.forEach(e=>{totalExp+=e.exp;totalGold+=e.gold;});
+  if(G.isBoss){totalExp=Math.floor(totalExp*1.5);totalGold=Math.floor(totalGold*1.5);G.clearedDungeons[G.mapIdx]=true;}
+  G.party.forEach(p=>{if(p.hp>0)p.gold=(p.gold||0)+Math.floor(totalGold/G.party.length);});
+  setBMsg(`🏆 勝利！\n${totalExp}EXPと${totalGold}Gを手に入れた！`);
+  // Item drop
+  if(Math.random()<0.35){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});setTimeout(()=>showItemPop(item),700);}
+  setTimeout(()=>{G.party.forEach(p=>{if(p.hp>0){p.exp+=totalExp;checkLvl(p);}});processPendingLvl();},1500);
+}
+
+function checkLvl(c){
+  while(c.exp>=c.expNext){
+    c.lv++;c.exp-=c.expNext;c.expNext=Math.floor(c.expNext*1.6);
+    const g={hp:Math.floor(Math.random()*8+5),mp:Math.floor(Math.random()*4+2),atk:Math.floor(Math.random()*3+1),def:Math.floor(Math.random()*2+1)};
+    c.maxHp+=g.hp;c.hp=Math.min(c.hp+g.hp,c.maxHp);
+    c.baseMaxMp+=g.mp;c.mp=Math.min(c.mp+g.mp,c.maxMp);
+    c.baseAtk+=g.atk;c.baseDef+=g.def;recalcStats(c);
+    G.pendingLvlUps.push({c,g});
+  }
+}
+
+function processPendingLvl(){
+  if(!G.pendingLvlUps.length){endBattle();return;}
+  const{c,g}=G.pendingLvlUps.shift();
+  document.getElementById('lu-nm').textContent=c.name;
+  document.getElementById('lu-num').textContent=c.lv;
+  document.getElementById('lu-stats').innerHTML=`<div>HP <span>+${g.hp}</span></div><div>MP <span>+${g.mp}</span></div><div>攻 <span>+${g.atk}</span></div><div>守 <span>+${g.def}</span></div>`;
+  document.getElementById('lvlup-screen').classList.remove('hidden');
+}
+function closeLvlUp(){document.getElementById('lvlup-screen').classList.add('hidden');processPendingLvl();}
+
+function gameover(){
+  G.inBattle=false;
+  G.party.forEach(p=>{p.hp=Math.max(1,Math.floor(p.maxHp*.25));});
+  setBMsg('😵 全滅してしまった…村に戻った');
+  setTimeout(()=>{
+    document.getElementById('battle-screen').classList.add('hidden');
+    setPlayerPos(12,9);generateMap(0);updatePartyHUD();
+    addChat('全滅…村に戻った',null,true);
+    G.inBattle=false;startLoop();
+  },2000);
+}
+
+function endBattle(){
+  G.inBattle=false;
+
+  // オンライン合体パーティを解除（自分のパーティに戻す）
+  if(G._battlePartyBackup){
+    // 自分のメンバーのHPをバトル後の状態に更新
+    G._battlePartyBackup.forEach(p=>{
+      const battled=G.party.find(bp=>bp.id===p.id||bp.name===p.name);
+      if(battled){p.hp=battled.hp;p.mp=battled.mp;p.exp=battled.exp;p.lv=battled.lv;p.gold=battled.gold;}
+    });
+    G.party=G._battlePartyBackup;
+    G._battlePartyBackup=null;
+  }
+
+  document.getElementById('battle-screen').classList.add('hidden');
+  updatePartyHUD();
+  // Respawn some enemies
+  if(G.mapEnemies.length<3)spawnMapEnemy();
+  startLoop();
+}
+
+// ============================================================
+// MAP ACTIONS
+// ============================================================
+function handleTalk(){
+  if(!document.getElementById('dialog').classList.contains('hidden')){advDialog();return;}
+  const leader=G.party[0];if(!leader)return;
+  const tx=Math.floor(leader.x/G.TILE),ty=Math.floor(leader.y/G.TILE);
+  const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
+  for(const [dx,dy] of dirs){
+    const nx=tx+dx,ny=ty+dy;
+    if(G.tiles[ny]?.[nx]===T.NPC){const npc=G.npcsOnMap.find(n=>n.x===nx&&n.y===ny);if(npc){showDialog(npc.id);return;}}
+  }
+  addChat('話せる相手がそばにいない',null,true);
+}
+function handleSearch(){
+  if(Math.random()<.25){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});showItemPop(item);}
+  else addChat('何も見つからなかった…',null,true);
+}
+
+let dialogNpc=null,dialogPage=0;
+function showDialog(id){
+  const npc=NPCS.find(n=>n.id===id);if(!npc)return;
+  dialogNpc=npc;dialogPage=0;
+  document.getElementById('dialog-nm').textContent=npc.icon+' '+npc.name;
+  document.getElementById('dialog-tx').textContent=npc.dialog[0];
+  document.getElementById('dialog').classList.remove('hidden');
+}
+function advDialog(){
+  if(!dialogNpc)return;
+  dialogPage++;
+  if(dialogPage>=dialogNpc.dialog.length){
+    document.getElementById('dialog').classList.add('hidden');
+    if(dialogNpc.id==='inn'&&G.party[0].gold>=50){G.party[0].gold-=50;G.party.forEach(p=>{p.hp=p.maxHp;p.mp=p.maxMp;});addChat('宿屋に泊まった。HP・MP全快！',null,true);}
+    dialogNpc=null;return;
+  }
+  document.getElementById('dialog-tx').textContent=dialogNpc.dialog[dialogPage];
+}
+canvas.addEventListener('click',advDialog);
+
+function openChestAt(tx,ty){
+  const ch=G.chests.find(c=>c.x===tx&&c.y===ty);
+  if(!ch||ch.opened)return;
+  ch.opened=true;
+  const r=Math.random();
+  if(r<.4){const g=20+Math.floor(Math.random()*60)+G.dungeonFloor*15;G.party[0].gold+=g;addChat('🎁 '+g+'ゴールドを見つけた！',null,true);}
+  else if(r<.7){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});showItemPop(item);}
+  else{const tier=Math.min(G.mapIdx,5);const pool=EQUIP_CATALOG.filter(e=>e.price<=1500*(tier+1));const e=(pool.length?pool:EQUIP_CATALOG)[Math.floor(Math.random()*(pool.length?pool.length:EQUIP_CATALOG.length))];if(!G.party[0].inventory.includes(e.id))G.party[0].inventory.push(e.id);showItemPop({icon:e.icon,name:e.name});}
+}
+
+function changeMap(idx){
+  if(idx>=MAPS_DEF.length)idx=0;
+  fadeIn(()=>{G.prevMapIdx=G.mapIdx;G.dungeonFloor=0;generateMap(idx);addChat('📍 '+MAPS_DEF[idx].name+'に移動した',null,true);});
+}
+function descendFloor(){
+  const map=MAPS_DEF[G.mapIdx];G.dungeonFloor++;
+  fadeIn(()=>{generateMap(G.mapIdx);const last=G.dungeonFloor===map.floors-1;addChat(last?'⚠️ 最深部…強大な気配！':'🔽 地下'+(G.dungeonFloor+1)+'階',null,true);});
+}
+function ascendFloor(){
+  if(G.dungeonFloor<=0){changeMap(G.prevMapIdx);return;}
+  G.dungeonFloor--;fadeIn(()=>{generateMap(G.mapIdx);addChat('🔼 地下'+(G.dungeonFloor+1)+'階に戻った',null,true);});
+}
+function fadeIn(cb){
+  const t=document.getElementById('transition');t.classList.add('in');
+  setTimeout(()=>{cb();setTimeout(()=>t.classList.remove('in'),350);},350);
+}
+
+// ============================================================
+// STATS / EQUIP
+// ============================================================
+function recalcStats(c){
+  if(!c.baseAtk&&c.baseAtk!==0)return;
+  let b={atk:0,def:0,spd:0,int:0,maxMp:0};
+  for(const slot of['weapon','armor','accessory']){const id=c.equip[slot];if(!id)continue;const e=getEquip(id);if(!e)continue;b.atk+=e.atk||0;b.def+=e.def||0;b.spd+=e.spd||0;b.int+=e.int||0;b.maxMp+=e.maxMp||0;}
+  c.atk=Math.max(1,c.baseAtk+b.atk);c.def=Math.max(0,c.baseDef+b.def);c.spd=Math.max(1,c.baseSpd+b.spd);c.int=Math.max(1,c.baseInt+b.int);c.maxMp=c.baseMaxMp+b.maxMp;if(c.mp>c.maxMp)c.mp=c.maxMp;
+}
+
+// ============================================================
+// PARTY HUD
+// ============================================================
+function updatePartyHUD(){
+  document.getElementById('party-hud').innerHTML=G.party.map(p=>`
+    <div class="hud-card">
+      <div class="hud-icon">${p.icon}</div>
+      <div class="hud-bars">
+        <div class="hud-name">${p.name} Lv.${p.lv}</div>
+        <div class="bar-row"><span class="bar-lbl">HP</span><div class="bar-track"><div class="bar-hp" style="width:${Math.max(0,p.hp/p.maxHp*100)}%"></div></div></div>
+        <div class="bar-row"><span class="bar-lbl">MP</span><div class="bar-track"><div class="bar-mp" style="width:${Math.max(0,p.mp/p.maxMp*100)}%"></div></div></div>
+      </div>
+      <div class="hud-lv">${Math.floor(p.hp)}/${p.maxHp}</div>
+    </div>`).join('');
+}
+
+// ============================================================
+// MENU / STATUS / EQUIP
+// ============================================================
+function openMenu(){
+  document.getElementById('menu-screen').classList.remove('hidden');
+  document.getElementById('menu-online-btn').style.display=ONLINE.isOnline?'':'none';
+}
+function closeMenu(){document.getElementById('menu-screen').classList.add('hidden');}
+function openStatus(){closeMenu();
+  const c=G.party[0];
+  document.getElementById('st-ico').textContent=c.icon;
+  document.getElementById('st-nm').textContent=c.name;
+  document.getElementById('st-cl').textContent=CLASSES[c.class].name+' · Lv.'+c.lv;
+  document.getElementById('st-grid').innerHTML=`
+    <div class="sg-item"><div class="sg-lbl">HP</div><div class="sg-val" style="color:#ff8888">${Math.floor(c.hp)}/${c.maxHp}</div></div>
+    <div class="sg-item"><div class="sg-lbl">MP</div><div class="sg-val" style="color:#99bbff">${Math.floor(c.mp)}/${c.maxMp}</div></div>
+    <div class="sg-item"><div class="sg-lbl">こうげき</div><div class="sg-val">${c.atk}</div></div>
+    <div class="sg-item"><div class="sg-lbl">しゅび</div><div class="sg-val">${c.def}</div></div>
+    <div class="sg-item"><div class="sg-lbl">すばやさ</div><div class="sg-val">${c.spd}</div></div>
+    <div class="sg-item"><div class="sg-lbl">かしこさ</div><div class="sg-val">${c.int}</div></div>
+    <div class="sg-item"><div class="sg-lbl">けいけん</div><div class="sg-val">${c.exp}/${c.expNext}</div></div>
+    <div class="sg-item"><div class="sg-lbl">ゴールド</div><div class="sg-val" style="color:var(--gold)">${c.gold}G</div></div>`;
+  document.getElementById('status-screen').classList.remove('hidden');
+}
+function closeStatus(){document.getElementById('status-screen').classList.add('hidden');}
+function menuItem(){closeMenu();const items=G.party[0].items;addChat(items.length?'どうぐ: '+items.map(i=>i.icon+i.name).join(' '):'どうぐがない',null,true);}
+
+let eqSlot='weapon';
+function menuEquip(){closeMenu();eqSlot='weapon';renderEquip();document.getElementById('equip-screen').classList.remove('hidden');}
+function closeEquip(){document.getElementById('equip-screen').classList.add('hidden');}
+const SLOT_LBL={weapon:'ぶき',armor:'よろい',accessory:'そうしょく'};
+function renderEquip(){
+  const c=G.party[0];
+  document.getElementById('eq-slots').innerHTML=['weapon','armor','accessory'].map(s=>{
+    const id=c.equip[s];const e=id?getEquip(id):null;
+    const stat=e?[e.atk&&'攻+'+e.atk,e.def&&'守+'+e.def].filter(Boolean).join(' '):'';
+    return`<button class="eqslot ${eqSlot===s?'cur':''}" onclick="selEqSlot('${s}')">
+      <span class="eq-stype">${SLOT_LBL[s]}</span><span class="eq-sico">${e?e.icon:'➖'}</span>
+      <span class="eq-snm ${e?'':'eq-empty'}">${e?e.name:'なし'}</span>
+      <span class="eq-sstat">${stat}</span></button>`;}).join('');
+  document.getElementById('eq-stats').innerHTML=`<span class="eq-chip">攻<b>${c.atk}</b></span><span class="eq-chip">守<b>${c.def}</b></span><span class="eq-chip">速<b>${c.spd}</b></span>`;
+  document.getElementById('eq-list-lbl').textContent=SLOT_LBL[eqSlot]+'を選ぶ';
+  const owned=c.inventory.map(getEquip).filter(e=>e&&e.slot===eqSlot);
+  const curId=c.equip[eqSlot];
+  document.getElementById('eq-list').innerHTML=
+    `<button class="eqitem" onclick="equipItm(null)"><span class="eq-sico">➖</span><span class="eq-snm">はずす</span></button>`+
+    owned.map(e=>{
+      const cur=curId?getEquip(curId):null;
+      const da=(e.atk||0)-(cur?.atk||0),dd=(e.def||0)-(cur?.def||0);
+      const delta=[da&&`<span class="${da>0?'dplus':'dminus'}">攻${da>0?'+':''}${da}</span>`,dd&&`<span class="${dd>0?'dplus':'dminus'}">守${dd>0?'+':''}${dd}</span>`].filter(Boolean).join(' ');
+      return`<button class="eqitem ${e.id===curId?'equipped':''}" onclick="equipItm('${e.id}')">
+        <span class="eq-sico">${e.icon}</span><span class="eq-snm">${e.name}</span>
+        <span class="eq-delta">${delta}</span>${e.id===curId?'<span class="eq-badge">装備中</span>':''}</button>`;}).join('');
+}
+function selEqSlot(s){eqSlot=s;renderEquip();}
+function equipItm(id){
+  const c=G.party[0];c.equip[eqSlot]=id;recalcStats(c);
+  addChat((id?getEquip(id).icon+getEquip(id).name+'を装備！':'はずした'),null,true);
+  renderEquip();updatePartyHUD();
+}
+
+// ============================================================
+// ITEM POPUP / CHAT
+// ============================================================
+function showItemPop(item){
+  document.getElementById('ip-ico').textContent=item.icon;
+  document.getElementById('ip-nm').textContent=item.name;
+  const el=document.getElementById('item-popup');
+  el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),2500);
+}
+function addChat(msg,name,sys=false){
+  const box=document.getElementById('chatbox');
+  const el=document.createElement('div');el.className='chat-line';
+  el.innerHTML=sys?`<span class="chat-sys">${msg}</span>`:`<span class="chat-name">${name}:</span> ${msg}`;
+  box.appendChild(el);while(box.children.length>4)box.removeChild(box.firstChild);
+  setTimeout(()=>el.remove(),6000);
+}
+function openChatInput(){document.getElementById('chat-input').classList.remove('hidden');document.getElementById('chat-txt').focus();}
+function closeChatInput(){document.getElementById('chat-input').classList.add('hidden');}
+function sendChat(){const t=document.getElementById('chat-txt').value.trim();if(!t)return;addChat(t,G.party[0].name);document.getElementById('chat-txt').value='';closeChatInput();}
+document.getElementById('chat-txt').addEventListener('keypress',e=>{if(e.key==='Enter')sendChat();});
+
+// ============================================================
+// ズームリセット（iOSキーボードを閉じたときに元のスケールに戻す）
+// ============================================================
+function resetZoom(){
+  // viewportのscaleを強制的に1.0にリセット
+  const mv = document.querySelector('meta[name="viewport"]');
+  if(!mv) return;
+  mv.setAttribute('content','width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover');
+}
+// inputからフォーカスが外れたときにリセット
+document.addEventListener('focusout', e => {
+  if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    setTimeout(resetZoom, 100);
+    // スクロール位置もトップに戻す
+    setTimeout(() => window.scrollTo(0, 0), 150);
+  }
+});
+</script>
+</body>
+</html>
