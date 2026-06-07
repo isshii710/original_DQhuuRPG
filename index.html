@@ -127,42 +127,60 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .tmenu-btn:active,.tmenu-btn:hover{background:linear-gradient(180deg,rgba(60,100,200,.9),rgba(28,60,150,.9));border-color:var(--gold);color:var(--gold);transform:translateX(4px);}
 .tmenu-arrow{color:var(--gold);font-size:11px;}
 
-#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#0d2244,#020810);overflow:hidden;padding:0;align-items:stretch;justify-content:stretch;}
-.lobby-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 8px 32px;touch-action:pan-y;}
-.lobby-scroll *{touch-action:pan-y;}
-.lobby-box{width:min(400px,98vw);margin:0 auto;}
-.lfield{margin-bottom:8px;}
-.lfield label{display:block;font-size:10px;color:var(--white);letter-spacing:2px;margin-bottom:3px;}
-.linput{width:100%;background:rgba(10,20,70,.9);border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;font-size:16px;padding:9px 12px;border-radius:2px;outline:none;}
+/* ========== LOBBY ========== */
+#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#0d2244,#020810);overflow:hidden;padding:0;display:flex;flex-direction:column;align-items:stretch;}
+#lobby-title-bar{flex-shrink:0;font-family:'Noto Serif JP',serif;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:2px;text-align:center;padding:7px 16px;border-bottom:1px solid var(--win-bd);}
+.lobby-main{flex:1;min-height:0;overflow:hidden;padding:6px 7px 0;}
+#lobby-body{padding-bottom:100px;}
+.linput{width:100%;background:rgba(10,20,70,.9);border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;font-size:16px;padding:6px 10px;border-radius:2px;outline:none;}
 .linput:focus{border-color:var(--gold);}
-
-/* Party builder — no max-height, just natural flow */
-.party-builder{display:flex;flex-direction:column;gap:3px;}
-.party-slot{background:rgba(10,20,60,.85);border:1px solid rgba(60,90,180,.55);border-radius:3px;padding:5px 7px;}
-.party-slot-head{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
-.slot-num{font-size:10px;color:var(--gold);letter-spacing:1px;width:30px;flex-shrink:0;}
-.slot-name-in{flex:1;background:rgba(10,20,70,.9);border:1px solid rgba(60,90,180,.5);color:var(--white);font-family:'DotGothic16',serif;font-size:16px;padding:4px 8px;border-radius:2px;outline:none;}
+/* 2-column party grid */
+.party-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px;}
+.party-slot{background:rgba(10,20,60,.85);border:1px solid rgba(60,90,180,.55);border-radius:4px;padding:5px 6px;display:flex;flex-direction:column;gap:4px;}
+.ps-top{display:flex;align-items:center;gap:4px;}
+.ps-label{font-size:10px;color:var(--gold);flex-shrink:0;width:26px;}
+.slot-name-in{flex:1;min-width:0;background:rgba(10,20,70,.9);border:1px solid rgba(60,90,180,.5);color:var(--white);font-family:'DotGothic16',serif;font-size:16px;padding:3px 5px;border-radius:2px;outline:none;width:100%;}
 .slot-name-in:focus{border-color:var(--gold);}
-.slot-toggle{font-size:10px;color:var(--white);cursor:pointer;padding:4px 8px;border:1px solid rgba(60,90,160,.5);border-radius:2px;background:rgba(10,20,60,.7);}
+.ps-config-btn{display:flex;align-items:center;gap:5px;cursor:pointer;padding:3px 5px;border:1px solid rgba(60,90,160,.4);border-radius:3px;background:rgba(10,20,50,.7);touch-action:manipulation;}
+.ps-config-btn:active{background:rgba(30,60,140,.7);}
+.ps-chip-cv{image-rendering:pixelated;border:1px solid rgba(60,90,180,.4);border-radius:2px;flex-shrink:0;}
+.ps-cls-badge{font-size:9px;color:var(--white);flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.ps-arrow{font-size:8px;color:#aaffcc;flex-shrink:0;}
+/* Room box */
+.room-box{background:rgba(20,40,80,.7);border:1px solid rgba(255,215,0,.4);border-radius:4px;padding:7px 10px;margin-bottom:6px;}
+.room-code-disp{font-size:16px;font-weight:900;color:var(--gold);letter-spacing:4px;text-shadow:0 0 8px rgba(255,215,0,.3);}
+.room-hint{font-size:9px;color:var(--white);margin-top:2px;letter-spacing:1px;}
+.party-member-list{display:flex;flex-direction:column;gap:3px;min-height:24px;}
+.pmember{background:rgba(10,20,60,.8);border:1px solid rgba(60,90,180,.4);border-radius:3px;padding:4px 8px;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--white);}
+.pmember .dot{width:6px;height:6px;border-radius:50%;background:#00ff88;box-shadow:0 0 4px #00ff88;flex-shrink:0;}
+/* Fixed bottom action bar */
+.lobby-action-bar{position:fixed;bottom:0;left:0;width:100%;background:rgba(2,8,16,.97);border-top:1px solid rgba(60,90,180,.4);padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px));z-index:9999;display:flex;flex-direction:column;gap:4px;}
+.btn-prim{background:linear-gradient(180deg,#4477ff,#1133cc);border:1px solid #6699ff;color:#fff;font-family:'DotGothic16',serif;font-size:14px;padding:10px;border-radius:2px;cursor:pointer;text-align:center;letter-spacing:1px;transition:all .1s;touch-action:manipulation;}
+.btn-prim:active{transform:scale(.98);}
+.btn-sec{background:rgba(10,20,60,.85);border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;font-size:12px;padding:8px;border-radius:2px;cursor:pointer;text-align:center;transition:all .1s;touch-action:manipulation;}
+.btn-sec:active{transform:scale(.98);}
+/* Slot config overlay (bottom sheet) */
+#slot-config-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:flex-end;}
+#slot-config-overlay.hidden{display:none;}
+#slot-config-panel{background:var(--win-bg);border:2px solid var(--win-bd);border-radius:8px 8px 0 0;width:100%;max-height:72vh;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding-bottom:env(safe-area-inset-bottom,0px);}
+#slot-config-panel *{touch-action:pan-y;}
+.sco-title-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--win-bd);flex-shrink:0;}
+.sco-title-text{font-family:'Noto Serif JP',serif;font-size:12px;font-weight:700;color:var(--gold);letter-spacing:2px;}
+.sco-close{background:none;border:1px solid rgba(60,90,160,.5);color:var(--white);font-family:'DotGothic16',serif;font-size:11px;padding:4px 10px;border-radius:2px;cursor:pointer;touch-action:manipulation;}
+.sco-body{padding:8px 12px 12px;}
+.sco-sect{font-size:9px;color:#aaffcc;letter-spacing:1px;margin-bottom:4px;margin-top:8px;}
+.sco-sect:first-child{margin-top:0;}
+.chip-thumb-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;}
+.chip-thumb{image-rendering:pixelated;cursor:pointer;border:2px solid transparent;border-radius:3px;touch-action:manipulation;}
+.chip-thumb.chip-sel{border-color:var(--gold);}
 .class-row{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;}
-.cls-btn{background:rgba(10,20,60,.85);border:1px solid rgba(60,90,180,.5);border-radius:3px;padding:4px 2px;cursor:pointer;text-align:center;transition:all .1s;}
+.cls-btn{background:rgba(10,20,60,.85);border:1px solid rgba(60,90,180,.5);border-radius:3px;padding:4px 2px;cursor:pointer;text-align:center;transition:all .1s;touch-action:manipulation;}
 .cls-btn.sel{border-color:var(--gold);background:rgba(30,60,140,.95);}
 .cls-icon{font-size:16px;display:block;}
 .cls-name{font-size:8px;color:var(--white);letter-spacing:1px;margin-top:1px;}
 .cls-btn.sel .cls-name{color:var(--gold);}
-
-.room-box{background:rgba(20,40,80,.7);border:1px solid rgba(255,215,0,.4);border-radius:4px;padding:8px 10px;text-align:center;margin-bottom:6px;}
-.room-code-disp{font-size:18px;font-weight:900;color:var(--gold);letter-spacing:4px;text-shadow:0 0 8px rgba(255,215,0,.3);}
-.room-hint{font-size:9px;color:var(--white);margin-top:2px;letter-spacing:1px;}
-.party-member-list{display:flex;flex-direction:column;gap:4px;min-height:40px;}
-.pmember{background:rgba(10,20,60,.8);border:1px solid rgba(60,90,180,.4);border-radius:3px;padding:6px 10px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--white);}
-.pmember .dot{width:6px;height:6px;border-radius:50%;background:#00ff88;box-shadow:0 0 4px #00ff88;flex-shrink:0;}
-
-.btn-prim{background:linear-gradient(180deg,#4477ff,#1133cc);border:1px solid #6699ff;color:#fff;font-family:'DotGothic16',serif;font-size:14px;padding:9px;border-radius:2px;cursor:pointer;text-align:center;letter-spacing:1px;margin-bottom:4px;transition:all .1s;}
-.btn-prim:active{transform:scale(.98);}
-.btn-sec{background:rgba(10,20,60,.85);border:1px solid var(--win-bd);color:var(--white);font-family:'DotGothic16',serif;font-size:12px;padding:7px;border-radius:2px;cursor:pointer;text-align:center;transition:all .1s;}
-.btn-sec:active{transform:scale(.98);}
-.lobby-body{padding:10px 12px 14px;display:flex;flex-direction:column;gap:6px;}
+.sco-decide{background:linear-gradient(180deg,#22aa55,#116633);border:1px solid #44cc77;color:#fff;font-family:'DotGothic16',serif;font-size:13px;padding:10px;border-radius:2px;cursor:pointer;text-align:center;letter-spacing:1px;width:100%;margin-top:10px;touch-action:manipulation;}
+.sco-decide:active{transform:scale(.98);}
 
 /* ========== BATTLE SCREEN ========== */
 #battle-screen{
@@ -719,12 +737,22 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 
 <!-- ===== LOBBY SCREEN ===== -->
 <div class="screen hidden" id="lobby-screen">
-  <div class="lobby-scroll">
-    <div class="win lobby-box">
-      <div class="win-title" id="lobby-title">⚔️ 新しい冒険</div>
-      <div class="lobby-body" id="lobby-body"></div>
+  <div id="lobby-title-bar">⚔️ 新しい冒険</div>
+  <div class="lobby-main">
+    <div id="lobby-body"></div>
+  </div>
+  <!-- キャラ・職業設定 ボトムシート -->
+  <div id="slot-config-overlay" class="hidden">
+    <div id="slot-config-panel">
+      <div class="sco-title-row">
+        <span class="sco-title-text" id="sco-title-text">キャラ・職業設定</span>
+        <button class="sco-close" onclick="closeSlotConfig()">✕ 閉じる</button>
+      </div>
+      <div class="sco-body" id="sco-body"></div>
     </div>
   </div>
+  <!-- 固定ボタンバー -->
+  <div class="lobby-action-bar" id="lobby-action-bar"></div>
 </div>
 
 <script>
@@ -1035,14 +1063,12 @@ function showLobby(mode){
   G.mode=mode;
   document.getElementById('title-screen').classList.add('hidden');
   document.getElementById('lobby-screen').classList.remove('hidden');
-  const t=document.getElementById('lobby-title');
-  const b=document.getElementById('lobby-body');
-  if(mode==='solo'){t.textContent='⚔️ ひとり旅';b.innerHTML=buildLobbyHTML(false,false);}
-  else if(mode==='create'){t.textContent='🌐 部屋を作る';b.innerHTML=buildLobbyHTML(true,true);}
-  else{t.textContent='🤝 仲間に合流';b.innerHTML=buildLobbyHTML(true,false);}
+  const titles={solo:'⚔️ ひとり旅',create:'🌐 部屋を作る',join:'🤝 仲間に合流'};
+  document.getElementById('lobby-title-bar').textContent=titles[mode]||'⚔️ 新しい冒険';
+  const online=(mode!=='solo');
+  document.getElementById('lobby-body').innerHTML=buildLobbyHTML(online,mode==='create');
+  document.getElementById('lobby-action-bar').innerHTML=buildActionBarHTML(online,mode==='create');
   setTimeout(initChipPreviews, 50);
-
-  // PeerJS 初期化（create=ホスト / join=ゲスト）
   if(mode==='create') initPeer('host');
   else if(mode==='join') initPeer('guest');
 }
@@ -1050,163 +1076,135 @@ function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from(
 function genId(){return Math.random().toString(36).substr(2,8).toUpperCase();}
 
 function buildLobbyHTML(online,isHost){
-  const clsGrid=Object.entries(CLASSES).map(([k,v])=>`
-    <div class="cls-btn ${k==='warrior'?'sel':''}" onclick="selCls(this,'${k}')" data-cls="${k}">
-      <span class="cls-icon">${v.icon}</span><div class="cls-name">${v.name}</div>
-    </div>`).join('');
-
-  // Party slots — 見た目と職業を1つのトグルで開閉
-  const partySlots = [1,2,3,4].map(i=>`
+  // 2列グリッドで4スロット
+  const partyGrid=[1,2,3,4].map(i=>`
     <div class="party-slot" id="pslot-${i}">
-      <div class="party-slot-head">
-        <span class="slot-num">${i===1?'自分':i+'人目'}</span>
+      <div class="ps-top">
+        <span class="ps-label">${i===1?'自分':i+'人目'}</span>
         <input class="slot-name-in" id="pname-${i}"
-          placeholder="${i===1?'名前（8文字）':i+'人目（空白=参加なし）'}"
-          maxlength="8">
-        <span class="slot-toggle" id="stog-${i}" onclick="toggleSlotConfig(${i})">⚔️ 戦士 ▼</span>
+          placeholder="${i===1?'名前':'（なし）'}" maxlength="8">
       </div>
-      <div style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;" onclick="toggleSlotConfig(${i})">
-        <canvas id="chip-canvas-${i}" width="32" height="32"
-          style="image-rendering:pixelated;border:1px solid rgba(60,90,180,.5);border-radius:2px;flex-shrink:0;pointer-events:none;"></canvas>
-        <span style="font-size:9px;color:var(--white);pointer-events:none;">キャラ・職業を設定 ▼</span>
-      </div>
-      <div id="pslot-config-${i}" style="display:none;margin-top:4px;" data-open="0">
-        <div style="font-size:9px;color:#aaffcc;letter-spacing:1px;margin-bottom:3px;">見た目を選ぶ</div>
-        <div style="overflow-x:auto;white-space:nowrap;padding-bottom:4px;margin-bottom:6px;border-bottom:1px solid rgba(60,90,160,.2);">
-          ${PARTY_CHIPS.map((p,pi)=>`<canvas class="chip-thumb" id="chipth-${i}-${pi}" width="32" height="32"
-            style="image-rendering:pixelated;margin-right:3px;cursor:pointer;border:2px solid transparent;border-radius:2px;display:inline-block;vertical-align:top;"
-            onclick="selectChip(${i},${pi})" title="${p}"></canvas>`).join('')}
-        </div>
-        <div style="font-size:9px;color:#aaffcc;letter-spacing:1px;margin-bottom:3px;">職業を選ぶ</div>
-        <div class="class-row" id="clsgrid-${i}">
-          ${Object.entries(CLASSES).map(([k,v])=>`
-            <div class="cls-btn ${k==='warrior'?'sel':''}" onclick="selClsSlot(this,${i},'${k}')" data-cls="${k}">
-              <span class="cls-icon">${v.icon}</span><div class="cls-name">${v.name}</div>
-            </div>`).join('')}
-        </div>
+      <div class="ps-config-btn" onclick="openSlotConfig(${i})">
+        <canvas id="chip-canvas-${i}" class="ps-chip-cv" width="28" height="28"></canvas>
+        <span class="ps-cls-badge" id="stog-${i}">⚔️ 戦士</span>
+        <span class="ps-arrow">▼</span>
       </div>
     </div>`).join('');
 
   let roomSection='';
   if(online&&isHost){
-    roomSection=`
-    <div class="room-box">
+    roomSection=`<div class="room-box">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <div style="text-align:left;">
-          <div style="font-size:9px;color:#aaffcc;letter-spacing:1px;">あなたのID</div>
-          <div class="room-code-disp" id="peer-id-disp">生成中…</div>
-        </div>
+        <div><div style="font-size:9px;color:#aaffcc;letter-spacing:1px;">あなたのID</div>
+          <div class="room-code-disp" id="peer-id-disp">生成中…</div></div>
         <button class="btn-sec" style="font-size:10px;padding:5px 10px;flex-shrink:0;"
-          onclick="navigator.clipboard.writeText(document.getElementById('peer-id-disp').textContent).then(()=>alert('コピーしました'))">
-          📋 コピー
-        </button>
+          onclick="navigator.clipboard.writeText(document.getElementById('peer-id-disp').textContent).then(()=>alert('コピーしました'))">📋 コピー</button>
       </div>
-      <div id="peer-connect-status" style="font-size:10px;color:#ffee88;margin-top:6px;text-align:left;">⏳ 相手の接続を待っています…</div>
-      <button id="peer-start-btn" class="btn-prim" disabled onclick="startGame()" style="opacity:0.5;margin-top:8px;width:100%;">
-        🌐 接続後に出発
-      </button>
+      <div id="peer-connect-status" style="font-size:10px;color:#ffee88;margin-top:5px;">⏳ 相手の接続を待っています…</div>
     </div>`;
   } else if(online&&!isHost){
-    roomSection=`
-    <div class="room-box">
+    roomSection=`<div class="room-box">
       <div style="font-size:9px;color:#aaffcc;letter-spacing:1px;margin-bottom:4px;">ホストのID</div>
       <div style="display:flex;gap:6px;align-items:center;">
         <input class="linput" id="join-code" placeholder="例: AB3X7K"
-          maxlength="8" oninput="this.value=this.value.toUpperCase()" style="text-align:center;letter-spacing:3px;font-size:15px;padding:7px 8px;">
-        <button class="btn-sec" style="font-size:11px;padding:7px 12px;white-space:nowrap;flex-shrink:0;" onclick="connectToHost()">
-          🔗 接続
-        </button>
+          maxlength="8" oninput="this.value=this.value.toUpperCase()"
+          style="text-align:center;letter-spacing:3px;font-size:15px;padding:6px 8px;">
+        <button class="btn-sec" style="font-size:11px;padding:7px 12px;white-space:nowrap;flex-shrink:0;" onclick="connectToHost()">🔗 接続</button>
       </div>
-      <div id="peer-connect-status" style="font-size:10px;color:#ffee88;margin-top:6px;min-height:16px;"></div>
+      <div id="peer-connect-status" style="font-size:10px;color:#ffee88;margin-top:5px;min-height:16px;"></div>
       <div id="peer-id-disp" style="display:none;"></div>
-      <button id="peer-start-btn" class="btn-prim" disabled onclick="startGame()" style="opacity:0.5;margin-top:8px;width:100%;">
-        🤝 接続後に出発
-      </button>
     </div>`;
   }
-
-  const mainBtn = online ? '' : `<button class="btn-prim" onclick="startGame()">⚔️ 冒険開始！</button>`;
-  return `
-    <div class="lfield"><label>パーティを作る（最大4人）</label><div class="party-builder">${partySlots}</div></div>
-    ${roomSection}
-    ${mainBtn}
-    <button class="btn-sec" onclick="backTitle()">← もどる</button>`;
+  return `<div class="party-grid">${partyGrid}</div>${roomSection}`;
 }
 
-// Track per-slot class selection
+function buildActionBarHTML(online,isHost){
+  if(online&&isHost){
+    return `<button id="peer-start-btn" class="btn-prim" disabled onclick="startGame()" style="opacity:0.5;">🌐 接続後に出発</button>
+            <button class="btn-sec" onclick="backTitle()">← もどる</button>`;
+  }
+  if(online&&!isHost){
+    return `<button id="peer-start-btn" class="btn-prim" disabled onclick="startGame()" style="opacity:0.5;">🤝 接続後に出発</button>
+            <button class="btn-sec" onclick="backTitle()">← もどる</button>`;
+  }
+  return `<button class="btn-prim" onclick="startGame()">⚔️ 冒険開始！</button>
+          <button class="btn-sec" onclick="backTitle()">← もどる</button>`;
+}
+
+// Track per-slot class/chip selection
 const slotClass = {1:'warrior',2:'warrior',3:'warrior',4:'warrior'};
+const slotChip  = {1:0, 2:1, 3:2, 4:3};
+
+function backTitle(){document.getElementById('lobby-screen').classList.add('hidden');document.getElementById('title-screen').classList.remove('hidden');}
+
+// ─── スロット設定ボトムシート ──────────────────────────────
+let _scoSlot = 1;
+function openSlotConfig(slot){
+  _scoSlot = slot;
+  document.getElementById('sco-title-text').textContent = (slot===1?'自分':slot+'人目') + ' のキャラ・職業';
+  const chipHTML = PARTY_CHIPS.map((p,pi)=>`
+    <canvas class="chip-thumb${slotChip[slot]===pi?' chip-sel':''}"
+      id="sco-chip-${pi}" width="36" height="36"
+      onclick="selectChip(${slot},${pi})"></canvas>`).join('');
+  const clsHTML = Object.entries(CLASSES).map(([k,v])=>`
+    <div class="cls-btn${slotClass[slot]===k?' sel':''}" onclick="selClsSlot(this,${slot},'${k}')" data-cls="${k}">
+      <span class="cls-icon">${v.icon}</span><div class="cls-name">${v.name}</div>
+    </div>`).join('');
+  document.getElementById('sco-body').innerHTML=`
+    <div class="sco-sect">見た目を選ぶ</div>
+    <div class="chip-thumb-row" id="sco-chip-row">${chipHTML}</div>
+    <div class="sco-sect">職業を選ぶ</div>
+    <div class="class-row">${clsHTML}</div>
+    <button class="sco-decide" onclick="closeSlotConfig()">✓ 決定</button>`;
+  // Draw chip thumbnails
+  PARTY_CHIPS.forEach((path,pi)=>{
+    const cv=document.getElementById('sco-chip-'+pi);
+    if(!cv)return;
+    const c2=cv.getContext('2d');
+    const img=getImg(path);
+    const d=()=>{c2.clearRect(0,0,36,36);c2.drawImage(img,32,0,32,32,0,0,36,36);};
+    if(img.complete&&img.naturalWidth)d(); else img.onload=d;
+  });
+  document.getElementById('slot-config-overlay').classList.remove('hidden');
+}
+function closeSlotConfig(){
+  document.getElementById('slot-config-overlay').classList.add('hidden');
+  initChipPreviews();
+}
+
 function selCls(el,cls){el.closest('.class-row')?.querySelectorAll('.cls-btn').forEach(b=>b.classList.remove('sel'));el.classList.add('sel');}
 function selClsSlot(el,slot,cls){
   slotClass[slot]=cls;
   selCls(el,cls);
-  // トグルボタンの表示を更新（パネルは閉じない）
-  const cd  = CLASSES[cls];
-  const tog = document.getElementById('stog-'+slot);
-  if(tog) tog.textContent = (cd?.icon||'') + ' ' + (cd?.name||cls) + ' ▲';
+  const cd=CLASSES[cls];
+  const tog=document.getElementById('stog-'+slot);
+  if(tog) tog.textContent=(cd?.icon||'')+' '+(cd?.name||cls);
 }
-function toggleSlotConfig(i){
-  const wrap = document.getElementById('pslot-config-'+i);
-  const tog  = document.getElementById('stog-'+i);
-  if(!wrap) return;
-  const willOpen = wrap.dataset.open !== '1';
-  wrap.dataset.open  = willOpen ? '1' : '0';
-  wrap.style.display = willOpen ? 'block' : 'none';
-  if(willOpen) renderChipThumbs(i);
-  if(tog){
-    const cd = CLASSES[slotClass[i]||'warrior'];
-    tog.textContent = (cd?.icon||'') + ' ' + (cd?.name||'') + (willOpen ? ' ▲' : ' ▼');
-  }
-}
-// 旧 toggleClsRow は toggleSlotConfig に統合
-function toggleClsRow(i){ toggleSlotConfig(i); }
-function backTitle(){document.getElementById('lobby-screen').classList.add('hidden');document.getElementById('title-screen').classList.remove('hidden');}
 
-// ─── キャラチップ選択 ────────────────────────────────────
-const slotChip = {1:0, 2:1, 3:2, 4:3}; // slot → PARTY_CHIPS index
-
-function toggleChipPicker(i) { toggleSlotConfig(i); }
-
-function renderChipThumbs(i) {
-  PARTY_CHIPS.forEach((path, pi) => {
-    const cv = document.getElementById('chipth-'+i+'-'+pi);
-    if (!cv) return;
-    const ctx2 = cv.getContext('2d');
-    const img = getImg(path);
-    const draw = () => {
-      ctx2.clearRect(0,0,32,32);
-      ctx2.drawImage(img, 32, 0, 32, 32, 0, 0, 32, 32); // frame=1, dir=0 (front)
-    };
-    if (img.complete && img.naturalWidth) draw();
-    else img.onload = draw;
-    // highlight selected
-    cv.style.borderColor = slotChip[i] === pi ? 'var(--gold)' : 'transparent';
+function selectChip(slot,pi){
+  slotChip[slot]=pi;
+  updateChipPreview(slot);
+  // Update highlight in overlay
+  document.querySelectorAll('#sco-chip-row .chip-thumb').forEach((cv,idx)=>{
+    cv.classList.toggle('chip-sel', idx===pi);
   });
 }
 
-function selectChip(slot, pi) {
-  slotChip[slot] = pi;
-  updateChipPreview(slot);
-  renderChipThumbs(slot); // ハイライト更新のみ（パネルは閉じない）
+function updateChipPreview(slot){
+  const cv=document.getElementById('chip-canvas-'+slot);
+  if(!cv)return;
+  const c2=cv.getContext('2d');
+  const img=getImg(PARTY_CHIPS[slotChip[slot]||0]);
+  const d=()=>{c2.clearRect(0,0,28,28);c2.drawImage(img,32,0,32,32,0,0,28,28);};
+  if(img.complete&&img.naturalWidth)d(); else img.onload=d;
 }
 
-function updateChipPreview(slot) {
-  const cv = document.getElementById('chip-canvas-'+slot);
-  if (!cv) return;
-  const ctx2 = cv.getContext('2d');
-  const path = PARTY_CHIPS[slotChip[slot] || 0];
-  const img = getImg(path);
-  const draw = () => {
-    ctx2.clearRect(0,0,32,32);
-    ctx2.drawImage(img, 32, 0, 32, 32, 0, 0, 32, 32);
-  };
-  if (img.complete && img.naturalWidth) draw();
-  else img.onload = draw;
-}
+function initChipPreviews(){for(let i=1;i<=4;i++)updateChipPreview(i);}
 
-// Called after lobby body is injected into DOM — render initial previews
-function initChipPreviews() {
-  for (let i = 1; i <= 4; i++) updateChipPreview(i);
-}
+// 旧互換（呼び出し元が残っている場合のスタブ）
+function toggleSlotConfig(i){openSlotConfig(i);}
+function toggleClsRow(i){openSlotConfig(i);}
+function toggleChipPicker(i){openSlotConfig(i);}
 
 function makeChar(slot){
   const nameEl=document.getElementById('pname-'+slot);
