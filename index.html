@@ -222,18 +222,44 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 #battle-win{
   flex-shrink:0;border-radius:0;border-left:none;border-right:none;border-bottom:none;
   border-top:2px solid var(--win-bd);
+  max-height:56svh;max-height:56vh;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
-#battle-msg{padding:10px 14px;min-height:50px;font-size:13px;line-height:1.7;letter-spacing:1px;border-bottom:1px solid rgba(60,90,160,.2);}
+#battle-msg{padding:8px 14px;font-size:clamp(11px,3.5vw,13px);line-height:1.6;letter-spacing:1px;border-bottom:1px solid rgba(60,90,160,.2);}
 #battle-cmds{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(60,90,160,.12);}
-.bcmd{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:12px;padding:10px 4px;cursor:pointer;transition:background .06s;letter-spacing:1px;text-align:center;}
+.bcmd{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:clamp(10px,3vw,12px);padding:clamp(7px,2.5vw,10px) 4px;cursor:pointer;transition:background .06s;letter-spacing:1px;text-align:center;}
 .bcmd:active,.bcmd.sel{background:rgba(50,90,200,.6);color:var(--gold);}
 .bcmd:disabled{color:rgba(255,255,255,.2);cursor:not-allowed;}
-#battle-party{display:flex;gap:6px;padding:7px 12px;border-top:1px solid rgba(60,90,160,.2);overflow-x:auto;}
-.bpc{background:rgba(10,20,60,.8);border:1px solid rgba(60,90,180,.4);border-radius:3px;padding:5px 9px;flex-shrink:0;min-width:80px;}
+#battle-party-wrap{display:flex;position:relative;border-top:1px solid rgba(60,90,160,.2);}
+#battle-party{display:flex;gap:5px;padding:6px 10px;overflow-x:auto;flex:1;}
+.bpc{background:rgba(10,20,60,.8);border:1px solid rgba(60,90,180,.4);border-radius:3px;padding:4px 8px;flex-shrink:0;min-width:72px;}
 .bpc-name{font-size:9px;color:var(--white);margin-bottom:2px;letter-spacing:1px;}
 .bpc-hp,.bpc-mp{font-size:8px;display:flex;justify-content:space-between;gap:4px;color:var(--white);}
 .bpc-hp span:first-child{color:#ff9999;}.bpc-mp span:first-child{color:#99bbff;}
 .bpc.cur{border-color:var(--gold);}
+/* Partner toggle button */
+#btn-partner-panel{
+  width:28px;background:rgba(20,50,120,.95);border:none;border-left:1px solid rgba(60,90,180,.4);
+  color:var(--gold);font-family:'DotGothic16',serif;font-size:10px;cursor:pointer;
+  writing-mode:vertical-rl;letter-spacing:2px;flex-shrink:0;display:none;
+}
+#btn-partner-panel.active{background:rgba(50,90,200,.9);}
+/* Partner status panel */
+#partner-panel{
+  position:fixed;bottom:0;right:0;width:min(260px,82vw);
+  background:var(--win-bg);border:2px solid var(--win-bd);border-bottom:none;border-right:none;
+  border-radius:4px 0 0 0;z-index:45;
+  max-height:55vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  display:none;
+}
+#partner-panel.open{display:block;}
+.pp-member{padding:6px 10px;border-bottom:1px solid rgba(60,90,160,.2);}
+.pp-name{font-size:10px;color:var(--gold);margin-bottom:3px;letter-spacing:1px;}
+.pp-bar-row{display:flex;align-items:center;gap:4px;margin-bottom:2px;}
+.pp-bar-lbl{font-size:8px;width:14px;color:var(--white);}
+.pp-bar-track{flex:1;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
+.pp-bar-fill{height:100%;border-radius:2px;}
+.pp-cmd{font-size:9px;color:#ffee88;margin-top:3px;letter-spacing:1px;}
 
 /* Damage float */
 .dmg-float{position:fixed;font-family:'DotGothic16',serif;font-size:20px;font-weight:900;pointer-events:none;z-index:100;text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;animation:dfloat 1.1s ease-out forwards;}
@@ -499,8 +525,20 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
         ▶ 戦闘開始！
       </button>
     </div>
-    <div id="battle-party"></div>
+    <div id="battle-party-wrap">
+      <div id="battle-party"></div>
+      <button id="btn-partner-panel" onclick="togglePartnerPanel()">仲間▶</button>
+    </div>
   </div>
+</div>
+
+<!-- Partner status panel -->
+<div id="partner-panel">
+  <div class="win-title" style="padding:7px 12px;font-size:11px;display:flex;justify-content:space-between;align-items:center;">
+    <span>🌐 仲間の状態</span>
+    <button onclick="togglePartnerPanel()" style="background:rgba(80,20,20,.7);border:1px solid rgba(255,80,80,.3);color:rgba(255,150,150,.9);font-family:'DotGothic16',serif;font-size:10px;padding:2px 8px;border-radius:2px;cursor:pointer;">✕ 閉じる</button>
+  </div>
+  <div id="partner-panel-body"></div>
 </div>
 
 <!-- Spell screen -->
@@ -1006,7 +1044,7 @@ function buildLobbyHTML(online,isHost){
           maxlength="8">
         <span class="slot-toggle" id="stog-${i}" onclick="toggleClsRow(${i})">⚔️ 戦士 ▼</span>
       </div>
-      <div id="pslot-cls-${i}" style="display:none;margin-top:4px;">
+      <div id="pslot-cls-${i}" style="display:none;margin-top:4px;" data-open="0">
         <div class="class-row" id="clsgrid-${i}">
           ${Object.entries(CLASSES).map(([k,v])=>`
             <div class="cls-btn ${k==='warrior'?'sel':''}" onclick="selClsSlot(this,${i},'${k}')" data-cls="${k}">
@@ -1068,20 +1106,24 @@ function selCls(el,cls){el.closest('.class-row')?.querySelectorAll('.cls-btn').f
 function selClsSlot(el,slot,cls){
   slotClass[slot]=cls;
   selCls(el,cls);
-  // トグルボタンに選択中職業を反映して自動で閉じる
-  const cls_data = CLASSES[cls];
+  // 職業を選んだら自動で閉じる
+  const cd  = CLASSES[cls];
   const tog = document.getElementById('stog-'+slot);
-  if(tog) tog.textContent = (cls_data?.icon||'') + ' ' + (cls_data?.name||cls) + ' ▼';
+  if(tog) tog.textContent = (cd?.icon||'') + ' ' + (cd?.name||cls) + ' ▼';
   const wrap = document.getElementById('pslot-cls-'+slot);
-  if(wrap) wrap.style.display = 'none';
+  if(wrap){ wrap.style.display = 'none'; wrap.dataset.open = '0'; }
 }
 function toggleClsRow(i){
   const wrap = document.getElementById('pslot-cls-'+i);
   const tog  = document.getElementById('stog-'+i);
   if(!wrap) return;
-  const open = wrap.style.display === 'none';
-  wrap.style.display = open ? '' : 'none';
-  if(tog) tog.textContent = tog.textContent.replace(/[▼▲]$/, open ? '▲' : '▼');
+  const willOpen = wrap.dataset.open !== '1';
+  wrap.dataset.open  = willOpen ? '1' : '0';
+  wrap.style.display = willOpen ? 'block' : 'none';
+  if(tog){
+    const cd = CLASSES[slotClass[i]||'warrior'];
+    tog.textContent = (cd?.icon||'') + ' ' + (cd?.name||'') + (willOpen ? ' ▲' : ' ▼');
+  }
 }
 function backTitle(){document.getElementById('lobby-screen').classList.add('hidden');document.getElementById('title-screen').classList.remove('hidden');}
 
@@ -1301,11 +1343,14 @@ function directLoadGame(slot, data) {
 const ONLINE = {
   isOnline:      false,
   isHost:        false,
-  myPeerId:      '',   // 自分の PeerJS ID
-  remotePeerId:  '',   // 相手の PeerJS ID
-  remoteParties: [],   // [{playerId, name, party}]
+  myPeerId:      '',
+  remotePeerId:  '',
+  remoteParties: [],
   chatLog:       [],
-  guestCmds:     null, // ゲストから受け取ったコマンド（ホスト側）
+  guestCmds:     null,
+  remotePos:     null,   // {x, y, icon, name} — マップ上の相手位置
+  remoteCmds:    [],     // [{name, action}] — 相手の選択コマンド
+  remotePartyHp: [],     // [{name, icon, hp, maxHp, mp, maxMp}]
 };
 
 // PeerJS インスタンスと DataConnection
@@ -1468,6 +1513,44 @@ function _handleP2P(msg) {
     case 'chat': {
       addChat(msg.msg, msg.name, false);
       appendOnlineChatLine({ name: msg.name, msg: msg.msg, sys: false });
+      break;
+    }
+
+    case 'map_sync': {
+      // ゲストがホストのマップを受け取って適用する
+      if (!ONLINE.isHost) {
+        G.mapIdx  = msg.mapIdx;
+        G.tiles   = msg.tiles;
+        G.chests  = msg.chests || [];
+        G.mapEnemies = [];
+        G.npcsOnMap  = NPCS.filter(n => msg.tiles[n.y]?.[n.x] === T.NPC).map(n => ({...n}));
+        const mapName = MAPS_DEF[msg.mapIdx]?.name || '';
+        const lbl = document.getElementById('map-label');
+        if (lbl) lbl.textContent = '📍 ' + mapName;
+        addChat('📍 ' + mapName + 'に移動した', null, true);
+      }
+      break;
+    }
+
+    case 'enemy_update': {
+      // ゲストがホストの敵位置を受け取って反映する
+      if (!ONLINE.isHost) {
+        G.mapEnemies = msg.enemies.map(e => ({
+          ...(ENEMIES_DATA[e.idx] || {}), ...e,
+        }));
+      }
+      break;
+    }
+
+    case 'pos_update': {
+      ONLINE.remotePos = { x: msg.x, y: msg.y, icon: msg.icon, name: msg.name };
+      break;
+    }
+
+    case 'cmd_preview': {
+      ONLINE.remoteCmds    = msg.cmds    || [];
+      ONLINE.remotePartyHp = msg.party   || [];
+      renderPartnerPanel();
       break;
     }
   }
@@ -1704,6 +1787,27 @@ function initGame(){
       _sendP2P({ type: 'party_update', party: encodePartyToHash(G.party) });
     }
   }
+
+  // オンライン: 位置・敵を定期送信
+  if (ONLINE.isOnline) {
+    // 自分の位置を 150ms ごとに送る
+    setInterval(() => {
+      if (G.inBattle || !G.party[0]) return;
+      const c = G.party[0];
+      _sendP2P({ type: 'pos_update', x: c.x, y: c.y, icon: c.icon, name: c.name });
+    }, 150);
+
+    // ホストは敵位置を 400ms ごとに送る
+    if (ONLINE.isHost) {
+      setInterval(() => {
+        if (G.inBattle) return;
+        _sendP2P({ type: 'enemy_update', enemies: G.mapEnemies.map(e => ({
+          idx: e.idx, x: e.x, y: e.y, curHp: e.curHp, hp: e.hp, dead: e.dead,
+          sprite: e.sprite, color: e.color, spd: e.spd,
+        }))});
+      }, 400);
+    }
+  }
 }
 
 function generateMap(idx){
@@ -1758,6 +1862,11 @@ function generateMap(idx){
 
   document.getElementById('map-label').textContent=
     map.type==='dungeon'?`🏰 ${map.name} B${G.dungeonFloor+1}F`:`🗺️ ${map.name}`;
+
+  // ホストはマップデータをゲストに送る
+  if (ONLINE.isOnline && ONLINE.isHost) {
+    _sendP2P({ type: 'map_sync', mapIdx: idx, tiles: G.tiles, chests: G.chests });
+  }
 }
 
 function setPlayerPos(tx,ty){
@@ -1887,6 +1996,7 @@ function handleTileAt(tx,ty){
 // MAP ENEMY AI
 // ============================================================
 function updateMapEnemies(dt){
+  if (ONLINE.isOnline && !ONLINE.isHost) return; // ゲストはホストの enemy_update で反映
   const TILE=G.TILE;
   G.mapEnemies.forEach(e=>{
     if(e.dead)return;
@@ -1918,6 +2028,7 @@ function updateMapEnemies(dt){
 
 function checkEnemyContact(){
   if(G.inBattle)return;
+  if(ONLINE.isOnline && !ONLINE.isHost)return; // ホストのみ戦闘開始を担当
   const leader=G.party[0];if(!leader)return;
   for(let i=G.mapEnemies.length-1;i>=0;i--){
     const e=G.mapEnemies[i];if(e.dead)continue;
@@ -2024,17 +2135,27 @@ function render(){
   // Party members
   G.party.forEach((c,i)=>{
     const sx=c.x-G.cam.x, sy=c.y-G.cam.y;
-    // Shadow
     ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(sx,sy+8,10,4,0,0,Math.PI*2);ctx.fill();
-    // Character
     ctx.font=`${G.TILE*0.75}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText(c.icon,sx,sy-2);
-    // Name (leader only)
     if(i===0){
       ctx.font='9px DotGothic16,serif';ctx.fillStyle='rgba(255,255,255,0.85)';
       ctx.fillText(c.name.substr(0,4),sx,sy-G.TILE*0.6);
     }
   });
+
+  // オンライン: 相手プレイヤーをマップに表示
+  if(ONLINE.isOnline && ONLINE.remotePos){
+    const rp=ONLINE.remotePos;
+    const rx=rp.x-G.cam.x, ry=rp.y-G.cam.y;
+    // 青い影で区別
+    ctx.fillStyle='rgba(0,100,255,0.25)';ctx.beginPath();ctx.ellipse(rx,ry+8,12,5,0,0,Math.PI*2);ctx.fill();
+    ctx.font=`${G.TILE*0.75}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(rp.icon||'🧑',rx,ry-2);
+    // 名前タグ（青色）
+    ctx.font='9px DotGothic16,serif';ctx.fillStyle='#88ffcc';
+    ctx.fillText((rp.name||'仲間').substr(0,4),rx,ry-G.TILE*0.6);
+  }
 }
 
 // Image cache for sprites
@@ -2062,6 +2183,11 @@ function drawMinimap(){
   if(G.party[0]){
     const lx=G.party[0].x/G.TILE*sx,ly=G.party[0].y/G.TILE*sy;
     mmCtx.fillStyle='#00ffaa';mmCtx.beginPath();mmCtx.arc(lx,ly,3,0,Math.PI*2);mmCtx.fill();
+  }
+  if(ONLINE.isOnline && ONLINE.remotePos){
+    const rp=ONLINE.remotePos;
+    const rx=rp.x/G.TILE*sx, ry=rp.y/G.TILE*sy;
+    mmCtx.fillStyle='#88aaff';mmCtx.beginPath();mmCtx.arc(rx,ry,3,0,Math.PI*2);mmCtx.fill();
   }
 }
 
@@ -2300,9 +2426,18 @@ function closeAllyTargetSelect(){
 }
 
 // ====== 実行フェーズ ======
+const CMD_LABEL = { attack:'こうげき', spell:'じゅもん', item:'どうぐ', defend:'ぼうぎょ', flee:'にげる' };
 function executeTurn(){
   if(G.executing) return;
   document.getElementById('battle-execute').style.display='none';
+
+  // オンライン: 自分のコマンド選択を相手に知らせる
+  if (ONLINE.isOnline) {
+    _sendP2P({ type: 'cmd_preview',
+      cmds:  G.cmdQueue.map(q => ({ name: q.actor.name, action: CMD_LABEL[q.type] || q.type })),
+      party: G.party.map(p => ({ name: p.name, icon: p.icon, hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp })),
+    });
+  }
 
   // ─── オンライン: ゲストはコマンドを P2P でホストに送って待機 ───
   if(ONLINE.isOnline && !ONLINE.isHost){
@@ -2543,9 +2678,14 @@ function animEnemyAttack(enemyIdx, actorIdx, cb){
 }
 
 function renderBattle(){
+  // オンラインなら仲間パネルボタンを表示
+  const ppBtn = document.getElementById('btn-partner-panel');
+  if (ppBtn) ppBtn.style.display = ONLINE.isOnline ? '' : 'none';
+
   const ea=document.getElementById('battle-enemies');
   ea.innerHTML=G.battleEnemies.map((e,i)=>{
-    const sz=e.boss?130:90;
+    const base=e.boss?130:90;
+    const sz=Math.min(base, Math.floor(window.innerWidth/5));
     const url=getSpriteURL(e.sprite||'slime',e.color||'#4488ff',sz);
     return`<div class="battle-enemy ${e.curHp<=0?'dead':''}" id="ben-${i}">
       <div class="b-ehp"><div class="b-ehp-fill" id="bhp-${i}" style="width:${e.curHp/e.maxHp*100}%"></div></div>
@@ -2576,6 +2716,51 @@ function renderBattle(){
       <div class="bpc-hp"><span>HP</span><span>${Math.max(0,Math.floor(p.hp))}/${p.maxHp}</span></div>
       <div class="bpc-mp"><span>MP</span><span>${Math.max(0,Math.floor(p.mp))}/${p.maxMp}</span></div>
     </div>`;}).join('');
+}
+
+// ─── 仲間パネル ─────────────────────────────────────────────
+function togglePartnerPanel(){
+  const panel = document.getElementById('partner-panel');
+  const btn   = document.getElementById('btn-partner-panel');
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  if (btn) btn.classList.toggle('active', !isOpen);
+  if (!isOpen) renderPartnerPanel();
+}
+
+function renderPartnerPanel(){
+  const body = document.getElementById('partner-panel-body');
+  if (!body) return;
+
+  const party = ONLINE.remotePartyHp;
+  const cmds  = ONLINE.remoteCmds;
+
+  if (!party || !party.length) {
+    body.innerHTML = '<div style="padding:12px;font-size:10px;color:var(--white);">まだデータがありません</div>';
+    return;
+  }
+
+  body.innerHTML = party.map(p => {
+    const hpPct = p.maxHp ? Math.max(0, p.hp / p.maxHp * 100) : 0;
+    const mpPct = p.maxMp ? Math.max(0, p.mp / p.maxMp * 100) : 0;
+    const hpColor = hpPct > 50 ? '#44ee88' : hpPct > 25 ? '#ffee44' : '#ff4444';
+    const cmd = cmds.find(c => c.name === p.name);
+    return `<div class="pp-member">
+      <div class="pp-name">${p.icon||''} ${p.name}</div>
+      <div class="pp-bar-row">
+        <span class="pp-bar-lbl">HP</span>
+        <div class="pp-bar-track"><div class="pp-bar-fill" style="width:${hpPct}%;background:${hpColor};"></div></div>
+        <span style="font-size:8px;color:var(--white);white-space:nowrap;">${Math.max(0,p.hp)}/${p.maxHp}</span>
+      </div>
+      <div class="pp-bar-row">
+        <span class="pp-bar-lbl">MP</span>
+        <div class="pp-bar-track"><div class="pp-bar-fill" style="width:${mpPct}%;background:#4488ff;"></div></div>
+        <span style="font-size:8px;color:var(--white);white-space:nowrap;">${Math.max(0,p.mp)}/${p.maxMp}</span>
+      </div>
+      ${cmd ? `<div class="pp-cmd">▶ ${cmd.action}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 function setBMsg(t){
