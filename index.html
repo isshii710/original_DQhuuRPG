@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<title>DRAGON QUEST IX</title>
+<title>天星の冒険譚 オンライン</title>
 <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Serif+JP:wght@700;900&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -661,9 +661,9 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 <div class="screen" id="title-screen">
   <div class="title-stars" id="tstars"></div>
   <div class="title-logo">
-    <div class="title-dq">DRAGON QUEST</div>
-    <div class="title-main">星空の守り人</div>
-    <div class="title-ix">IX</div>
+    <div class="title-dq">ASTRAL LEGEND</div>
+    <div class="title-main">天星の冒険譚</div>
+    <div class="title-ix">I</div>
     <div class="title-sub">ONLINE EDITION</div>
   </div>
   <div style="font-size:44px;margin-bottom:18px;filter:drop-shadow(0 0 10px rgba(255,215,0,.35));position:relative;z-index:1">⚔️</div>
@@ -1110,7 +1110,7 @@ async function startGame(){
 // SAVE / LOAD SYSTEM
 // ============================================================
 const SAVE_SLOTS = 3;
-const SAVE_KEY_PREFIX = 'dq9_save_';
+const SAVE_KEY_PREFIX = 'al1_save_';
 
 function getSaveData(slot) {
   try { return JSON.parse(localStorage.getItem(SAVE_KEY_PREFIX + slot)); } catch(e){ return null; }
