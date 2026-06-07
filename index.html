@@ -246,7 +246,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
   overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 #battle-msg{padding:8px 14px;font-size:clamp(11px,3.5vw,13px);line-height:1.6;letter-spacing:1px;border-bottom:1px solid rgba(60,90,160,.2);}
-#battle-cmds{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(60,90,160,.12);}
+#battle-cmds{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(60,90,160,.12);}
 .bcmd{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:clamp(10px,3vw,12px);padding:clamp(7px,2.5vw,10px) 4px;cursor:pointer;transition:background .06s;letter-spacing:1px;text-align:center;}
 .bcmd:active,.bcmd.sel{background:rgba(50,90,200,.6);color:var(--gold);}
 .bcmd:disabled{color:rgba(255,255,255,.2);cursor:not-allowed;}
@@ -341,6 +341,26 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .eqitem:active{background:rgba(50,90,200,.5);}.eqitem.equipped{background:rgba(255,215,0,.1);}
 .eq-delta{font-size:9px;}.dplus{color:#00ff88;}.dminus{color:#ff6666;}
 .eq-badge{font-size:8px;color:var(--gold);}
+.eq-chars{display:flex;gap:1px;background:rgba(60,90,160,.18);}
+.eq-char-btn{flex:1;background:var(--win-bg);border:none;padding:7px 4px;cursor:pointer;color:var(--white);font-family:'DotGothic16',serif;text-align:center;transition:background .06s;min-width:0;}
+.eq-char-btn.cur{background:rgba(50,90,200,.55);}
+.eq-char-ico{font-size:17px;display:block;}
+.eq-char-nm{font-size:7px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:1px;}
+#sp-screen{position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:12px;}
+#sp-screen.hidden{display:none;}
+.sp-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:90vh;}
+.sp-chars{display:flex;gap:1px;background:rgba(60,90,160,.18);}
+.sp-char-btn{flex:1;background:var(--win-bg);border:none;padding:7px 4px;cursor:pointer;color:var(--white);font-family:'DotGothic16',serif;text-align:center;transition:background .06s;min-width:0;font-size:7px;}
+.sp-char-btn.cur{background:rgba(50,90,200,.55);}
+.sp-tree{display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);overflow-y:auto;flex:1;}
+.sp-node{background:var(--win-bg);border:none;display:flex;align-items:center;gap:8px;padding:9px 12px;color:var(--white);font-family:'DotGothic16',serif;font-size:11px;width:100%;text-align:left;}
+.sp-node.unlocked{background:rgba(30,80,30,.7);}
+.sp-node.available{cursor:pointer;transition:background .06s;}
+.sp-node.available:active,.sp-node.available:hover{background:rgba(50,90,200,.5);}
+.sp-node.locked{color:rgba(255,255,255,.25);}
+.sp-cost{font-size:8px;color:var(--gold);margin-left:auto;}
+.sp-badge-ok{font-size:8px;background:rgba(40,160,40,.4);color:#aaffaa;padding:1px 5px;border-radius:2px;}
+.sp-cat{font-size:8px;color:rgba(150,180,255,.7);letter-spacing:1px;}
 
 /* Item popup */
 #item-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:70;padding:18px 28px;text-align:center;animation:ipop 2.4s forwards;}
@@ -534,9 +554,10 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
       <div id="battle-cmds">
         <button class="bcmd" id="bc-atk" onclick="bCmd('attack')">⚔ こうげき</button>
         <button class="bcmd" id="bc-spl" onclick="bCmd('spell')">✨ じゅもん</button>
+        <button class="bcmd" id="bc-ski" onclick="bCmd('skill')">💥 とくぎ</button>
         <button class="bcmd" id="bc-itm" onclick="bCmd('item')">🎒 どうぐ</button>
         <button class="bcmd" id="bc-def" onclick="bCmd('defend')">🛡 ぼうぎょ</button>
-        <button class="bcmd" id="bc-fle" onclick="bCmd('flee')" style="grid-column:span 4;font-size:11px;">💨 にげる</button>
+        <button class="bcmd" id="bc-fle" onclick="bCmd('flee')" style="grid-column:span 5;font-size:11px;">💨 にげる</button>
       </div>
     </div>
     <!-- 実行ボタン（全員選択後に出現） -->
@@ -572,6 +593,17 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
   </div>
 </div>
 
+<!-- Skill screen (とくぎ) -->
+<div id="skill-screen" class="hidden">
+  <div class="win spell-box">
+    <div class="win-title" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;">
+      <span>💥 とくぎを選ぶ</span>
+      <button onclick="closeSkill()" style="background:rgba(80,20,20,.7);border:1px solid rgba(255,80,80,.3);color:rgba(255,150,150,.9);font-family:'DotGothic16',serif;font-size:10px;padding:3px 10px;border-radius:2px;cursor:pointer;">← もどる</button>
+    </div>
+    <div class="spell-grid" id="skill-list"></div>
+  </div>
+</div>
+
 <!-- Enemy target select -->
 <div id="target-screen" class="hidden">
   <div class="win spell-box">
@@ -602,6 +634,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
       <button class="mitem" onclick="openStatus()">👤 ステータス</button>
       <button class="mitem" onclick="menuEquip()">⚔️ そうび</button>
       <button class="mitem" onclick="menuItem()">🎒 どうぐぶくろ</button>
+      <button class="mitem" onclick="closeMenu();openSkillTree()">✨ スキル習得</button>
       <button class="mitem" onclick="closeMenu();openSaveModal()">💾 セーブ / ロード</button>
       <button class="mitem" id="menu-online-btn" onclick="closeMenu();openOnlineModal()" style="display:none;">🌐 オンライン管理</button>
       <button class="mitem" onclick="closeMenu()">✖ とじる</button>
@@ -625,11 +658,23 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 <div id="equip-screen" class="hidden">
   <div class="win eq-box">
     <div class="win-title">⚔️ そうび</div>
+    <div class="eq-chars" id="eq-chars"></div>
     <div class="eq-slots" id="eq-slots"></div>
     <div class="eq-stats" id="eq-stats"></div>
     <div style="padding:6px 12px;font-size:9px;color:var(--gold);letter-spacing:2px;" id="eq-list-lbl"></div>
     <div class="eq-list" id="eq-list"></div>
     <div class="win-close" onclick="closeEquip()">▶ とじる</div>
+  </div>
+</div>
+
+<!-- SP / スキル習得 -->
+<div id="sp-screen" class="hidden">
+  <div class="win sp-box">
+    <div class="win-title">✨ スキル習得</div>
+    <div class="sp-chars" id="sp-chars"></div>
+    <div style="padding:6px 12px;font-size:10px;color:var(--gold);letter-spacing:1px;" id="sp-info"></div>
+    <div class="sp-tree" id="sp-tree"></div>
+    <div class="win-close" onclick="closeSkillTree()">▶ とじる</div>
   </div>
 </div>
 
@@ -772,16 +817,61 @@ const CLASSES = {
   dancer:  {name:'踊り子',icon:'💃',color:'#ffaadd',stats:{hp:75,mp:50,atk:12,def:8,spd:18,int:15}},
 };
 
-const SPELLS = {
-  warrior: [{name:'力溜め',mp:0,power:0,type:'buff'},{name:'空斬り',mp:4,power:1.5,type:'atk'}],
-  mage:    [{name:'炎弾',mp:4,power:1.2,type:'atk'},{name:'爆炎',mp:6,power:1.5,type:'atk'},{name:'星砕',mp:8,power:1.3,type:'all'},{name:'封魔術',mp:5,power:0,type:'debuff'}],
-  priest:  [{name:'癒光',mp:3,power:0,type:'heal'},{name:'大癒光',mp:6,power:0,type:'heal2'},{name:'浄化',mp:5,power:0,type:'cure'},{name:'守護陣',mp:6,power:0,type:'buff'}],
-  ranger:  [{name:'奇襲',mp:3,power:1.3,type:'atk'},{name:'鼓舞',mp:5,power:0,type:'buff'},{name:'束縛矢',mp:7,power:1.4,type:'atk'}],
-  paladin: [{name:'鉄壁',mp:4,power:0,type:'buff'},{name:'天罰撃',mp:6,power:2.0,type:'atk'},{name:'大癒光',mp:6,power:0,type:'heal2'}],
-  sage:    [{name:'烈炎',mp:10,power:2.0,type:'atk'},{name:'星砕閃',mp:12,power:1.8,type:'all'},{name:'完全癒光',mp:15,power:0,type:'healfull'},{name:'弱体術',mp:7,power:0,type:'debuff'}],
-  thief:   [{name:'隠密',mp:3,power:0,type:'buff'},{name:'掠奪',mp:4,power:0,type:'steal'},{name:'乱れ斬り',mp:6,power:0.8,type:'multi'}],
-  dancer:  [{name:'惑乱舞',mp:4,power:0,type:'debuff'},{name:'怪声',mp:5,power:0,type:'debuff'},{name:'癒しの舞',mp:8,power:0,type:'healall'}],
+// SKILL_TREE: single source of truth for all spells (じゅもん) and skills (とくぎ)
+// category:'spell' = じゅもん (magic), category:'skill' = とくぎ (physical/support)
+// sp:0 = unlocked from start, sp:N = costs N SP to unlock
+const SKILL_TREE = {
+  warrior: [
+    {name:'力溜め',  mp:0,  power:0,   type:'powerCharge',category:'skill',sp:0, icon:'💪'},
+    {name:'空斬り',  mp:4,  power:1.5, type:'atk',        category:'skill',sp:2, icon:'⚔️'},
+  ],
+  mage: [
+    {name:'炎弾',   mp:4,  power:1.2, type:'atk',    category:'spell',sp:0, icon:'🔥'},
+    {name:'爆炎',   mp:6,  power:1.5, type:'atk',    category:'spell',sp:1, icon:'💥'},
+    {name:'星砕',   mp:8,  power:1.3, type:'all',    category:'spell',sp:2, icon:'⭐'},
+    {name:'封魔術', mp:5,  power:0,   type:'silence',category:'spell',sp:2, icon:'🔇'},
+  ],
+  priest: [
+    {name:'癒光',      mp:3,  power:0, type:'heal',   category:'spell',sp:0, icon:'💚'},
+    {name:'大癒光',    mp:6,  power:0, type:'heal2',  category:'spell',sp:1, icon:'💚'},
+    {name:'浄化',      mp:5,  power:0, type:'cure',   category:'spell',sp:1, icon:'✨'},
+    {name:'守護陣',    mp:6,  power:0, type:'buffDef',category:'spell',sp:2, icon:'🛡️'},
+    {name:'神速の祈り',mp:6,  power:0, type:'speedup',category:'spell',sp:3, icon:'💨'},
+  ],
+  ranger: [
+    {name:'奇襲',   mp:3, power:1.3, type:'atk',      category:'skill',sp:0, icon:'🏹'},
+    {name:'鼓舞',   mp:5, power:0,   type:'rallybuff', category:'skill',sp:1, icon:'🔥'},
+    {name:'束縛矢', mp:7, power:1.4, type:'stun',      category:'skill',sp:2, icon:'🎯'},
+  ],
+  paladin: [
+    {name:'鉄壁',   mp:4, power:0,   type:'taunt', category:'skill',sp:0, icon:'🛡️'},
+    {name:'天罰撃', mp:6, power:2.0, type:'atk',   category:'skill',sp:2, icon:'⚡'},
+    {name:'大癒光', mp:6, power:0,   type:'heal2', category:'spell',sp:2, icon:'💚'},
+  ],
+  sage: [
+    {name:'烈炎',     mp:10, power:2.0, type:'atk',      category:'spell',sp:0, icon:'🔥'},
+    {name:'星砕閃',   mp:12, power:1.8, type:'all',      category:'spell',sp:2, icon:'✨'},
+    {name:'完全癒光', mp:15, power:0,   type:'healfull', category:'spell',sp:3, icon:'⭐'},
+    {name:'弱体術',   mp:7,  power:0,   type:'debuffall',category:'spell',sp:2, icon:'💜'},
+  ],
+  thief: [
+    {name:'隠密',    mp:3, power:0,   type:'selfbuff',category:'skill',sp:0, icon:'🌑'},
+    {name:'掠奪',    mp:4, power:0,   type:'steal',   category:'skill',sp:1, icon:'💰'},
+    {name:'乱れ斬り',mp:6, power:0.8, type:'multi',   category:'skill',sp:2, icon:'⚡'},
+  ],
+  dancer: [
+    {name:'惑乱舞',   mp:4, power:0, type:'sleepall',category:'skill',sp:0, icon:'💃'},
+    {name:'怪声',     mp:5, power:0, type:'defdown', category:'skill',sp:1, icon:'📢'},
+    {name:'癒しの舞', mp:8, power:0, type:'healall', category:'skill',sp:2, icon:'💞'},
+  ],
 };
+
+function getSpells(cls,c){return(SKILL_TREE[cls]||[]).filter(s=>s.category==='spell'&&(s.sp===0||c.unlockedSkills.includes(s.name)));}
+function getSkills(cls,c){return(SKILL_TREE[cls]||[]).filter(s=>s.category==='skill'&&(s.sp===0||c.unlockedSkills.includes(s.name)));}
+function skillTypeLabel(t){
+  const L={atk:'単体攻撃',all:'全体攻撃',multi:'連続攻撃',heal:'単体回復',heal2:'単体大回復',healfull:'全快回復',healall:'全体回復',powerCharge:'力溜め',silence:'封魔',stun:'束縛攻撃',taunt:'挑発',sleepall:'全体眠り',rallybuff:'全体鼓舞',buffDef:'防御強化',selfbuff:'隠密強化',speedup:'速度UP',defdown:'防御弱体',debuffall:'全体弱体',steal:'盗む',cure:'状態回復'};
+  return L[t]||'';
+}
 
 const ENEMIES_DATA = [
   {name:'ぷるりん',    imgPath:'Monster/pipo-enemy001.png', sprite:'slime',    hp:18,  atk:6,  def:3,  exp:8,   gold:5,   color:'#4488ff',spd:1.2},
@@ -991,6 +1081,7 @@ const G = {
   battleEnemies:[], battleActorIdx:0,
   turnOrder:[], turnIdx:0,
   pendingLvlUps:[],
+  tauntIdx:-1,
   // Joystick
   joy:{active:false,id:-1,dx:0,dy:0},
   // Map transition lock (prevents handleTileAt from firing every frame)
@@ -1031,7 +1122,7 @@ window.addEventListener('resize', resizeCanvas);
 window.addEventListener('load',()=>{
   // 画面の初期状態を強制リセット（CSS キャッシュ対策）
   ['lobby-screen','battle-screen','spell-screen','target-screen',
-   'ally-target-screen','menu-screen','status-screen','equip-screen',
+   'ally-target-screen','menu-screen','status-screen','equip-screen','skill-screen','sp-screen',
    'lvlup-screen','dialog','save-modal','online-modal','join-modal',
    'item-popup','chat-input'].forEach(id=>{
     const el=document.getElementById(id);
@@ -1235,7 +1326,8 @@ function makeChar(slot){
     atk:cls.stats.atk,def:cls.stats.def,spd:cls.stats.spd,int:cls.stats.int,
     equip:{weapon:null,armor:null,accessory:null},inventory:['w1','a1'],
     items:[{...ITEMS_DROP[0]},{...ITEMS_DROP[0]}],
-    gold:50,buffed:false,isNPC:slot>1,
+    gold:50,buffed:false,powerCharged:false,buffDef:false,buffSpd:false,isNPC:slot>1,
+    sp:0,unlockedSkills:[],
     x:7*G.TILE,y:7*G.TILE, // pixel position on map
   };
 }
@@ -2489,6 +2581,7 @@ function startBattle(mapEnemies){
   }
 
   G.pendingLvlUps=[];
+  G.tauntIdx=-1;
   G.cmdQueue=[]; G.cmdSelectIdx=0; G.executing=false;
   document.getElementById('battle-screen').classList.remove('hidden');
   renderBattle();
@@ -2539,7 +2632,7 @@ function showCmdPhase(on){
 function showExecuteBtn(){
   document.getElementById('battle-cmd-phase').style.display='none';
   document.getElementById('battle-execute').style.display='block';
-  const labels={attack:'こうげき',spell:'じゅもん',item:'どうぐ',defend:'ぼうぎょ',flee:'にげる'};
+  const labels={attack:'こうげき',spell:'じゅもん',skill:'とくぎ',item:'どうぐ',defend:'ぼうぎょ',flee:'にげる'};
   const summary=G.cmdQueue.map(q=>`${q.actor.icon}${labels[q.type]||q.type}`).join('　');
   setBMsg('コマンド確認:\n'+summary+'\n▼ 戦闘開始を押してください');
 }
@@ -2558,6 +2651,10 @@ function bCmd(cmd){
     openSpellForSelect(actor);
     return;
   }
+  if(cmd==='skill'){
+    openSkillForSelect(actor);
+    return;
+  }
   if(cmd==='attack'){
     // 攻撃対象を選ぶ
     openTargetSelect(actor, 'attack', -1);
@@ -2568,54 +2665,55 @@ function bCmd(cmd){
   selectCommandFor(G.cmdSelectIdx+1);
 }
 
-// ---- 呪文選択 ----
+// ---- じゅもん選択 ----
 function openSpellForSelect(actor){
-  const spells=SPELLS[actor.class]||[];
-  document.getElementById('spell-list').innerHTML=spells.map((s,i)=>`
+  const spells=getSpells(actor.class,actor);
+  document.getElementById('spell-list').innerHTML=spells.length?spells.map((s,i)=>`
     <button class="spbtn" ${actor.mp<s.mp?'disabled':''} onclick="onSpellSelected(${i})">
-      <span>${s.name}<br><span style="font-size:8px;color:var(--white)">${spellTypeLabel(s.type)}</span></span>
+      <span>${s.icon||'✨'}${s.name}<br><span style="font-size:8px;color:var(--white)">${skillTypeLabel(s.type)}</span></span>
       <span class="sp-mp">${s.mp}MP</span>
-    </button>`).join('');
+    </button>`).join(''):'<div style="padding:14px;color:rgba(255,255,255,.4);font-size:10px;text-align:center;">じゅもんがない</div>';
   document.getElementById('spell-screen').classList.remove('hidden');
-}
-function spellTypeLabel(t){
-  if(t==='all')return '全体攻撃';
-  if(t==='atk')return '単体攻撃';
-  if(t==='heal'||t==='heal2'||t==='healfull')return '単体回復';
-  if(t==='healall')return '全体回復';
-  if(t==='buff')return '強化';
-  if(t==='debuff')return '弱体';
-  if(t==='multi')return '連続攻撃';
-  return '';
 }
 function onSpellSelected(idx){
   document.getElementById('spell-screen').classList.add('hidden');
   const aliveParty=G.party.filter(p=>p.hp>0);
   const actor=aliveParty[G.cmdSelectIdx];
-  const spells=SPELLS[actor.class]||[];
+  const spells=getSpells(actor.class,actor);
   const spell=spells[idx];
   if(!spell){enableCmds(true);return;}
   pendingSpellIdx=idx;
-
-  // 対象選択が必要か判断
-  const needsEnemyTarget=['atk','multi'].includes(spell.type);
-  const needsAllyTarget=['heal','heal2','healfull'].includes(spell.type);
-  const isAll=['all','healall','buff','debuff'].includes(spell.type);
-
-  if(needsEnemyTarget){
-    openTargetSelect(actor, 'spell', idx);
-  } else if(needsAllyTarget){
-    openAllyTargetSelect(actor, idx);
-  } else {
-    // 全体 or 特殊 → 対象選択不要
-    G.cmdQueue.push({actor, type:'spell', spellIdx:idx, targetIdx:-1});
-    selectCommandFor(G.cmdSelectIdx+1);
-  }
+  const needsEnemyTarget=['atk','multi','silence'].includes(spell.type);
+  const needsAllyTarget=['heal','heal2','healfull','buffDef'].includes(spell.type);
+  if(needsEnemyTarget){openTargetSelect(actor,'spell',idx);}
+  else if(needsAllyTarget){openAllyTargetSelect(actor,idx);}
+  else{G.cmdQueue.push({actor,type:'spell',spellIdx:idx,targetIdx:-1});selectCommandFor(G.cmdSelectIdx+1);}
 }
-function closeSpell(){
-  document.getElementById('spell-screen').classList.add('hidden');
-  enableCmds(true);
+function closeSpell(){document.getElementById('spell-screen').classList.add('hidden');enableCmds(true);}
+
+// ---- とくぎ選択 ----
+function openSkillForSelect(actor){
+  const skills=getSkills(actor.class,actor);
+  document.getElementById('skill-list').innerHTML=skills.length?skills.map((s,i)=>`
+    <button class="spbtn" ${actor.mp<s.mp?'disabled':''} onclick="onSkillSelected(${i})">
+      <span>${s.icon||'💥'}${s.name}<br><span style="font-size:8px;color:var(--white)">${skillTypeLabel(s.type)}</span></span>
+      <span class="sp-mp">${s.mp}MP</span>
+    </button>`).join(''):'<div style="padding:14px;color:rgba(255,255,255,.4);font-size:10px;text-align:center;">とくぎがない</div>';
+  document.getElementById('skill-screen').classList.remove('hidden');
 }
+function onSkillSelected(idx){
+  document.getElementById('skill-screen').classList.add('hidden');
+  const aliveParty=G.party.filter(p=>p.hp>0);
+  const actor=aliveParty[G.cmdSelectIdx];
+  const skills=getSkills(actor.class,actor);
+  const skill=skills[idx];
+  if(!skill){enableCmds(true);return;}
+  pendingSpellIdx=idx;
+  const needsEnemyTarget=['atk','multi','stun','steal'].includes(skill.type);
+  if(needsEnemyTarget){openTargetSelect(actor,'skill',idx);}
+  else{G.cmdQueue.push({actor,type:'skill',spellIdx:idx,targetIdx:-1});selectCommandFor(G.cmdSelectIdx+1);}
+}
+function closeSkill(){document.getElementById('skill-screen').classList.add('hidden');enableCmds(true);}
 
 // ---- 敵対象選択 ----
 function openTargetSelect(actor, cmdType, spellIdx){
@@ -2663,7 +2761,7 @@ function closeAllyTargetSelect(){
 }
 
 // ====== 実行フェーズ ======
-const CMD_LABEL = { attack:'こうげき', spell:'じゅもん', item:'どうぐ', defend:'ぼうぎょ', flee:'にげる' };
+const CMD_LABEL = { attack:'こうげき', spell:'じゅもん', skill:'とくぎ', item:'どうぐ', defend:'ぼうぎょ', flee:'にげる' };
 function executeTurn(){
   if(G.executing) return;
   document.getElementById('battle-execute').style.display='none';
@@ -2774,10 +2872,13 @@ function executePlayerCmd(cmd, actor){
     // targetIdx で指定された敵、なければ先頭
     const tgt=alive.find(e=>e.idx===cmd.targetIdx)||alive[0];
     animPlayerAttack(pIdx, tgt.idx, ()=>{
-      const dmg=calcDmg(actor.atk+(actor.buffed?Math.floor(actor.atk*.5):0),tgt.def);
-      actor.buffed=false;
+      const atkBonus=actor.buffed?Math.floor(actor.atk*.5):0;
+      const pwrMult=actor.powerCharged?2.0:1.0;
+      const dmg=calcDmg(actor.atk+atkBonus,tgt.def,pwrMult);
+      actor.buffed=false;actor.powerCharged=false;
       applyEnemyDmg(tgt,dmg);
-      setBMsg(`${actor.name}の攻撃！\n${tgt.name}に ${dmg} のダメージ！`);
+      const chargeMsg=pwrMult>1?' （力溜め！）':'';
+      setBMsg(`${actor.name}の攻撃！\n${tgt.name}に ${dmg} のダメージ！${chargeMsg}`);
       renderBattle();
       checkBattleEnd(()=>setTimeout(runNextAction,1000));
     });
@@ -2786,6 +2887,10 @@ function executePlayerCmd(cmd, actor){
 
   if(cmd.type==='spell'){
     executeSpellCmd(actor, pIdx, cmd.spellIdx, cmd.targetIdx);
+    return;
+  }
+  if(cmd.type==='skill'){
+    executeSkillCmd(actor, pIdx, cmd.spellIdx, cmd.targetIdx);
     return;
   }
 
@@ -2802,7 +2907,7 @@ function executePlayerCmd(cmd, actor){
 }
 
 function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
-  const spells=SPELLS[actor.class]||[];
+  const spells=getSpells(actor.class,actor);
   const spell=spells[spellIdx];
   if(!spell){runNextAction();return;}
   if(actor.mp<spell.mp){setBMsg(`${actor.name}はMPが足りない！`);setTimeout(runNextAction,900);return;}
@@ -2812,14 +2917,14 @@ function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
 
   // エフェクト対象要素を特定
   let fxEls=[];
-  if(spell.type==='atk'||spell.type==='multi'){
+  if(spell.type==='atk'||spell.type==='multi'||spell.type==='silence'){
     const t=alive.find(e=>e.idx===targetIdx)||alive[0];
     if(t)fxEls=[document.getElementById('bspr-'+t.idx)];
-  } else if(spell.type==='all'){
+  } else if(spell.type==='all'||spell.type==='debuffall'){
     fxEls=alive.map(e=>document.getElementById('bspr-'+e.idx)).filter(Boolean);
-  } else if(spell.type==='heal'||spell.type==='heal2'||spell.type==='healfull'||spell.type==='cure'){
+  } else if(spell.type==='heal'||spell.type==='heal2'||spell.type==='healfull'||spell.type==='cure'||spell.type==='buffDef'){
     if(targetIdx<=-10){const ai=-(targetIdx+10);fxEls=[document.getElementById('bally-spr-'+ai)];}
-  } else if(spell.type==='healall'){
+  } else if(spell.type==='healall'||spell.type==='speedup'){
     fxEls=G.party.map((_,i)=>document.getElementById('bally-spr-'+i)).filter(Boolean);
   } else if(spell.type==='buff'){
     fxEls=[fromEl];
@@ -2867,9 +2972,27 @@ function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
       G.party.forEach((p,i)=>{if(p.hp>0){const h=Math.floor(actor.int+10+Math.random()*10);p.hp=Math.min(p.maxHp,p.hp+h);showDmg('+'+h,'dc-heal',true,i);}});
       setBMsg(`${actor.name}が ${spell.name}！全員が回復した！`);
     }
-    // バフ
-    else if(spell.type==='buff'){
-      actor.buffed=true;setBMsg(`${actor.name}が ${spell.name}！攻撃力が上がった！`);
+    // 単体封魔
+    else if(spell.type==='silence'){
+      const t=alive.find(e=>e.idx===targetIdx)||alive[0];
+      if(!t){runNextAction();return;}
+      t.silenced=true;t.debuffAtk=Math.floor(t.atk*0.3);
+      setBMsg(`${actor.name}が ${spell.name}！\n${t.name}の力が封じられた！（攻撃力↓）`);
+    }
+    // 味方単体防御UP
+    else if(spell.type==='buffDef'&&targetIdx<=-10){
+      const allyIdx=-(targetIdx+10);const healTgt=G.party[allyIdx];
+      if(healTgt){healTgt.buffDef=true;showDmg('守護！','dc-heal',true,allyIdx);setBMsg(`${actor.name}が ${spell.name}！\n${healTgt.name}の守備力が上がった！`);}
+    }
+    // 全体速度UP
+    else if(spell.type==='speedup'){
+      G.party.forEach((p,i)=>{if(p.hp>0){p.buffSpd=true;showDmg('速↑','dc-heal',true,i);}});
+      setBMsg(`${actor.name}が ${spell.name}！\n全員の素早さが上がった！`);
+    }
+    // 全体弱体
+    else if(spell.type==='debuffall'){
+      alive.forEach(e=>{e.debuffAtk=Math.floor(e.atk*0.3);e.debuffDef=Math.floor(e.def*0.25);});
+      setBMsg(`${actor.name}が ${spell.name}！\n全ての敵が弱体化した！`);
     }
     else{setBMsg(`${actor.name}が ${spell.name} を唱えた！`);}
 
@@ -2878,13 +3001,106 @@ function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
   });
 }
 
+function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
+  const skills=getSkills(actor.class,actor);
+  const skill=skills[skillIdx];
+  if(!skill){runNextAction();return;}
+  if(actor.mp<skill.mp){setBMsg(`${actor.name}はMPが足りない！`);setTimeout(runNextAction,900);return;}
+  actor.mp-=skill.mp;
+  const alive=G.battleEnemies.filter(e=>e.curHp>0);
+  const fromEl=document.getElementById('bally-spr-'+pIdx);
+
+  let fxEls=[];
+  if(['atk','multi','stun','steal'].includes(skill.type)){
+    const t=alive.find(e=>e.idx===targetIdx)||alive[0];
+    if(t)fxEls=[document.getElementById('bspr-'+t.idx)];
+  } else if(['sleepall','defdown'].includes(skill.type)){
+    fxEls=alive.map(e=>document.getElementById('bspr-'+e.idx)).filter(Boolean);
+  } else if(skill.type==='healall'||skill.type==='rallybuff'){
+    fxEls=G.party.map((_,i)=>document.getElementById('bally-spr-'+i)).filter(Boolean);
+  } else {fxEls=[fromEl];}
+
+  setBMsg(`${actor.name}の ${skill.name}！`);
+  animSpellEffect(fromEl,fxEls,skill.type,()=>{
+    if(skill.type==='atk'){
+      const t=alive.find(e=>e.idx===targetIdx)||alive[0];
+      if(!t){runNextAction();return;}
+      const dmg=calcDmg(actor.atk,t.def,skill.power);applyEnemyDmg(t,dmg);
+      setBMsg(`${actor.name}の ${skill.name}！\n${t.name}に ${dmg} のダメージ！`);
+    }
+    else if(skill.type==='stun'){
+      const t=alive.find(e=>e.idx===targetIdx)||alive[0];
+      if(!t){runNextAction();return;}
+      const dmg=calcDmg(actor.atk,t.def,skill.power);applyEnemyDmg(t,dmg);
+      let msg=`${actor.name}の ${skill.name}！\n${t.name}に ${dmg} のダメージ！`;
+      if(Math.random()<0.5){t.stunned=true;msg+='\n行動不能になった！';}
+      setBMsg(msg);
+    }
+    else if(skill.type==='multi'){
+      const t=alive.find(e=>e.idx===targetIdx)||alive[0];
+      if(!t){runNextAction();return;}
+      let tot=0;for(let i=0;i<3;i++){const d=calcDmg(actor.atk,t.def,skill.power);applyEnemyDmg(t,d);tot+=d;}
+      setBMsg(`${actor.name}の ${skill.name}！\n${t.name}に ${tot} の連続ダメージ！`);
+    }
+    else if(skill.type==='steal'){
+      const t=alive.find(e=>e.idx===targetIdx)||alive[0];
+      if(!t){runNextAction();return;}
+      const stealGold=Math.floor((t.gold||5)*0.3+Math.random()*10);
+      actor.gold+=stealGold;
+      setBMsg(`${actor.name}の ${skill.name}！\n${t.name}から ${stealGold}G を盗んだ！`);
+    }
+    else if(skill.type==='powerCharge'){
+      actor.powerCharged=true;showDmg('力↑','dc-heal',true,pIdx);
+      setBMsg(`${actor.name}が力を溜めた！\n次の攻撃ダメージが2倍になる！`);
+    }
+    else if(skill.type==='selfbuff'){
+      actor.buffed=true;showDmg('攻↑','dc-heal',true,pIdx);
+      setBMsg(`${actor.name}の ${skill.name}！攻撃力が上がった！`);
+    }
+    else if(skill.type==='rallybuff'){
+      G.party.forEach((p,i)=>{if(p.hp>0){p.buffed=true;showDmg('攻↑','dc-heal',true,i);}});
+      setBMsg(`${actor.name}の ${skill.name}！全員の攻撃力が上がった！`);
+    }
+    else if(skill.type==='taunt'){
+      actor.buffDef=true;G.tauntIdx=pIdx;showDmg('守護！','dc-heal',true,pIdx);
+      setBMsg(`${actor.name}の ${skill.name}！\n防御力UP！敵の攻撃を引きつけた！`);
+    }
+    else if(skill.type==='sleepall'){
+      let slept=0;alive.forEach(e=>{if(Math.random()<0.55){e.sleeping=true;slept++;}});
+      setBMsg(`${actor.name}の ${skill.name}！\n${slept>0?`${slept}体の敵が眠りについた！`:'しかし効果がなかった…'}`);
+    }
+    else if(skill.type==='defdown'){
+      alive.forEach(e=>{e.debuffDef=Math.floor(e.def*0.3);});
+      setBMsg(`${actor.name}の ${skill.name}！全ての敵の防御力が下がった！`);
+    }
+    else if(skill.type==='healall'){
+      G.party.forEach((p,i)=>{if(p.hp>0){const h=Math.floor(actor.int+15+Math.random()*15);p.hp=Math.min(p.maxHp,p.hp+h);showDmg('+'+h,'dc-heal',true,i);}});
+      setBMsg(`${actor.name}の ${skill.name}！全員のHPが回復した！`);
+    }
+    renderBattle();
+    checkBattleEnd(()=>setTimeout(runNextAction,1000));
+  });
+}
+
 function executeEnemyAction(e){
   const partyAlive=G.party.filter(p=>p.hp>0);
   if(!partyAlive.length){gameover();return;}
-  const tgt=partyAlive[Math.floor(Math.random()*partyAlive.length)];
+  // 行動不能チェック
+  if(e.stunned){e.stunned=false;setBMsg(`${e.name}は行動不能で動けない！`);setTimeout(runNextAction,800);return;}
+  if(e.sleeping){setBMsg(`${e.name}は眠っている…`);setTimeout(runNextAction,800);return;}
+  // タント: 生存中の挑発キャラがいれば優先攻撃
+  let tgt;
+  if(G.tauntIdx>=0&&G.party[G.tauntIdx]&&G.party[G.tauntIdx].hp>0){
+    tgt=G.party[G.tauntIdx];
+  } else {
+    G.tauntIdx=-1;
+    tgt=partyAlive[Math.floor(Math.random()*partyAlive.length)];
+  }
   const tgtIdx=G.party.indexOf(tgt);
   animEnemyAttack(e.idx,tgtIdx,()=>{
-    let dmg=calcDmg(e.atk,tgt.def);
+    const effAtk=e.atk-(e.debuffAtk||0);
+    const effDef=tgt.def+(tgt.buffDef?Math.floor(tgt.def*.3):0);
+    let dmg=calcDmg(effAtk,effDef);
     if(tgt.defending){dmg=Math.max(1,Math.floor(dmg/2));}
     tgt.hp=Math.max(0,tgt.hp-dmg);
     const defMsg=tgt.defending?' (ぼうぎょ中！)':'';
@@ -2897,8 +3113,9 @@ function executeEnemyAction(e){
 }
 
 function clearTurnFlags(){
-  // ターン終了時に防御フラグをリセット
   G.party.forEach(p=>p.defending=false);
+  // タントが無効化されたかチェック
+  if(G.tauntIdx>=0&&(!G.party[G.tauntIdx]||G.party[G.tauntIdx].hp<=0))G.tauntIdx=-1;
 }
 
 // 敵全滅チェック（途中で全滅したら即終了）
@@ -2916,17 +3133,28 @@ function checkBattleEnd(cont){
 
 // 呪文エフェクト設定
 const SPELL_FX={
-  atk:     {count:5,emoji:'🔥',dur:320,spread:16},
-  all:     {count:4,emoji:'✦', dur:420,spread:20},
-  heal:    {count:5,emoji:'💚',dur:370,spread:14},
-  heal2:   {count:7,emoji:'💚',dur:380,spread:18},
-  healfull:{count:9,emoji:'⭐',dur:450,spread:20},
-  buff:    {count:5,emoji:'⚡',dur:300,spread:12},
-  debuff:  {count:4,emoji:'💜',dur:320,spread:14},
-  healall: {count:4,emoji:'💚',dur:400,spread:14},
-  steal:   {count:3,emoji:'💨',dur:270,spread:10},
-  multi:   {count:6,emoji:'⚡',dur:240,spread:12},
-  cure:    {count:5,emoji:'✨',dur:350,spread:14},
+  atk:        {count:5,emoji:'🔥',dur:320,spread:16},
+  all:        {count:4,emoji:'✦', dur:420,spread:20},
+  heal:       {count:5,emoji:'💚',dur:370,spread:14},
+  heal2:      {count:7,emoji:'💚',dur:380,spread:18},
+  healfull:   {count:9,emoji:'⭐',dur:450,spread:20},
+  buff:       {count:5,emoji:'⚡',dur:300,spread:12},
+  debuff:     {count:4,emoji:'💜',dur:320,spread:14},
+  healall:    {count:4,emoji:'💚',dur:400,spread:14},
+  steal:      {count:3,emoji:'💨',dur:270,spread:10},
+  multi:      {count:6,emoji:'⚡',dur:240,spread:12},
+  cure:       {count:5,emoji:'✨',dur:350,spread:14},
+  powerCharge:{count:4,emoji:'💪',dur:320,spread:10},
+  silence:    {count:5,emoji:'🔇',dur:380,spread:14},
+  stun:       {count:5,emoji:'⚡',dur:280,spread:12},
+  taunt:      {count:4,emoji:'🛡️',dur:320,spread:10},
+  sleepall:   {count:6,emoji:'💤',dur:420,spread:20},
+  speedup:    {count:5,emoji:'💨',dur:360,spread:16},
+  rallybuff:  {count:4,emoji:'🔥',dur:300,spread:14},
+  buffDef:    {count:4,emoji:'🛡️',dur:320,spread:12},
+  defdown:    {count:5,emoji:'💜',dur:340,spread:20},
+  debuffall:  {count:5,emoji:'💜',dur:400,spread:22},
+  selfbuff:   {count:4,emoji:'💫',dur:280,spread:10},
 };
 
 function _elCenter(el){
@@ -3140,6 +3368,7 @@ function calcDmg(atk,def,mult=1){return Math.max(1,Math.floor(Math.max(1,atk-Mat
 
 function applyEnemyDmg(enemy,dmg){
   enemy.curHp=Math.max(0,enemy.curHp-dmg);
+  if(enemy.sleeping){enemy.sleeping=false;} // 攻撃されると目が覚める
   const fill=document.getElementById('bhp-'+enemy.idx);
   if(fill)fill.style.width=(enemy.curHp/enemy.maxHp*100)+'%';
   const el=document.getElementById('ben-'+enemy.idx);
@@ -3170,7 +3399,9 @@ function battleVictory(){
 function checkLvl(c){
   while(c.exp>=c.expNext){
     c.lv++;c.exp-=c.expNext;c.expNext=Math.floor(c.expNext*1.6);
-    const g={hp:Math.floor(Math.random()*8+5),mp:Math.floor(Math.random()*4+2),atk:Math.floor(Math.random()*3+1),def:Math.floor(Math.random()*2+1)};
+    const spGain=1+(c.lv%5===0?1:0); // 5の倍数レベルでボーナスSP
+    c.sp=(c.sp||0)+spGain;
+    const g={hp:Math.floor(Math.random()*8+5),mp:Math.floor(Math.random()*4+2),atk:Math.floor(Math.random()*3+1),def:Math.floor(Math.random()*2+1),sp:spGain};
     c.maxHp+=g.hp;c.hp=Math.min(c.hp+g.hp,c.maxHp);
     c.baseMaxMp+=g.mp;c.mp=Math.min(c.mp+g.mp,c.maxMp);
     c.baseAtk+=g.atk;c.baseDef+=g.def;recalcStats(c);
@@ -3183,7 +3414,7 @@ function processPendingLvl(){
   const{c,g}=G.pendingLvlUps.shift();
   document.getElementById('lu-nm').textContent=c.name;
   document.getElementById('lu-num').textContent=c.lv;
-  document.getElementById('lu-stats').innerHTML=`<div>HP <span>+${g.hp}</span></div><div>MP <span>+${g.mp}</span></div><div>攻 <span>+${g.atk}</span></div><div>守 <span>+${g.def}</span></div>`;
+  document.getElementById('lu-stats').innerHTML=`<div>HP <span>+${g.hp}</span></div><div>MP <span>+${g.mp}</span></div><div>攻 <span>+${g.atk}</span></div><div>守 <span>+${g.def}</span></div><div style="color:var(--gold)">SP <span>+${g.sp||1}</span></div>`;
   document.getElementById('lvlup-screen').classList.remove('hidden');
 }
 function closeLvlUp(){document.getElementById('lvlup-screen').classList.add('hidden');processPendingLvl();}
@@ -3371,18 +3602,76 @@ function openStatus(){closeMenu();
     <div class="sg-item"><div class="sg-lbl">すばやさ</div><div class="sg-val">${c.spd}</div></div>
     <div class="sg-item"><div class="sg-lbl">かしこさ</div><div class="sg-val">${c.int}</div></div>
     <div class="sg-item"><div class="sg-lbl">けいけん</div><div class="sg-val">${c.exp}/${c.expNext}</div></div>
-    <div class="sg-item"><div class="sg-lbl">ゴールド</div><div class="sg-val" style="color:var(--gold)">${c.gold}G</div></div>`;
+    <div class="sg-item"><div class="sg-lbl">ゴールド</div><div class="sg-val" style="color:var(--gold)">${c.gold}G</div></div>
+    <div class="sg-item"><div class="sg-lbl">SP</div><div class="sg-val" style="color:#aaddff">${c.sp||0}</div></div>`;
   document.getElementById('status-screen').classList.remove('hidden');
 }
 function closeStatus(){document.getElementById('status-screen').classList.add('hidden');}
+
+// ============================================================
+// SP / スキル習得システム
+// ============================================================
+let spCharIdx=0;
+function openSkillTree(){
+  spCharIdx=0;renderSkillTree();
+  document.getElementById('sp-screen').classList.remove('hidden');
+}
+function closeSkillTree(){document.getElementById('sp-screen').classList.add('hidden');}
+function renderSkillTree(){
+  document.getElementById('sp-chars').innerHTML=
+    G.party.map((ch,i)=>`<button class="sp-char-btn ${i===spCharIdx?'cur':''}" onclick="selSpChar(${i})">
+      ${ch.icon}<br>${ch.name}</button>`).join('');
+  const c=G.party[spCharIdx];
+  document.getElementById('sp-info').textContent=`${c.name} の SP: ${c.sp||0}`;
+  const tree=SKILL_TREE[c.class]||[];
+  document.getElementById('sp-tree').innerHTML=tree.map((s,i)=>{
+    const learned=s.sp===0||c.unlockedSkills.includes(s.name);
+    const canLearn=!learned&&(c.sp||0)>=s.sp&&(i===0||s.sp===0||SKILL_TREE[c.class][i-1].sp===0||c.unlockedSkills.includes(SKILL_TREE[c.class][i-1].name));
+    const catLbl=s.category==='spell'?'じゅもん':'とくぎ';
+    if(learned){
+      return`<div class="sp-node unlocked">
+        <span>${s.icon||'✨'}${s.name}</span>
+        <span class="sp-cat">${catLbl}</span>
+        <span class="sp-badge-ok">習得済</span></div>`;
+    } else if(canLearn){
+      return`<button class="sp-node available" onclick="unlockSkill(${i})">
+        <span>${s.icon||'?'}${s.name}</span>
+        <span class="sp-cat">${catLbl}</span>
+        <span class="sp-cost">SP ${s.sp} → 習得！</span></button>`;
+    } else {
+      return`<div class="sp-node locked">
+        <span>？？？</span>
+        <span class="sp-cat">${catLbl}</span>
+        <span class="sp-cost">SP ${s.sp}</span></div>`;
+    }
+  }).join('');
+}
+function selSpChar(i){spCharIdx=i;renderSkillTree();}
+function unlockSkill(skillIdx){
+  const c=G.party[spCharIdx];
+  const tree=SKILL_TREE[c.class]||[];
+  const s=tree[skillIdx];
+  if(!s||(c.sp||0)<s.sp)return;
+  c.sp-=s.sp;
+  if(!c.unlockedSkills)c.unlockedSkills=[];
+  c.unlockedSkills.push(s.name);
+  addChat(`${c.name}が「${s.name}」を習得した！`,null,true);
+  renderSkillTree();
+}
+
 function menuItem(){closeMenu();const items=G.party[0].items;addChat(items.length?'どうぐ: '+items.map(i=>i.icon+i.name).join(' '):'どうぐがない',null,true);}
 
 let eqSlot='weapon';
-function menuEquip(){closeMenu();eqSlot='weapon';renderEquip();document.getElementById('equip-screen').classList.remove('hidden');}
+let eqCharIdx=0;
+function menuEquip(){closeMenu();eqCharIdx=0;eqSlot='weapon';renderEquip();document.getElementById('equip-screen').classList.remove('hidden');}
 function closeEquip(){document.getElementById('equip-screen').classList.add('hidden');}
 const SLOT_LBL={weapon:'ぶき',armor:'よろい',accessory:'そうしょく'};
 function renderEquip(){
-  const c=G.party[0];
+  // キャラクター選択タブ
+  document.getElementById('eq-chars').innerHTML=
+    G.party.map((ch,i)=>`<button class="eq-char-btn ${i===eqCharIdx?'cur':''}" onclick="selEqChar(${i})">
+      <span class="eq-char-ico">${ch.icon}</span><span class="eq-char-nm">${ch.name}</span></button>`).join('');
+  const c=G.party[eqCharIdx];
   document.getElementById('eq-slots').innerHTML=['weapon','armor','accessory'].map(s=>{
     const id=c.equip[s];const e=id?getEquip(id):null;
     const stat=e?[e.atk&&'攻+'+e.atk,e.def&&'守+'+e.def].filter(Boolean).join(' '):'';
@@ -3390,7 +3679,7 @@ function renderEquip(){
       <span class="eq-stype">${SLOT_LBL[s]}</span><span class="eq-sico">${e?e.icon:'➖'}</span>
       <span class="eq-snm ${e?'':'eq-empty'}">${e?e.name:'なし'}</span>
       <span class="eq-sstat">${stat}</span></button>`;}).join('');
-  document.getElementById('eq-stats').innerHTML=`<span class="eq-chip">攻<b>${c.atk}</b></span><span class="eq-chip">守<b>${c.def}</b></span><span class="eq-chip">速<b>${c.spd}</b></span>`;
+  document.getElementById('eq-stats').innerHTML=`<span class="eq-chip">攻<b>${c.atk}</b></span><span class="eq-chip">守<b>${c.def}</b></span><span class="eq-chip">速<b>${c.spd}</b></span><span class="eq-chip">魔<b>${c.int}</b></span>`;
   document.getElementById('eq-list-lbl').textContent=SLOT_LBL[eqSlot]+'を選ぶ';
   const owned=c.inventory.map(getEquip).filter(e=>e&&e.slot===eqSlot);
   const curId=c.equip[eqSlot];
@@ -3405,9 +3694,10 @@ function renderEquip(){
         <span class="eq-delta">${delta}</span>${e.id===curId?'<span class="eq-badge">装備中</span>':''}</button>`;}).join('');
 }
 function selEqSlot(s){eqSlot=s;renderEquip();}
+function selEqChar(i){eqCharIdx=i;renderEquip();}
 function equipItm(id){
-  const c=G.party[0];c.equip[eqSlot]=id;recalcStats(c);
-  addChat((id?getEquip(id).icon+getEquip(id).name+'を装備！':'はずした'),null,true);
+  const c=G.party[eqCharIdx];c.equip[eqSlot]=id;recalcStats(c);
+  addChat(`${c.name}が`+(id?getEquip(id).icon+getEquip(id).name+'を装備！':'はずした'),null,true);
   renderEquip();updatePartyHUD();
 }
 
