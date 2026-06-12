@@ -1568,7 +1568,22 @@ function initPeer(role) {
 
   // 6文字の短いIDを自前で生成（PeerJSデフォルトUUIDより扱いやすい）
   const myId = genCode();
-  _peer = new Peer(myId, { debug: 0 });
+  // 異なるネットワーク間（Wi-Fi同士やスマホのパケット通信）でも接続できるように
+  // STUN/TURNサーバーを指定する（指定なしだとキャリアのNATを越えられず接続失敗しやすい）
+  _peer = new Peer(myId, {
+    debug: 0,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun.relay.metered.ca:80' },
+        { urls: 'turn:global.relay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:global.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+      ]
+    }
+  });
 
   _peer.on('open', (id) => {
     ONLINE.myPeerId = id;
