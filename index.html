@@ -190,24 +190,67 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 #battle-screen.hidden{display:none;}
 #battle-bg{
   flex:1;min-height:0;position:relative;overflow:hidden;
-  display:flex;flex-direction:column;justify-content:space-between;
 }
-.battle-field-top{flex:1;display:flex;justify-content:center;align-items:center;gap:20px;padding:16px 12px 8px;flex-wrap:wrap;}
-.battle-field-bot{display:flex;justify-content:center;align-items:flex-end;gap:12px;padding:0 12px 12px;flex-shrink:0;}
+.battle-field-top{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;}
+.battle-field-bot{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;}
 
 /* Enemy sprite */
-.battle-enemy{display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;}
+.battle-enemy{display:flex;flex-direction:column;align-items:center;gap:4px;position:absolute;transform:translate(-50%,-50%);transition:left .5s ease,top .5s ease;}
 .battle-enemy.dead{opacity:0;pointer-events:none;transition:opacity .4s;}
 .b-ehp{width:64px;height:5px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;}
 .b-ehp-fill{height:100%;background:linear-gradient(90deg,#ff3333,#ff8833);border-radius:2px;transition:width .25s;}
-.b-ename{font-size:8px;color:var(--white);letter-spacing:1px;}
+.b-ename{font-size:8px;color:var(--white);letter-spacing:1px;white-space:nowrap;}
 .enemy-spr{cursor:pointer;display:block;image-rendering:pixelated;transition:transform .08s;}
 
 /* Ally battle */
-.battle-ally{display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;}
+.battle-ally{display:flex;flex-direction:column;align-items:center;gap:2px;position:absolute;transform:translate(-50%,-50%);transition:left .2s ease,top .2s ease;pointer-events:auto;}
 .battle-ally.dead{opacity:.25;}
 .ally-spr{font-size:28px;display:block;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
-.ally-name-tag{font-size:8px;color:var(--white);letter-spacing:1px;}
+.ally-name-tag{font-size:8px;color:var(--white);letter-spacing:1px;white-space:nowrap;}
+
+/* ---- 位置取り / 攻撃レーンシステム ---- */
+.battle-zone.lane{
+  position:absolute;transform-origin:0% 50%;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;z-index:18;
+}
+.battle-zone.lane.danger{
+  background:linear-gradient(90deg,rgba(255,50,50,.5),rgba(255,50,50,.12));
+  border:2px solid rgba(255,70,70,.95);box-shadow:0 0 18px rgba(255,40,40,.55);
+  animation:zonePulse .9s ease-in-out infinite;
+}
+.battle-zone.lane.aim{
+  background:linear-gradient(90deg,rgba(255,210,60,.45),rgba(255,210,60,.1));
+  border:2px dashed rgba(255,220,80,.95);box-shadow:0 0 18px rgba(255,210,60,.5);
+}
+.zone-timer{font-size:18px;font-weight:900;color:#fff;text-shadow:0 0 6px #000,0 0 2px #000;}
+@keyframes zonePulse{0%,100%{opacity:.6;}50%{opacity:1;}}
+.battle-phase-hint{
+  position:absolute;left:50%;top:6px;transform:translateX(-50%);z-index:19;
+  background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.25);border-radius:3px;
+  padding:4px 12px;font-size:10px;color:#fff;letter-spacing:1px;white-space:nowrap;
+  pointer-events:none;
+}
+
+/* ---- ぷにコン（バーチャルスティック） ---- */
+.bjoy{
+  position:absolute;width:84px;height:84px;border-radius:50%;
+  background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.35);
+  z-index:25;touch-action:none;
+}
+.bjoy-move{left:14px;bottom:14px;}
+.bjoy-aim{right:14px;bottom:14px;border-color:rgba(255,110,110,.55);}
+.bjoy-knob{
+  position:absolute;width:36px;height:36px;border-radius:50%;
+  background:rgba(255,255,255,.4);left:50%;top:50%;
+  transform:translate(-50%,-50%);pointer-events:none;
+}
+.bjoy-aim .bjoy-knob{background:rgba(255,90,90,.6);}
+.bjoy-label{
+  position:absolute;left:50%;top:-18px;transform:translateX(-50%);
+  font-size:8px;color:#fff;letter-spacing:1px;white-space:nowrap;
+  text-shadow:0 0 4px #000;
+}
 
 /* Battle animations */
 @keyframes playerAttack{
@@ -825,11 +868,11 @@ const CLASSES = {
 const SKILL_TREE = {
   warrior: [
     {name:'力溜め',  mp:0,  power:0,   type:'powerCharge',category:'skill',sp:0, icon:'💪'},
-    {name:'空斬り',  mp:4,  power:1.5, type:'atk',        category:'skill',sp:2, icon:'⚔️'},
+    {name:'空斬り',  mp:4,  power:1.5, type:'atk',        category:'skill',sp:2, icon:'⚔️', range:'close'},
   ],
   mage: [
-    {name:'炎弾',   mp:4,  power:1.2, type:'atk',    category:'spell',sp:0, icon:'🔥'},
-    {name:'爆炎',   mp:6,  power:1.5, type:'atk',    category:'spell',sp:1, icon:'💥'},
+    {name:'炎弾',   mp:4,  power:1.2, type:'atk',    category:'spell',sp:0, icon:'🔥', range:'long'},
+    {name:'爆炎',   mp:6,  power:1.5, type:'atk',    category:'spell',sp:1, icon:'💥', range:'long'},
     {name:'星砕',   mp:8,  power:1.3, type:'all',    category:'spell',sp:2, icon:'⭐'},
     {name:'封魔術', mp:5,  power:0,   type:'silence',category:'spell',sp:2, icon:'🔇'},
   ],
@@ -841,17 +884,17 @@ const SKILL_TREE = {
     {name:'神速の祈り',mp:6,  power:0, type:'speedup',category:'spell',sp:3, icon:'💨'},
   ],
   ranger: [
-    {name:'奇襲',   mp:3, power:1.3, type:'atk',      category:'skill',sp:0, icon:'🏹'},
+    {name:'奇襲',   mp:3, power:1.3, type:'atk',      category:'skill',sp:0, icon:'🏹', range:'mid'},
     {name:'鼓舞',   mp:5, power:0,   type:'rallybuff', category:'skill',sp:1, icon:'🔥'},
-    {name:'束縛矢', mp:7, power:1.4, type:'stun',      category:'skill',sp:2, icon:'🎯'},
+    {name:'束縛矢', mp:7, power:1.4, type:'stun',      category:'skill',sp:2, icon:'🎯', range:'mid'},
   ],
   paladin: [
     {name:'鉄壁',   mp:4, power:0,   type:'taunt', category:'skill',sp:0, icon:'🛡️'},
-    {name:'天罰撃', mp:6, power:2.0, type:'atk',   category:'skill',sp:2, icon:'⚡'},
+    {name:'天罰撃', mp:6, power:2.0, type:'atk',   category:'skill',sp:2, icon:'⚡', range:'close'},
     {name:'大癒光', mp:6, power:0,   type:'heal2', category:'spell',sp:2, icon:'💚'},
   ],
   sage: [
-    {name:'烈炎',     mp:10, power:2.0, type:'atk',      category:'spell',sp:0, icon:'🔥'},
+    {name:'烈炎',     mp:10, power:2.0, type:'atk',      category:'spell',sp:0, icon:'🔥', range:'long'},
     {name:'星砕閃',   mp:12, power:1.8, type:'all',      category:'spell',sp:2, icon:'✨'},
     {name:'完全癒光', mp:15, power:0,   type:'healfull', category:'spell',sp:3, icon:'⭐'},
     {name:'弱体術',   mp:7,  power:0,   type:'debuffall',category:'spell',sp:2, icon:'💜'},
@@ -859,7 +902,7 @@ const SKILL_TREE = {
   thief: [
     {name:'隠密',    mp:3, power:0,   type:'selfbuff',category:'skill',sp:0, icon:'🌑'},
     {name:'掠奪',    mp:4, power:0,   type:'steal',   category:'skill',sp:1, icon:'💰'},
-    {name:'乱れ斬り',mp:6, power:0.8, type:'multi',   category:'skill',sp:2, icon:'⚡'},
+    {name:'乱れ斬り',mp:6, power:0.8, type:'multi',   category:'skill',sp:2, icon:'⚡', range:'close'},
   ],
   dancer: [
     {name:'惑乱舞',   mp:4, power:0, type:'sleepall',category:'skill',sp:0, icon:'💃'},
@@ -876,16 +919,16 @@ function skillTypeLabel(t){
 }
 
 const ENEMIES_DATA = [
-  {name:'ぷるりん',    imgPath:'Monster/pipo-enemy001.png', sprite:'slime',    hp:18,  atk:6,  def:3,  exp:8,   gold:5,   color:'#4488ff',spd:1.2},
-  {name:'こうもり鬼',  imgPath:'Monster/pipo-enemy005.png', sprite:'bat',      hp:24,  atk:9,  def:4,  exp:12,  gold:8,   color:'#9955dd',spd:1.8},
-  {name:'いわトロル',  imgPath:'Monster/pipo-enemy003.png', sprite:'golem',    hp:36,  atk:14, def:8,  exp:20,  gold:12,  color:'#aa7744',spd:0.7},
-  {name:'はがねぷるん',imgPath:'Monster/pipo-enemy001b.png',sprite:'metalslime',hp:4,  atk:10, def:50, exp:120, gold:30,  color:'#bbbbcc',spd:2.5},
-  {name:'もりの虫',    imgPath:'Monster/pipo-enemy004.png', sprite:'worm',     hp:30,  atk:11, def:6,  exp:18,  gold:10,  color:'#55bb44',spd:1.0},
-  {name:'まよえる霊',  imgPath:'Monster/pipo-enemy006.png', sprite:'ghost',    hp:28,  atk:13, def:5,  exp:22,  gold:14,  color:'#bbccff',spd:1.4},
-  {name:'トカゲ戦士',  imgPath:'Monster/pipo-enemy007.png', sprite:'lizard',   hp:55,  atk:20, def:12, exp:40,  gold:25,  color:'#44aa55',spd:1.6},
-  {name:'石の番兵',    imgPath:'Monster/pipo-enemy008.png', sprite:'gargoyle', hp:70,  atk:25, def:18, exp:60,  gold:35,  color:'#8899aa',spd:0.9},
-  {name:'闇の眷属',    imgPath:'Monster/pipo-boss001.png',  sprite:'reaper',   hp:200, atk:35, def:20, exp:200, gold:100, color:'#aa44dd',spd:1.1,boss:true},
-  {name:'闇の帝王',    imgPath:'Monster/pipo-boss002.png',  sprite:'demonlord',hp:350, atk:50, def:30, exp:500, gold:250, color:'#cc2244',spd:1.3,boss:true},
+  {name:'ぷるりん',    imgPath:'Monster/pipo-enemy001.png', sprite:'slime',    hp:18,  atk:6,  def:3,  exp:8,   gold:5,   color:'#4488ff',spd:1.2,range:'close'},
+  {name:'こうもり鬼',  imgPath:'Monster/pipo-enemy005.png', sprite:'bat',      hp:24,  atk:9,  def:4,  exp:12,  gold:8,   color:'#9955dd',spd:1.8,range:'mid'},
+  {name:'いわトロル',  imgPath:'Monster/pipo-enemy003.png', sprite:'golem',    hp:36,  atk:14, def:8,  exp:20,  gold:12,  color:'#aa7744',spd:0.7,range:'close'},
+  {name:'はがねぷるん',imgPath:'Monster/pipo-enemy001b.png',sprite:'metalslime',hp:4,  atk:10, def:50, exp:120, gold:30,  color:'#bbbbcc',spd:2.5,range:'close'},
+  {name:'もりの虫',    imgPath:'Monster/pipo-enemy004.png', sprite:'worm',     hp:30,  atk:11, def:6,  exp:18,  gold:10,  color:'#55bb44',spd:1.0,range:'close'},
+  {name:'まよえる霊',  imgPath:'Monster/pipo-enemy006.png', sprite:'ghost',    hp:28,  atk:13, def:5,  exp:22,  gold:14,  color:'#bbccff',spd:1.4,range:'mid'},
+  {name:'トカゲ戦士',  imgPath:'Monster/pipo-enemy007.png', sprite:'lizard',   hp:55,  atk:20, def:12, exp:40,  gold:25,  color:'#44aa55',spd:1.6,range:'close'},
+  {name:'石の番兵',    imgPath:'Monster/pipo-enemy008.png', sprite:'gargoyle', hp:70,  atk:25, def:18, exp:60,  gold:35,  color:'#8899aa',spd:0.9,range:'mid'},
+  {name:'闇の眷属',    imgPath:'Monster/pipo-boss001.png',  sprite:'reaper',   hp:200, atk:35, def:20, exp:200, gold:100, color:'#aa44dd',spd:1.1,boss:true,range:'long'},
+  {name:'闇の帝王',    imgPath:'Monster/pipo-boss002.png',  sprite:'demonlord',hp:350, atk:50, def:30, exp:500, gold:250, color:'#cc2244',spd:1.3,boss:true,range:'long'},
 ];
 
 const EQUIP_CATALOG = [
@@ -2689,6 +2732,247 @@ window.addEventListener('keydown',e=>{G.keys[e.key]=true;if(e.key==='Enter')hand
 window.addEventListener('keyup',e=>{G.keys[e.key]=false;});
 
 // ============================================================
+// BATTLE POSITIONING / 攻撃レーンシステム (ソロプレイ専用)
+// ============================================================
+// 戦場全体を一つの自由配置エリアとして扱う（上下の区切りなし）
+const BATTLE_AREA = {minX:9, maxX:91, minY:12, maxY:88};
+// 射程タイプごとのレーンの長さ(px)
+const RANGE_LEN_PX = {close:90, mid:170, long:270};
+const LANE_WIDTH_PX = 78;
+const ATTACK_PHASE_MS = 3000; // 自分の攻撃: 移動+方向指定タイム
+const DODGE_PHASE_MS = 2800;  // 敵の攻撃: 回避タイム
+const STICK_RADIUS_PX = 24;
+const STICK_DEADZONE = 0.18;
+
+// すばやさが高いほど移動速度(%/秒)が速くなる
+function unitMoveSpeedPctPerSec(u){ return 16 + (u.spd||10) * 1.8; }
+
+// 戦闘開始時に各キャラの初期位置(%)を割り振る（以降は次に動かすまでその場に留まる）
+function initBattlePositions(){
+  const a=BATTLE_AREA;
+  G.battleEnemies.forEach((e,i)=>{
+    const n=G.battleEnemies.length;
+    e.ax = a.minX + (a.maxX-a.minX) * ((i+0.5)/n);
+    e.ay = a.minY + (a.maxY-a.minY)*0.28;
+  });
+  G.party.forEach((p,i)=>{
+    const n=G.party.length;
+    p.ax = a.minX + (a.maxX-a.minX) * ((i+0.5)/n);
+    p.ay = a.minY + (a.maxY-a.minY)*0.75;
+  });
+}
+
+function _bgRect(){ return document.getElementById('battle-bg').getBoundingClientRect(); }
+
+function _showPhaseHint(text){
+  const bg=document.getElementById('battle-bg');
+  let hint=document.getElementById('battle-phase-hint');
+  if(!hint){
+    hint=document.createElement('div');
+    hint.id='battle-phase-hint'; hint.className='battle-phase-hint';
+    bg.appendChild(hint);
+  }
+  hint.textContent=text;
+  return hint;
+}
+function _hidePhaseHint(){
+  document.getElementById('battle-phase-hint')?.remove();
+}
+
+// バーチャルスティック（ぷにコン）を生成。getVec()で現在の方向(-1~1)と強さ(0~1)を取得できる
+function _createJoystick(cls, label){
+  const el=document.createElement('div');
+  el.className='bjoy '+cls;
+  if(label){
+    const lb=document.createElement('div');
+    lb.className='bjoy-label'; lb.textContent=label;
+    el.appendChild(lb);
+  }
+  const knob=document.createElement('div');
+  knob.className='bjoy-knob';
+  el.appendChild(knob);
+
+  let vec={x:0,y:0,mag:0};
+  let active=false;
+  const update=(ev)=>{
+    const r=el.getBoundingClientRect();
+    const cx=r.left+r.width/2, cy=r.top+r.height/2;
+    const dx=ev.clientX-cx, dy=ev.clientY-cy;
+    const dist=Math.hypot(dx,dy);
+    const mag=Math.min(dist/STICK_RADIUS_PX,1);
+    const ang=Math.atan2(dy,dx);
+    const kx=Math.cos(ang)*Math.min(dist,STICK_RADIUS_PX);
+    const ky=Math.sin(ang)*Math.min(dist,STICK_RADIUS_PX);
+    knob.style.transform=`translate(calc(-50% + ${kx}px),calc(-50% + ${ky}px))`;
+    vec = mag>STICK_DEADZONE ? {x:Math.cos(ang),y:Math.sin(ang),mag} : {x:0,y:0,mag:0};
+  };
+  const down=(ev)=>{ active=true; el.setPointerCapture?.(ev.pointerId); update(ev); ev.preventDefault(); };
+  const move=(ev)=>{ if(!active)return; update(ev); ev.preventDefault(); };
+  const up=(ev)=>{ active=false; knob.style.transform=''; vec={x:0,y:0,mag:0}; el.releasePointerCapture?.(ev.pointerId); };
+  el.addEventListener('pointerdown',down);
+  el.addEventListener('pointermove',move);
+  el.addEventListener('pointerup',up);
+  el.addEventListener('pointercancel',up);
+  el._cleanup=()=>{
+    el.removeEventListener('pointerdown',down);
+    el.removeEventListener('pointermove',move);
+    el.removeEventListener('pointerup',up);
+    el.removeEventListener('pointercancel',up);
+  };
+  el.getVec=()=>vec;
+  return el;
+}
+
+// レーン(帯状エリア)を origin(%) から angle(rad) 方向へ lengthPx だけ表示
+function _layoutLaneZone(zoneEl, originAx, originAy, angleRad, lengthPx, widthPx){
+  zoneEl.style.left=originAx+'%';
+  zoneEl.style.top=originAy+'%';
+  zoneEl.style.width=lengthPx+'px';
+  zoneEl.style.height=widthPx+'px';
+  zoneEl.style.transform=`translateY(-50%) rotate(${angleRad}rad)`;
+}
+
+// origin(px) から angle 方向に伸びるレーン内に入っているユニットを判定
+function _unitsInLane(units, getAxAy, originPx, angleRad, lengthPx, widthPx){
+  const r=_bgRect();
+  const cos=Math.cos(angleRad), sin=Math.sin(angleRad);
+  return units.filter(u=>{
+    const [ax,ay]=getAxAy(u);
+    const ux=r.left+r.width*ax/100-originPx.x;
+    const uy=r.top+r.height*ay/100-originPx.y;
+    const along=ux*cos+uy*sin, perp=-ux*sin+uy*cos;
+    return along>=0 && along<=lengthPx && Math.abs(perp)<=widthPx/2;
+  });
+}
+
+// 自分の攻撃: 左ぷにコンで移動、右ぷにコンで攻撃方向を指定する
+// cb(hitEnemies, angle) を呼ぶ
+function runPlayerAttackPositioning(actor, pIdx, rangeType, cb){
+  const bg=document.getElementById('battle-bg');
+  const allyEl=document.getElementById('bally-'+pIdx);
+  const rangeLen=RANGE_LEN_PX[rangeType]||RANGE_LEN_PX.mid;
+
+  const lane=document.createElement('div');
+  lane.className='battle-zone lane aim';
+  const timerEl=document.createElement('div'); timerEl.className='zone-timer';
+  lane.appendChild(timerEl);
+  bg.appendChild(lane);
+
+  const moveJoy=_createJoystick('bjoy-move','移動');
+  const aimJoy=_createJoystick('bjoy-aim','攻撃方向');
+  bg.appendChild(moveJoy); bg.appendChild(aimJoy);
+
+  _showPhaseHint(`${actor.name}の番！左で移動・右で攻撃方向`);
+  if(allyEl){allyEl.style.transition='none';allyEl.style.zIndex=30;}
+
+  let angle=-Math.PI/2; // デフォルトは敵側(上方向)
+  let remain=ATTACK_PHASE_MS;
+  timerEl.textContent=Math.ceil(remain/1000);
+  _layoutLaneZone(lane, actor.ax, actor.ay, angle, rangeLen, LANE_WIDTH_PX);
+
+  let rafId, last=performance.now();
+  const finish=()=>{
+    cancelAnimationFrame(rafId);
+    moveJoy._cleanup();aimJoy._cleanup();
+    moveJoy.remove();aimJoy.remove();
+    _hidePhaseHint();
+    if(allyEl){allyEl.style.zIndex='';allyEl.style.transition='';}
+    const r=_bgRect();
+    const originPx={x:r.left+r.width*actor.ax/100, y:r.top+r.height*actor.ay/100};
+    const hit=_unitsInLane(G.battleEnemies.filter(e=>e.curHp>0), e=>[e.ax,e.ay], originPx, angle, rangeLen, LANE_WIDTH_PX);
+    lane.remove();
+    cb(hit,angle);
+  };
+  const tick=(now)=>{
+    const dt=(now-last)/1000; last=now;
+    const mv=moveJoy.getVec();
+    if(mv.mag>0){
+      const spd=unitMoveSpeedPctPerSec(actor);
+      actor.ax=Math.max(BATTLE_AREA.minX,Math.min(BATTLE_AREA.maxX, actor.ax+mv.x*spd*mv.mag*dt));
+      actor.ay=Math.max(BATTLE_AREA.minY,Math.min(BATTLE_AREA.maxY, actor.ay+mv.y*spd*mv.mag*dt));
+      if(allyEl){allyEl.style.left=actor.ax+'%';allyEl.style.top=actor.ay+'%';}
+    }
+    const av=aimJoy.getVec();
+    if(av.mag>0)angle=Math.atan2(av.y,av.x);
+    _layoutLaneZone(lane, actor.ax, actor.ay, angle, rangeLen, LANE_WIDTH_PX);
+
+    remain-=dt*1000;
+    timerEl.textContent=Math.max(0,Math.ceil(remain/1000));
+    if(remain<=0){finish();return;}
+    rafId=requestAnimationFrame(tick);
+  };
+  rafId=requestAnimationFrame(tick);
+}
+
+// 敵の攻撃: 攻撃方向に赤いレーンを表示し、狙われた味方は左ぷにコンで回避する
+// cb(hitAllies, angle) を呼ぶ
+function runEnemyDangerPhase(enemy, target, rangeType, cb){
+  const bg=document.getElementById('battle-bg');
+  const tIdx=G.party.indexOf(target);
+  const allyEl=document.getElementById('bally-'+tIdx);
+  const rangeLen=RANGE_LEN_PX[rangeType]||RANGE_LEN_PX.mid;
+
+  const startAx=target.ax, startAy=target.ay;
+  const angle=Math.atan2(startAy-enemy.ay, startAx-enemy.ax);
+
+  const lane=document.createElement('div');
+  lane.className='battle-zone lane danger';
+  const timerEl=document.createElement('div'); timerEl.className='zone-timer';
+  lane.appendChild(timerEl);
+  bg.appendChild(lane);
+  _layoutLaneZone(lane, enemy.ax, enemy.ay, angle, rangeLen, LANE_WIDTH_PX);
+
+  const moveJoy=_createJoystick('bjoy-move','回避');
+  bg.appendChild(moveJoy);
+  _showPhaseHint(`⚠ ${target.name}が狙われている！左で回避！`);
+  if(allyEl){allyEl.style.transition='none';allyEl.style.zIndex=30;}
+
+  let remain=DODGE_PHASE_MS;
+  timerEl.textContent=Math.ceil(remain/1000);
+
+  let rafId, last=performance.now();
+  const finish=()=>{
+    cancelAnimationFrame(rafId);
+    moveJoy._cleanup();moveJoy.remove();
+    _hidePhaseHint();
+    if(allyEl){allyEl.style.zIndex='';allyEl.style.transition='';}
+    const r=_bgRect();
+    const originPx={x:r.left+r.width*enemy.ax/100, y:r.top+r.height*enemy.ay/100};
+    const hit=_unitsInLane(G.party.filter(p=>p.hp>0), p=>[p.ax,p.ay], originPx, angle, rangeLen, LANE_WIDTH_PX);
+    lane.remove();
+    cb(hit,angle);
+  };
+  const tick=(now)=>{
+    const dt=(now-last)/1000; last=now;
+    const mv=moveJoy.getVec();
+    if(mv.mag>0){
+      const spd=unitMoveSpeedPctPerSec(target);
+      target.ax=Math.max(BATTLE_AREA.minX,Math.min(BATTLE_AREA.maxX, target.ax+mv.x*spd*mv.mag*dt));
+      target.ay=Math.max(BATTLE_AREA.minY,Math.min(BATTLE_AREA.maxY, target.ay+mv.y*spd*mv.mag*dt));
+      if(allyEl){allyEl.style.left=target.ax+'%';allyEl.style.top=target.ay+'%';}
+    }
+    remain-=dt*1000;
+    timerEl.textContent=Math.max(0,Math.ceil(remain/1000));
+    if(remain<=0){finish();return;}
+    rafId=requestAnimationFrame(tick);
+  };
+  rafId=requestAnimationFrame(tick);
+}
+
+// 攻撃方向(angle)へ向かって敵が突進するアニメーション
+function animAttackerLunge(sprEl, angleRad, distPx, cb){
+  if(!sprEl){cb();return;}
+  const mx=Math.cos(angleRad)*distPx, my=Math.sin(angleRad)*distPx;
+  sprEl.style.transition='transform .18s ease-in';
+  sprEl.style.transform=`translate(${mx}px,${my}px) scale(1.12)`;
+  setTimeout(()=>{
+    sprEl.style.transition='transform .14s ease-out';
+    sprEl.style.transform='translate(0,0) scale(1)';
+    setTimeout(()=>{sprEl.style.transition='';cb();},180);
+  },210);
+}
+
+// ============================================================
 // BATTLE SYSTEM
 // ============================================================
 function startBattle(mapEnemies){
@@ -2711,6 +2995,7 @@ function startBattle(mapEnemies){
   G.pendingLvlUps=[];
   G.tauntIdx=-1;
   G.cmdQueue=[]; G.cmdSelectIdx=0; G.executing=false;
+  initBattlePositions();
   document.getElementById('battle-screen').classList.remove('hidden');
   renderBattle();
   const who = ONLINE.isOnline && !ONLINE.isHost ? '🌐 ' : '⚔️ ';
@@ -2997,8 +3282,39 @@ function executePlayerCmd(cmd, actor){
 
   if(cmd.type==='attack'){
     if(!alive.length){runNextAction();return;}
-    // targetIdx で指定された敵、なければ先頭
+    // targetIdx で指定された敵、なければ先頭（オンライン時のアニメ用）
     const tgt=alive.find(e=>e.idx===cmd.targetIdx)||alive[0];
+
+    if(!ONLINE.isOnline){
+      setBMsg(`${actor.name}の番！左で移動・右で攻撃方向を決めろ！`);
+      renderBattle();
+      runPlayerAttackPositioning(actor, pIdx, 'mid', (hitList, angle)=>{
+        const sprEl=document.getElementById('bally-spr-'+pIdx);
+        animAttackerLunge(sprEl, angle, 40, ()=>{
+          const atkBonus=actor.buffed?Math.floor(actor.atk*.5):0;
+          const pwrMult=actor.powerCharged?2.0:1.0;
+          actor.buffed=false;actor.powerCharged=false;
+          if(!hitList.length){
+            setBMsg(`${actor.name}の攻撃！\nしかし何も当たらなかった…`);
+            renderBattle();
+            checkBattleEnd(()=>setTimeout(runNextAction,1000));
+            return;
+          }
+          let msg=`${actor.name}の攻撃！\n`;
+          hitList.forEach(t=>{
+            const dmg=calcDmg(actor.atk+atkBonus,t.def,pwrMult);
+            applyEnemyDmg(t,dmg);
+            msg+=`${t.name}に ${dmg}　`;
+          });
+          if(pwrMult>1)msg+='（力溜め！）';
+          setBMsg(msg);
+          renderBattle();
+          checkBattleEnd(()=>setTimeout(runNextAction,1000));
+        });
+      });
+      return;
+    }
+
     animPlayerAttack(pIdx, tgt.idx, ()=>{
       const atkBonus=actor.buffed?Math.floor(actor.atk*.5):0;
       const pwrMult=actor.powerCharged?2.0:1.0;
@@ -3042,6 +3358,42 @@ function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
   actor.mp-=spell.mp;
   const alive=G.battleEnemies.filter(e=>e.curHp>0);
   const fromEl=document.getElementById('bally-spr-'+pIdx);
+
+  // ソロプレイ: 単体攻撃魔法は移動+照準フェーズを挟む（射程レーンに当たった敵にダメージ）
+  if(!ONLINE.isOnline && (spell.type==='atk'||spell.type==='multi')){
+    const rangeType=spell.range||'long';
+    setBMsg(`${actor.name}の番！左で移動・右で${spell.name}の方向を決めろ！`);
+    renderBattle();
+    runPlayerAttackPositioning(actor, pIdx, rangeType, (hitList, angle)=>{
+      const sprEl=document.getElementById('bally-spr-'+pIdx);
+      animAttackerLunge(sprEl, angle, 30, ()=>{
+        if(!hitList.length){
+          setBMsg(`${actor.name}が ${spell.name}！\nしかし何も当たらなかった…`);
+          renderBattle();
+          checkBattleEnd(()=>setTimeout(runNextAction,1000));
+          return;
+        }
+        const fx=hitList.map(t=>document.getElementById('bspr-'+t.idx)).filter(Boolean);
+        animSpellEffect(fromEl, fx, spell.type, ()=>{
+          let msg=`${actor.name}が ${spell.name}！\n`;
+          hitList.forEach(t=>{
+            let d;
+            if(spell.type==='multi'){
+              let tot=0;for(let i=0;i<3;i++){const dd=calcDmg(actor.atk,t.def,.7);applyEnemyDmg(t,dd);tot+=dd;}
+              d=tot;
+            } else {
+              d=calcDmg(actor.int*2,t.def,spell.power);applyEnemyDmg(t,d);
+            }
+            msg+=`${t.name}に ${d}　`;
+          });
+          setBMsg(msg);
+          renderBattle();
+          checkBattleEnd(()=>setTimeout(runNextAction,1000));
+        });
+      });
+    });
+    return;
+  }
 
   // エフェクト対象要素を特定
   let fxEls=[];
@@ -3138,6 +3490,44 @@ function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
   const alive=G.battleEnemies.filter(e=>e.curHp>0);
   const fromEl=document.getElementById('bally-spr-'+pIdx);
 
+  // ソロプレイ: 単体攻撃技は移動+照準フェーズを挟む（射程レーンに当たった敵にダメージ）
+  if(!ONLINE.isOnline && ['atk','multi','stun'].includes(skill.type)){
+    const rangeType=skill.range||'mid';
+    setBMsg(`${actor.name}の番！左で移動・右で${skill.name}の方向を決めろ！`);
+    renderBattle();
+    runPlayerAttackPositioning(actor, pIdx, rangeType, (hitList, angle)=>{
+      const sprEl=document.getElementById('bally-spr-'+pIdx);
+      animAttackerLunge(sprEl, angle, 40, ()=>{
+        if(!hitList.length){
+          setBMsg(`${actor.name}の ${skill.name}！\nしかし何も当たらなかった…`);
+          renderBattle();
+          checkBattleEnd(()=>setTimeout(runNextAction,1000));
+          return;
+        }
+        const fx=hitList.map(t=>document.getElementById('bspr-'+t.idx)).filter(Boolean);
+        animSpellEffect(fromEl, fx, skill.type, ()=>{
+          let msg=`${actor.name}の ${skill.name}！\n`;
+          let stunned=false;
+          hitList.forEach(t=>{
+            if(skill.type==='multi'){
+              let tot=0;for(let i=0;i<3;i++){const d=calcDmg(actor.atk,t.def,skill.power);applyEnemyDmg(t,d);tot+=d;}
+              msg+=`${t.name}に ${tot}　`;
+            } else {
+              const dmg=calcDmg(actor.atk,t.def,skill.power);applyEnemyDmg(t,dmg);
+              msg+=`${t.name}に ${dmg}　`;
+              if(skill.type==='stun'&&Math.random()<0.5){t.stunned=true;stunned=true;}
+            }
+          });
+          if(stunned)msg+='\n行動不能になった！';
+          setBMsg(msg);
+          renderBattle();
+          checkBattleEnd(()=>setTimeout(runNextAction,1000));
+        });
+      });
+    });
+    return;
+  }
+
   let fxEls=[];
   if(['atk','multi','stun','steal'].includes(skill.type)){
     const t=alive.find(e=>e.idx===targetIdx)||alive[0];
@@ -3224,16 +3614,47 @@ function executeEnemyAction(e){
     G.tauntIdx=-1;
     tgt=partyAlive[Math.floor(Math.random()*partyAlive.length)];
   }
+  const resolveHit=(member)=>{
+    const mIdx=G.party.indexOf(member);
+    const effAtk=e.atk-(e.debuffAtk||0);
+    const effDef=member.def+(member.buffDef?Math.floor(member.def*.3):0);
+    let dmg=calcDmg(effAtk,effDef);
+    if(member.defending){dmg=Math.max(1,Math.floor(dmg/2));}
+    member.hp=Math.max(0,member.hp-dmg);
+    showDmg(dmg,'dc-hit',true,mIdx);
+    return {member,dmg};
+  };
+
+  if(!ONLINE.isOnline){
+    const rangeType=e.range||'mid';
+    setBMsg(`${e.name}が攻撃の構えを見せた！`);
+    renderBattle();
+    runEnemyDangerPhase(e, tgt, rangeType, (hitAllies, angle)=>{
+      const enemySprEl=document.getElementById('bspr-'+e.idx);
+      animAttackerLunge(enemySprEl, angle, 30, ()=>{
+        if(!hitAllies.length){
+          setBMsg(`${e.name}の攻撃！\nしかし全員ひらりと回避した！`);
+          renderBattle();
+          if(G.party.every(p=>p.hp<=0)){setTimeout(gameover,1000);return;}
+          setTimeout(runNextAction,1000);
+          return;
+        }
+        const results=hitAllies.map(resolveHit);
+        const msg=results.map(({member,dmg})=>`${member.name}に ${dmg}${member.defending?'(ぼうぎょ)':''}`).join('　');
+        setBMsg(`${e.name}の攻撃！\n${msg}`);
+        renderBattle();
+        if(G.party.every(p=>p.hp<=0)){setTimeout(gameover,1000);return;}
+        setTimeout(runNextAction,1000);
+      });
+    });
+    return;
+  }
+
   const tgtIdx=G.party.indexOf(tgt);
   animEnemyAttack(e.idx,tgtIdx,()=>{
-    const effAtk=e.atk-(e.debuffAtk||0);
-    const effDef=tgt.def+(tgt.buffDef?Math.floor(tgt.def*.3):0);
-    let dmg=calcDmg(effAtk,effDef);
-    if(tgt.defending){dmg=Math.max(1,Math.floor(dmg/2));}
-    tgt.hp=Math.max(0,tgt.hp-dmg);
+    const {dmg}=resolveHit(tgt);
     const defMsg=tgt.defending?' (ぼうぎょ中！)':'';
     setBMsg(`${e.name}の攻撃！\n${tgt.name}に ${dmg} のダメージ！${defMsg}`);
-    showDmg(dmg,'dc-hit',true,tgtIdx);
     renderBattle();
     if(G.party.every(p=>p.hp<=0)){setTimeout(gameover,1000);return;}
     setTimeout(runNextAction,1000);
@@ -3394,7 +3815,7 @@ function renderBattle(){
     const base=e.boss?130:90;
     const sz=Math.min(base, Math.floor(window.innerWidth/5));
     const imgSrc = e.imgPath || getSpriteURL(e.sprite||'slime',e.color||'#4488ff',sz);
-    return`<div class="battle-enemy ${e.curHp<=0?'dead':''}" id="ben-${i}">
+    return`<div class="battle-enemy ${e.curHp<=0?'dead':''}" id="ben-${i}" style="left:${e.ax??50}%;top:${e.ay??25}%">
       <div class="b-ehp"><div class="b-ehp-fill" id="bhp-${i}" style="width:${e.curHp/e.maxHp*100}%"></div></div>
       <img class="enemy-spr" id="bspr-${i}" src="${imgSrc}" width="${sz}" height="${sz}" alt="${e.name}"
         style="image-rendering:pixelated;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));">
@@ -3404,7 +3825,7 @@ function renderBattle(){
 
   const aa=document.getElementById('battle-allies');
   aa.innerHTML=G.party.map((p,i)=>`
-    <div class="battle-ally ${p.hp<=0?'dead':''}" id="bally-${i}">
+    <div class="battle-ally ${p.hp<=0?'dead':''}" id="bally-${i}" style="left:${p.ax??50}%;top:${p.ay??75}%">
       ${p.chipImg
         ? `<canvas id="bally-spr-${i}" width="48" height="48" style="image-rendering:pixelated;display:block;"></canvas>`
         : `<div class="ally-spr" id="bally-spr-${i}">${p.icon}</div>`}
