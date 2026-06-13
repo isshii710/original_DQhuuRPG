@@ -39,7 +39,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .hud-lv{font-size:8px;color:var(--gold);white-space:nowrap;}
 
 #map-label{
-  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  position:absolute;top:8px;left:calc(50% + 35px);transform:translateX(-50%);
   background:rgba(6,12,36,0.85);border:1px solid rgba(60,90,160,0.5);
   border-radius:3px;padding:4px 14px;font-size:11px;letter-spacing:2px;color:var(--gold);
   white-space:nowrap;
@@ -332,6 +332,8 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 /* Spell select */
 #spell-screen{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #spell-screen.hidden{display:none;}
+#skill-screen{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#skill-screen.hidden{display:none;}
 #target-screen{position:fixed;inset:0;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #target-screen.hidden{display:none;}
 #ally-target-screen{position:fixed;inset:0;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
@@ -479,12 +481,22 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 #minimap canvas{width:100%;height:100%;}
 
 /* ========== SAVE / ONLINE MODAL ========== */
-#save-modal,#online-modal,#join-modal{
+#save-modal,#online-modal,#join-modal,#fullmap-modal,#warp-modal{
   position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.75);
   display:flex;align-items:center;justify-content:center;padding:16px;
 }
-#save-modal.hidden,#online-modal.hidden,#join-modal.hidden{display:none;}
+#save-modal.hidden,#online-modal.hidden,#join-modal.hidden,#fullmap-modal.hidden,#warp-modal.hidden{display:none;}
 .modal-box{width:min(420px,96vw);max-height:90vh;overflow-y:auto;}
+#fullmap-canvas{display:block;width:100%;image-rendering:pixelated;background:#000;}
+.warp-village{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:rgba(10,20,60,.85);border-bottom:1px solid rgba(60,90,160,.3);
+  color:var(--white);
+}
+.warp-village-ico{font-size:20px;width:28px;text-align:center;}
+.warp-village-info{flex:1;}
+.warp-village-name{font-size:11px;letter-spacing:1px;}
+.warp-village-sub{font-size:9px;color:rgba(255,255,255,.6);margin-top:2px;}
 .save-slot{
   display:flex;align-items:center;gap:10px;padding:10px 14px;
   background:rgba(10,20,60,.85);border-bottom:1px solid rgba(60,90,160,.3);
@@ -695,6 +707,8 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
       <button class="mitem" onclick="menuEquip()">⚔️ そうび</button>
       <button class="mitem" onclick="menuItem()">🎒 どうぐぶくろ</button>
       <button class="mitem" onclick="closeMenu();openSkillTree()">✨ スキル習得</button>
+      <button class="mitem" onclick="closeMenu();openFullMap()">🗺️ 全体マップ</button>
+      <button class="mitem" onclick="closeMenu();openWarpModal()">🌀 帰還の書</button>
       <button class="mitem" onclick="closeMenu();openSaveModal()">💾 セーブ / ロード</button>
       <button class="mitem" id="menu-recruit-btn" onclick="closeMenu();menuRecruit()">🤝 仲間を募集する</button>
       <button class="mitem" id="menu-join-btn" onclick="closeMenu();menuJoinWorld()">🚪 外の世界に冒険する</button>
@@ -794,6 +808,26 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
     <div class="win-title">💾 セーブ / ロード</div>
     <div id="save-slots-list" style="display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);"></div>
     <div class="win-close" onclick="closeSaveModal()">▶ とじる</div>
+  </div>
+</div>
+
+<!-- ===== FULL MAP MODAL ===== -->
+<div id="fullmap-modal" class="hidden">
+  <div class="win modal-box">
+    <div class="win-title">🗺️ 全体マップ</div>
+    <div style="padding:10px;">
+      <canvas id="fullmap-canvas" width="240" height="180"></canvas>
+    </div>
+    <div class="win-close" onclick="closeFullMap()">▶ とじる</div>
+  </div>
+</div>
+
+<!-- ===== WARP MODAL ===== -->
+<div id="warp-modal" class="hidden">
+  <div class="win modal-box">
+    <div class="win-title">🌀 帰還の書</div>
+    <div id="warp-village-list" style="display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);"></div>
+    <div class="win-close" onclick="closeWarpModal()">▶ とじる</div>
   </div>
 </div>
 
@@ -1530,7 +1564,7 @@ window.addEventListener('load',()=>{
   // 画面の初期状態を強制リセット（CSS キャッシュ対策）
   ['lobby-screen','battle-screen','spell-screen','target-screen',
    'ally-target-screen','menu-screen','status-screen','equip-screen','skill-screen','sp-screen','smith-screen','village-shop-screen',
-   'lvlup-screen','dialog','save-modal','online-modal','join-modal',
+   'lvlup-screen','dialog','save-modal','online-modal','join-modal','fullmap-modal','warp-modal',
    'item-popup','chat-input'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.classList.add('hidden');
@@ -3214,6 +3248,78 @@ function drawMinimap(){
     const rx=rp.x/G.TILE*sx, ry=rp.y/G.TILE*sy;
     mmCtx.fillStyle='#88aaff';mmCtx.beginPath();mmCtx.arc(rx,ry,3,0,Math.PI*2);mmCtx.fill();
   }
+}
+
+// 全体マップ
+const FULLMAP_COLORS={
+  [T.WALL]:'#3a2a1a', [T.TREE]:'#1a5a1a', [T.NPC]:'#ffdd55',
+  [T.EXIT]:'#55ddaa', [T.EXIT_NEXT]:'#55ffcc', [T.STAIR_D]:'#aa8844',
+  [T.STAIR_U]:'#aa8844', [T.BOSS_GATE]:'#aa2255', [T.CHEST]:'#ffcc00',
+  [T.DOOR]:'#cc8844', [T.ENTER]:'#44cc88', [T.SAVE]:'#55aaff',
+};
+function openFullMap(){
+  const map=MAPS_DEF[G.mapIdx];
+  const cv=document.getElementById('fullmap-canvas');
+  const fmCtx=cv.getContext('2d');
+  const tw=cv.width/MAP_W, th=cv.height/MAP_H;
+  fmCtx.clearRect(0,0,cv.width,cv.height);
+  for(let ty=0;ty<MAP_H;ty++){
+    for(let tx=0;tx<MAP_W;tx++){
+      const t=G.tiles[ty]?.[tx];
+      fmCtx.fillStyle=(t===T.WALL)?(map.wall||'#3a2a1a'):(FULLMAP_COLORS[t]||map.bg||'#2a4a1a');
+      fmCtx.fillRect(tx*tw,ty*th,tw,th);
+    }
+  }
+  G.mapEnemies.forEach(e=>{
+    if(e.dead)return;
+    const ex=e.x/G.TILE*tw, ey=e.y/G.TILE*th;
+    fmCtx.fillStyle='#ff4444';fmCtx.fillRect(ex-1.5,ey-1.5,3,3);
+  });
+  const leader=G.party[0];
+  if(leader){
+    const px=leader.x/G.TILE*tw, py=leader.y/G.TILE*th;
+    fmCtx.fillStyle='#00ffaa';fmCtx.beginPath();fmCtx.arc(px,py,3,0,Math.PI*2);fmCtx.fill();
+  }
+  document.getElementById('fullmap-modal').classList.remove('hidden');
+}
+function closeFullMap(){
+  document.getElementById('fullmap-modal').classList.add('hidden');
+}
+
+// 帰還の書（村ワープ）
+function openWarpModal(){
+  const map=MAPS_DEF[G.mapIdx];
+  if(G.inBattle){ addChat('🌀 戦闘中は帰還の書を使えない',null,true); return; }
+  if(map.type==='dungeon'){ addChat('🌀 ダンジョン内では帰還の書を使えない',null,true); return; }
+  const el=document.getElementById('warp-village-list');
+  let html='';
+  const curVillage=Math.floor(G.mapIdx/3);
+  VILLAGES.forEach((v,i)=>{
+    if(!G.story.villages[i]?.visited) return;
+    const isCur=(i===curVillage);
+    html+=`<div class="warp-village">
+      <div class="warp-village-ico">${v.icon}</div>
+      <div class="warp-village-info">
+        <div class="warp-village-name">${v.name}</div>
+        <div class="warp-village-sub">Lv.${v.levelRange[0]}〜${v.levelRange[1]}</div>
+      </div>
+      ${isCur?'<span style="font-size:9px;color:rgba(255,255,255,.5);">現在地</span>':`<button onclick="warpToVillage(${i})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">🌀 ワープ</button>`}
+    </div>`;
+  });
+  if(!html) html='<div style="padding:14px;font-size:10px;color:var(--white);text-align:center;">まだ訪れた村がない</div>';
+  el.innerHTML=html;
+  document.getElementById('warp-modal').classList.remove('hidden');
+}
+function closeWarpModal(){
+  document.getElementById('warp-modal').classList.add('hidden');
+}
+function warpToVillage(i){
+  closeWarpModal();
+  fadeIn(()=>{
+    G.dungeonFloor=0;
+    generateMap(i*3);
+    addChat('🌀 '+VILLAGES[i].name+'にワープした！',null,true);
+  });
 }
 
 // ============================================================
