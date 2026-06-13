@@ -607,7 +607,7 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
   </div>
   <div id="console-bottom">
     <div class="act-row">
-      <button class="act-btn" onclick="handleTalk()">💬 話す</button>
+      <button class="act-btn" id="talk-btn" onclick="handleTalk()">💬 話す</button>
       <button class="act-btn btn-menu" onclick="openMenu()">📋 メニュー</button>
       <div id="save-btn-hud" style="flex:1;display:flex;flex-direction:column;gap:4px;">
         <button class="act-btn btn-save" onclick="openSaveModal()">💾 セーブ</button>
@@ -1675,6 +1675,7 @@ const G = {
   // Map
   mapIdx:0, dungeonFloor:0, prevMapIdx:0,
   clearedDungeons:{}, chests:[], chestAnim:null, doors:[], doorAnim:null,
+  inHouse:false, houseReturn:null,
   // クエストログで表示する道順（タイル座標の配列）
   questRoute:null,
   // 強化・装備解放に使う素材（ダンジョンボスがドロップ）
@@ -1719,7 +1720,7 @@ const G = {
 const MOUNT_SPEED_MULT=1.7; // 騎乗中の移動速度倍率
 
 // Tile IDs
-const T={FLOOR:0,WALL:1,TREE:3,NPC:4,EXIT:5,STAIR_D:6,STAIR_U:7,BOSS_GATE:8,CHEST:10,DOOR:11,ENTER:12,SAVE:13,EXIT_NEXT:14};
+const T={FLOOR:0,WALL:1,TREE:3,NPC:4,EXIT:5,STAIR_D:6,STAIR_U:7,BOSS_GATE:8,CHEST:10,DOOR:11,ENTER:12,SAVE:13,EXIT_NEXT:14,HOUSE_EXIT:15};
 
 // ============================================================
 // CANVAS SETUP
@@ -2879,8 +2880,8 @@ function generateMap(idx){
     for(const[cx,cy] of [[19,13],[18,13],[12,12]]){
       if(G.tiles[cy]?.[cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
     }
-    [[12,5],[3,5]].forEach(([dx,dy])=>{
-      if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false});}
+    [[12,5,'inn'],[3,5,'elder']].forEach(([dx,dy,npcId])=>{
+      if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false,npcId});}
     });
     setPlayerPos(11,12);
 
@@ -3043,6 +3044,7 @@ function loop(now){
   updateCamera();
   render();
   drawMinimap();
+  updateTalkButton();
 }
 
 // ============================================================
@@ -3117,13 +3119,13 @@ function canWalk(px,py){
     const tx=Math.floor(cx/G.TILE),ty=Math.floor(cy/G.TILE);
     if(ty<0||ty>=MAP_H||tx<0||tx>=MAP_W)return false;
     const t=G.tiles[ty][tx];
-    if(t===T.WALL||t===T.TREE||t===T.CHEST||t===T.DOOR)return false;
+    if(t===T.WALL||t===T.TREE||t===T.CHEST||t===T.DOOR||t===T.NPC)return false;
   }
   return true;
 }
 
 function _tryOpenDoorAt(px,py){
-  if(G.doorAnim||performance.now()-_doorMoveTrigger<500)return;
+  if(G.doorAnim||G.transitioning||performance.now()-_doorMoveTrigger<500)return;
   const tx=Math.floor(px/G.TILE),ty=Math.floor(py/G.TILE);
   if(G.tiles[ty]?.[tx]===T.DOOR){
     const door=G.doors.find(d=>d.x===tx&&d.y===ty);
@@ -3143,6 +3145,7 @@ function handleTileAt(tx,ty){
   else if(t===T.ENTER){changeMap(G.mapIdx-1,MAP_W-3,9);} // フィールド→村: 村の東ゲート付近に出現
   else if(t===T.STAIR_D){descendFloor();}
   else if(t===T.STAIR_U){ascendFloor();}
+  else if(t===T.HOUSE_EXIT){exitHouse();}
   else if(t===T.SAVE&&!G.saveTileUsed){
     G.saveTileUsed=true;
     G.party.forEach(p=>{p.hp=p.maxHp;p.mp=p.maxMp;});
@@ -3288,7 +3291,7 @@ function render(){
 
       // ─── ベースタイル（タイルセット画像 or ソリッドカラーフォールバック）───
       const baseChip=getImg(BASECHIP);
-      const tDef=TILE_DEF[map.type]||TILE_DEF.field;
+      const tDef=G.inHouse?TILE_DEF.house:(TILE_DEF[map.type]||TILE_DEF.field);
       if(baseChip.complete&&baseChip.naturalWidth){
         const[tc,tr]=(t===T.WALL)?tDef.wall:tDef.floor;
         ctx.drawImage(baseChip,tc*32,tr*32,32,32,sx,sy,TILE,TILE);
@@ -3299,6 +3302,11 @@ function render(){
 
       // ─── タイル固有のオーバーレイ ───
       if(t===T.WALL){
+        // 村の建物は壁タイルの上に屋根を重ねて家らしく見せる
+        if(!G.inHouse&&map.type==='town'&&ty>0&&G.tiles[ty-1]?.[tx]!==T.WALL){
+          ctx.fillStyle='#a8553a';ctx.fillRect(sx,sy,TILE,TILE*0.55);
+          ctx.fillStyle='#7a3a22';ctx.fillRect(sx,sy+TILE*0.5,TILE,TILE*0.08);
+        }
         ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(sx,sy,TILE,2);
         ctx.fillStyle='rgba(255,255,255,0.06)';ctx.fillRect(sx,sy+TILE-2,TILE,2);
       }else if(t===T.TREE){
@@ -3348,6 +3356,9 @@ function render(){
         const glow=0.4+0.3*Math.sin(performance.now()/300);
         ctx.fillStyle=`rgba(80,180,255,${glow})`;ctx.fillRect(sx,sy,TILE,TILE);
         drawTileEmoji('🌟',sx,sy,TILE);
+      }else if(t===T.HOUSE_EXIT){
+        ctx.fillStyle='rgba(180,140,80,0.5)';ctx.fillRect(sx,sy,TILE,TILE);
+        drawTileEmoji('🚪',sx,sy,TILE);
       }
     }
   }
@@ -3428,12 +3439,13 @@ const BASECHIP = 'Map/MapChip/[Base]BaseChip_pipo.png';
 // ★ここの値を変更してマップの見た目を調整できます★
 //   floor = 床タイルの座標, wall = 壁タイルの座標
 const TILE_DEF = {
-  town:    {floor:[0,0], wall:[0,2]},
+  town:    {floor:[0,0], wall:[1,36]},
   field:   {floor:[2,0], wall:[1,2]},
   dungeon: {floor:[4,0], wall:[3,2]},
   desert:  {floor:[6,0], wall:[5,2]},
   mountain:{floor:[4,2], wall:[6,2]},
   castle:  {floor:[2,2], wall:[7,2]},
+  house:   {floor:[0,36], wall:[1,36]},
 };
 
 // 扉アニメーション画像（フレーム0=閉,1=開き中,2=全開）
@@ -3482,7 +3494,7 @@ const FULLMAP_COLORS={
   [T.WALL]:'#3a2a1a', [T.TREE]:'#1a5a1a', [T.NPC]:'#ffdd55',
   [T.EXIT]:'#55ddaa', [T.EXIT_NEXT]:'#55ffcc', [T.STAIR_D]:'#aa8844',
   [T.STAIR_U]:'#aa8844', [T.BOSS_GATE]:'#aa2255', [T.CHEST]:'#ffcc00',
-  [T.DOOR]:'#cc8844', [T.ENTER]:'#44cc88', [T.SAVE]:'#55aaff',
+  [T.DOOR]:'#cc8844', [T.ENTER]:'#44cc88', [T.SAVE]:'#55aaff', [T.HOUSE_EXIT]:'#cc8844',
 };
 function openFullMap(){
   const map=MAPS_DEF[G.mapIdx];
@@ -5050,15 +5062,25 @@ function endBattle(){
 // ============================================================
 // MAP ACTIONS
 // ============================================================
-function handleTalk(){
-  if(!document.getElementById('dialog').classList.contains('hidden')){advDialog();return;}
-  const leader=G.party[0];if(!leader)return;
+function getAdjacentNPC(){
+  const leader=G.party[0];if(!leader)return null;
   const tx=Math.floor(leader.x/G.TILE),ty=Math.floor(leader.y/G.TILE);
   const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
   for(const [dx,dy] of dirs){
     const nx=tx+dx,ny=ty+dy;
-    if(G.tiles[ny]?.[nx]===T.NPC){const npc=G.npcsOnMap.find(n=>n.x===nx&&n.y===ny);if(npc){showDialog(npc.id);return;}}
+    if(G.tiles[ny]?.[nx]===T.NPC){const npc=G.npcsOnMap.find(n=>n.x===nx&&n.y===ny);if(npc)return npc;}
   }
+  return null;
+}
+function updateTalkButton(){
+  const btn=document.getElementById('talk-btn');if(!btn)return;
+  const dialogOpen=!document.getElementById('dialog').classList.contains('hidden');
+  btn.style.display=(dialogOpen||getAdjacentNPC())?'':'none';
+}
+function handleTalk(){
+  if(!document.getElementById('dialog').classList.contains('hidden')){advDialog();return;}
+  const npc=getAdjacentNPC();
+  if(npc){showDialog(npc.id);return;}
   addChat('話せる相手がそばにいない',null,true);
 }
 function handleSearch(){
@@ -5122,14 +5144,54 @@ function openChestAt(tx,ty){
 }
 // 扉開閉アニメーション（Door1→Door2→Door3の順に切り替え、完了で通行可に）
 function startDoorAnim(tx,ty){
-  if(G.doorAnim)return;
+  if(G.doorAnim||G.transitioning)return;
   const door=G.doors.find(d=>d.x===tx&&d.y===ty);
   if(!door||door.opened)return;
   G.doorAnim={x:tx,y:ty,frame:0};
   addChat('🚪 扉が開いた！',null,true);
   setTimeout(()=>{if(G.doorAnim?.x===tx)G.doorAnim.frame=1;},200);
   setTimeout(()=>{if(G.doorAnim?.x===tx)G.doorAnim.frame=2;},450);
-  setTimeout(()=>{G.doorAnim=null;door.opened=true;G.tiles[ty][tx]=T.FLOOR;},800);
+  setTimeout(()=>{
+    G.doorAnim=null;
+    if(door.npcId){enterHouse(door);}
+    else{door.opened=true;G.tiles[ty][tx]=T.FLOOR;}
+  },800);
+}
+
+// 家の中に入る（扉の先にNPCがいる小さな部屋に切り替える）
+function buildHouseInteriorTiles(){
+  const g=[];
+  for(let y=0;y<MAP_H;y++){g[y]=[];for(let x=0;x<MAP_W;x++)g[y][x]=T.WALL;}
+  const w=8,h=6,ox=Math.floor((MAP_W-w)/2),oy=Math.floor((MAP_H-h)/2);
+  for(let y=oy;y<oy+h;y++)for(let x=ox;x<ox+w;x++)g[y][x]=T.FLOOR;
+  return {tiles:g,room:{ox,oy,w,h}};
+}
+function enterHouse(door){
+  if(G.transitioning)return;
+  fadeIn(()=>{
+    G.houseReturn={mapIdx:G.mapIdx,tiles:G.tiles,npcsOnMap:G.npcsOnMap,doors:G.doors,chests:G.chests,mapEnemies:G.mapEnemies,x:door.x,y:door.y+1};
+    const npc=G.npcsOnMap.find(n=>n.id===door.npcId);
+    const {tiles,room}=buildHouseInteriorTiles();
+    const cx=room.ox+Math.floor(room.w/2);
+    const exitY=room.oy+room.h;
+    tiles[exitY][cx]=T.HOUSE_EXIT;
+    G.tiles=tiles;
+    if(npc){const nx=cx,ny=room.oy+1;G.tiles[ny][nx]=T.NPC;G.npcsOnMap=[{...npc,x:nx,y:ny}];}
+    else G.npcsOnMap=[];
+    G.doors=[];G.chests=[];G.mapEnemies=[];G.inHouse=true;
+    setPlayerPos(cx,exitY-1);
+    addChat('🚪 '+(npc?npc.name+'の家':'家')+'に入った',null,true);
+  });
+}
+function exitHouse(){
+  if(G.transitioning||!G.houseReturn)return;
+  fadeIn(()=>{
+    const ret=G.houseReturn;
+    G.tiles=ret.tiles;G.npcsOnMap=ret.npcsOnMap;G.doors=ret.doors;G.chests=ret.chests;G.mapEnemies=ret.mapEnemies;
+    G.inHouse=false;G.houseReturn=null;
+    setPlayerPos(ret.x,ret.y);
+    addChat('外に出た',null,true);
+  });
 }
 
 function startChestAnim(tx,ty){
