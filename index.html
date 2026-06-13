@@ -1765,6 +1765,8 @@ async function startGame(){
 // ============================================================
 const SAVE_SLOTS = 3;
 const SAVE_KEY_PREFIX = 'al1_save_';
+const AUTOSAVE_SLOT = 'auto';
+const AUTOSAVE_INTERVAL_MS = 180000; // 3分
 
 function getSaveData(slot) {
   try { return JSON.parse(localStorage.getItem(SAVE_KEY_PREFIX + slot)); } catch(e){ return null; }
@@ -1775,11 +1777,15 @@ function setSaveData(slot, data) {
 function deleteSaveData(slot) {
   localStorage.removeItem(SAVE_KEY_PREFIX + slot);
 }
+function slotLabel(slot) {
+  return slot === AUTOSAVE_SLOT ? 'オートセーブ' : ('スロット' + slot);
+}
 
-function buildSaveSnapshot() {
+function buildSaveSnapshot(autosave=false) {
   return {
     version: 3,
     savedAt: Date.now(),
+    autosave,
     mapIdx: G.mapIdx,
     dungeonFloor: G.dungeonFloor,
     clearedDungeons: G.clearedDungeons,
@@ -1813,37 +1819,45 @@ function closeSaveModal() {
   document.getElementById('save-modal').classList.add('hidden');
 }
 
+function renderSaveSlotEntry(slot, data) {
+  if (data) {
+    const leader = data.party[0];
+    const d = new Date(data.savedAt);
+    const dtStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const mapName = MAPS_DEF[data.mapIdx]?.name || '不明';
+    const titlePrefix = slot === AUTOSAVE_SLOT ? '💾 [自動] ' : '';
+    return `<div class="save-slot">
+      <div class="save-slot-ico">${leader?.icon||'⚔️'}</div>
+      <div class="save-slot-info">
+        <div class="save-slot-title">${titlePrefix}${leader?.name||'???'} Lv.${leader?.lv||1} ／ ${mapName}</div>
+        <div class="save-slot-sub">パーティ${data.party.length}人 ・ ${dtStr}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <button onclick="loadGame('${slot}')" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">📂 ロード</button>
+        ${slot === AUTOSAVE_SLOT ? '' : `<button onclick="saveGame(${slot})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;color:#88ccff;">💾 上書き</button>`}
+        <button onclick="confirmDeleteSave('${slot}')" class="hud-save-btn" style="font-size:9px;padding:4px 8px;color:#ff8888;">🗑 削除</button>
+      </div>
+    </div>`;
+  } else {
+    return `<div class="save-slot">
+      <div class="save-slot-ico">📭</div>
+      <div class="save-slot-info">
+        <div class="save-slot-title" style="color:var(--white);">${slotLabel(slot)}（空き）</div>
+      </div>
+      ${slot === AUTOSAVE_SLOT ? '' : `<button onclick="saveGame(${slot})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">💾 セーブ</button>`}
+    </div>`;
+  }
+}
+
 function renderSaveSlots() {
   const el = document.getElementById('save-slots-list');
   let html = '';
+  const autoData = getSaveData(AUTOSAVE_SLOT);
+  if (autoData) {
+    html += renderSaveSlotEntry(AUTOSAVE_SLOT, autoData);
+  }
   for (let s = 1; s <= SAVE_SLOTS; s++) {
-    const data = getSaveData(s);
-    if (data) {
-      const leader = data.party[0];
-      const d = new Date(data.savedAt);
-      const dtStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
-      const mapName = MAPS_DEF[data.mapIdx]?.name || '不明';
-      html += `<div class="save-slot">
-        <div class="save-slot-ico">${leader?.icon||'⚔️'}</div>
-        <div class="save-slot-info">
-          <div class="save-slot-title">${leader?.name||'???'} Lv.${leader?.lv||1} ／ ${mapName}</div>
-          <div class="save-slot-sub">パーティ${data.party.length}人 ・ ${dtStr}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <button onclick="loadGame(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">📂 ロード</button>
-          <button onclick="saveGame(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;color:#88ccff;">💾 上書き</button>
-          <button onclick="confirmDeleteSave(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;color:#ff8888;">🗑 削除</button>
-        </div>
-      </div>`;
-    } else {
-      html += `<div class="save-slot">
-        <div class="save-slot-ico">📭</div>
-        <div class="save-slot-info">
-          <div class="save-slot-title" style="color:var(--white);">スロット ${s}（空き）</div>
-        </div>
-        <button onclick="saveGame(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">💾 セーブ</button>
-      </div>`;
-    }
+    html += renderSaveSlotEntry(s, getSaveData(s));
   }
   el.innerHTML = html;
 }
@@ -1851,7 +1865,7 @@ function renderSaveSlots() {
 function saveGame(slot) {
   const snap = buildSaveSnapshot();
   setSaveData(slot, snap);
-  addChat('💾 スロット'+slot+'にセーブしました！', null, true);
+  addChat('💾 ' + slotLabel(slot) + 'にセーブしました！', null, true);
   closeSaveModal();
   // オートセーブ通知
   showAutoSaveFlash();
@@ -1868,12 +1882,12 @@ function loadGame(slot) {
   fadeIn(() => {
     restoreFromSnapshot(data);
     initGame();
-    addChat('📂 スロット' + slot + 'からロードしました！', null, true);
+    addChat('📂 ' + slotLabel(slot) + 'からロードしました！', null, true);
   });
 }
 
 function confirmDeleteSave(slot) {
-  if (confirm('スロット'+slot+'のデータを削除しますか？')) {
+  if (confirm(slotLabel(slot)+'のデータを削除しますか？')) {
     deleteSaveData(slot);
     renderSaveSlots();
   }
@@ -1887,8 +1901,39 @@ function showAutoSaveFlash() {
   setTimeout(() => el.remove(), 3000);
 }
 
+// ============================================================
+// オートセーブ
+// ============================================================
+let autoSaveTimer = null;
+
+function showAutoSavingIndicator() {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:6px;right:10px;z-index:200;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);border-radius:3px;padding:3px 8px;font-family:DotGothic16,serif;font-size:9px;color:#ccddff;letter-spacing:1px;animation:cfade 2s forwards;';
+  el.textContent = '💾 オートセーブ中…';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2000);
+}
+
+function autoSaveTick() {
+  if (G.inBattle) return;
+  if (ONLINE.isOnline && !ONLINE.isHost) return;
+  if (!G.party || !G.party.length) return;
+  const snap = buildSaveSnapshot(true);
+  setSaveData(AUTOSAVE_SLOT, snap);
+  showAutoSavingIndicator();
+}
+
+function startAutoSave() {
+  if (autoSaveTimer) clearInterval(autoSaveTimer);
+  autoSaveTimer = setInterval(autoSaveTick, AUTOSAVE_INTERVAL_MS);
+}
+
 // タイトル画面でセーブデータ確認
 function checkExistingSave() {
+  if (getSaveData(AUTOSAVE_SLOT)) {
+    document.getElementById('btn-continue').style.display = '';
+    return;
+  }
   for (let s = 1; s <= SAVE_SLOTS; s++) {
     if (getSaveData(s)) {
       document.getElementById('btn-continue').style.display = '';
@@ -1900,6 +1945,8 @@ function checkExistingSave() {
 function showContinue() {
   // セーブスロットを調べて、1つなら直接ロード、複数なら選択モーダル
   const slots = [];
+  const autoData = getSaveData(AUTOSAVE_SLOT);
+  if (autoData) slots.push({ slot: AUTOSAVE_SLOT, data: autoData });
   for (let s = 1; s <= SAVE_SLOTS; s++) {
     const d = getSaveData(s);
     if (d) slots.push({ slot: s, data: d });
@@ -1922,7 +1969,7 @@ function directLoadGame(slot, data) {
   fadeIn(() => {
     restoreFromSnapshot(data);
     initGame();
-    addChat('📂 スロット' + slot + 'からロードしました！', null, true);
+    addChat('📂 ' + slotLabel(slot) + 'からロードしました！', null, true);
   });
 }
 
@@ -2495,6 +2542,7 @@ function initGame(){
   updatePartyHUD();
   addChat('冒険が始まった！',null,true);
   setTimeout(()=>showDialog('elder'),1500);
+  startAutoSave();
 
   // オンラインモードなら接続済みバッジを表示
   if (ONLINE.isOnline) {
