@@ -818,7 +818,9 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
     <div class="win-title">🗺️ 全体マップ</div>
     <div style="padding:10px;">
       <canvas id="fullmap-canvas" width="240" height="180"></canvas>
+      <div style="font-size:9px;color:rgba(255,255,255,.6);margin:6px 0 2px;letter-spacing:1px;">現在地: <span id="fullmap-cur-name"></span></div>
     </div>
+    <div id="fullmap-village-list" style="display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);max-height:240px;overflow-y:auto;"></div>
     <div class="win-close" onclick="closeFullMap()">▶ とじる</div>
   </div>
 </div>
@@ -3288,10 +3290,45 @@ function openFullMap(){
     const px=leader.x/G.TILE*tw, py=leader.y/G.TILE*th;
     fmCtx.fillStyle='#00ffaa';fmCtx.beginPath();fmCtx.arc(px,py,3,0,Math.PI*2);fmCtx.fill();
   }
+  document.getElementById('fullmap-cur-name').textContent=map.name;
+  renderWorldMapList();
   document.getElementById('fullmap-modal').classList.remove('hidden');
 }
 function closeFullMap(){
   document.getElementById('fullmap-modal').classList.add('hidden');
+}
+// 全9村のマップ一覧（町・フィールド・ダンジョン）を表示
+const AREA_TYPES=[{label:'町',icon:'🏠'},{label:'フィールド',icon:'🌳'},{label:'ダンジョン',icon:'⚔️'}];
+function renderWorldMapList(){
+  const el=document.getElementById('fullmap-village-list');
+  const curVillage=Math.floor(G.mapIdx/3);
+  const curType=G.mapIdx%3;
+  let html='';
+  VILLAGES.forEach((v,i)=>{
+    const visited=G.story.villages[i]?.visited;
+    const isCur=(i===curVillage);
+    if(!visited){
+      html+='<div class="warp-village" style="opacity:.4;">'
+        +'<div class="warp-village-ico">🔒</div>'
+        +'<div class="warp-village-info">'
+        +'<div class="warp-village-name">？？？</div>'
+        +'<div class="warp-village-sub">未踏破</div>'
+        +'</div></div>';
+      return;
+    }
+    const typesHtml=AREA_TYPES.map((t,ti)=>{
+      const here=isCur&&curType===ti;
+      return `<span style="${here?'color:#00ffaa;font-weight:bold;':'color:rgba(255,255,255,.5);'}">${t.icon}${t.label}${here?'📍':''}</span>`;
+    }).join(' ');
+    html+=`<div class="warp-village" style="${isCur?'background:rgba(0,255,170,.12);':''}">
+      <div class="warp-village-ico">${v.icon}</div>
+      <div class="warp-village-info">
+        <div class="warp-village-name">${v.name}${isCur?'（現在地）':''}</div>
+        <div class="warp-village-sub">Lv.${v.levelRange[0]}〜${v.levelRange[1]} ${typesHtml}</div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html;
 }
 
 // 帰還の書（村ワープ）
