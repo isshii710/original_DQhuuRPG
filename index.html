@@ -709,6 +709,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
       <button class="mitem" onclick="closeMenu();openSkillTree()">✨ スキル習得</button>
       <button class="mitem" onclick="closeMenu();openFullMap()">🗺️ 全体マップ</button>
       <button class="mitem" onclick="closeMenu();openWarpModal()">🌀 帰還の書</button>
+      <button class="mitem" id="menu-mount-btn" onclick="toggleMount()">🐴 馬に乗る</button>
       <button class="mitem" onclick="closeMenu();openSaveModal()">💾 セーブ / ロード</button>
       <button class="mitem" id="menu-recruit-btn" onclick="closeMenu();menuRecruit()">🤝 仲間を募集する</button>
       <button class="mitem" id="menu-join-btn" onclick="closeMenu();menuJoinWorld()">🚪 外の世界に冒険する</button>
@@ -1538,7 +1539,11 @@ const G = {
   },
   // メインイベント(村ボス)戦の対象村index。通常戦闘ではnull
   villageBossVillage:null,
+  // 馬に乗っているか（フィールドのみ有効。村・ダンジョン・戦闘では自動下馬）
+  mounted:false,
 };
+
+const MOUNT_SPEED_MULT=1.7; // 騎乗中の移動速度倍率
 
 // Tile IDs
 const T={FLOOR:0,WALL:1,TREE:3,NPC:4,EXIT:5,STAIR_D:6,STAIR_U:7,BOSS_GATE:8,CHEST:10,DOOR:11,ENTER:12,SAVE:13,EXIT_NEXT:14};
@@ -2670,6 +2675,8 @@ function buildFieldTiles(){
 function generateMap(idx){
   G.mapIdx=idx;
   const map=MAPS_DEF[idx];
+  // 村・ダンジョンに入ると自動下馬（フィールドのみ騎乗可能）
+  if(G.mounted&&map.type!=='field'){G.mounted=false;addChat('🐴 馬を降りた',null,true);}
   G.tiles=[];G.npcsOnMap=[];G.chests=[];G.doors=[];G.doorAnim=null;G.mapEnemies=[];
   const rng=n=>Math.floor(Math.random()*n);
 
@@ -2847,7 +2854,8 @@ function updatePlayer(dt){
   const len=Math.hypot(dx,dy);
   if(len>1){dx/=len;dy/=len;}
 
-  const spd=MOVE_SPEED*dt;
+  const isMounted=G.mounted&&MAPS_DEF[G.mapIdx].type==='field';
+  const spd=MOVE_SPEED*(isMounted?MOUNT_SPEED_MULT:1)*dt;
   const nx=leader.x+dx*spd, ny=leader.y+dy*spd;
 
   // Collision check（扉に当たったら自動で開放トリガー）
@@ -3607,6 +3615,8 @@ function animAttackerLunge(sprEl, angleRad, distPx, cb){
 // BATTLE SYSTEM
 // ============================================================
 function startBattle(mapEnemies,isBoss=false){
+  // 戦闘開始時は自動下馬
+  if(G.mounted){G.mounted=false;addChat('🐴 馬を降りた',null,true);}
   G.inBattle=true; G.isBoss=isBoss; G.battleTurn=0;
   G.waitingForGuest=false; G.guestCmdsReceived=false;
   document.getElementById('battle-bg').style.background=
@@ -4837,8 +4847,24 @@ function openMenu(){
   document.getElementById('menu-recruit-btn').style.display=online?'none':'';
   document.getElementById('menu-join-btn').style.display=online?'none':'';
   document.getElementById('menu-online-btn').style.display=online?'':'none';
+  document.getElementById('menu-mount-btn').textContent=G.mounted?'🐴 馬を降りる':'🐴 馬に乗る';
 }
 function closeMenu(){document.getElementById('menu-screen').classList.add('hidden');}
+function toggleMount(){
+  if(G.mounted){
+    G.mounted=false;
+    addChat('🐴 馬を降りた',null,true);
+  }else{
+    if(MAPS_DEF[G.mapIdx].type!=='field'){
+      addChat('🐴 ここでは馬に乗れない',null,true);
+      closeMenu();
+      return;
+    }
+    G.mounted=true;
+    addChat('🐴 馬に乗った！移動速度が上がる',null,true);
+  }
+  closeMenu();
+}
 function openStatus(){closeMenu();
   const c=G.party[0];
   document.getElementById('st-ico').textContent=c.icon;
@@ -4954,13 +4980,18 @@ function equipItm(id){
 // ============================================================
 // SMITH (鍛冶屋) — 強化 & 新装備の解放
 // ============================================================
-// 強化レベルごとの必要ゴールド・素材（最大レベル5）
+// 強化レベルごとの必要ゴールド・素材・成功率（最大レベル10）
 const ENHANCE_COSTS=[
-  {gold:200,  mat:'mat_cave',  count:1},
-  {gold:500,  mat:'mat_cave',  count:2},
-  {gold:1200, mat:'mat_dragon',count:1},
-  {gold:2500, mat:'mat_dragon',count:2},
-  {gold:5000, mat:'mat_dark',  count:2},
+  {gold:200,  mat:'mat_cave',  count:1, rate:1.00}, // +1
+  {gold:500,  mat:'mat_cave',  count:2, rate:1.00}, // +2
+  {gold:1000, mat:'mat_dragon',count:1, rate:1.00}, // +3
+  {gold:2000, mat:'mat_dragon',count:2, rate:0.85}, // +4
+  {gold:3500, mat:'mat_dark',  count:2, rate:0.80}, // +5
+  {gold:5500, mat:'mat_dark',  count:3, rate:0.80}, // +6
+  {gold:8000, mat:'mat_sand',  count:3, mat2:'mat_cave_r',   count2:1, rate:0.60}, // +7
+  {gold:12000,mat:'mat_sea',   count:3, mat2:'mat_dragon_r', count2:1, rate:0.55}, // +8
+  {gold:17000,mat:'mat_ice',   count:3, mat2:'mat_dark_r',   count2:1, rate:0.50}, // +9
+  {gold:25000,mat:'mat_final_r',count:1, rate:0.30}, // +10（最大）
 ];
 const ENHANCE_MAX=ENHANCE_COSTS.length;
 
@@ -4997,13 +5028,16 @@ function renderSmith(){
     }
     const cost=ENHANCE_COSTS[lvl];
     const md=getMaterial(cost.mat);
+    const md2=cost.mat2?getMaterial(cost.mat2):null;
     const haveGold=gold>=cost.gold, haveMat=(G.materials[cost.mat]||0)>=cost.count;
-    const canEnhance=haveGold&&haveMat;
+    const haveMat2=!cost.mat2||(G.materials[cost.mat2]||0)>=cost.count2;
+    const canEnhance=haveGold&&haveMat&&haveMat2;
+    const rateTxt=cost.rate<1?`（成功率${Math.round(cost.rate*100)}%）`:'';
     enhanceHtml+=`<div class="smith-row">
       <span class="smith-row-lbl">${label}</span>
-      <span class="smith-row-info">${eq.icon}${eq.name} +${lvl} → +${lvl+1}</span>
+      <span class="smith-row-info">${eq.icon}${eq.name} +${lvl} → +${lvl+1}${rateTxt}</span>
       <button class="smith-btn ${canEnhance?'':'disabled'}" ${canEnhance?'':'disabled'} onclick="enhanceEquip('${slot}')">
-        ${cost.gold}G + ${md.icon}${md.name}×${cost.count}
+        ${cost.gold}G + ${md.icon}${md.name}×${cost.count}${md2?` + ${md2.icon}${md2.name}×${cost.count2}`:''}
       </button>
     </div>`;
   }
@@ -5037,11 +5071,18 @@ function enhanceEquip(slot){
   if(lvl>=ENHANCE_MAX)return;
   const cost=ENHANCE_COSTS[lvl];
   if(G.party[0].gold<cost.gold||(G.materials[cost.mat]||0)<cost.count)return;
+  if(cost.mat2&&(G.materials[cost.mat2]||0)<cost.count2)return;
   G.party[0].gold-=cost.gold;
   G.materials[cost.mat]-=cost.count;
-  c.enhance[slot]=lvl+1;
-  recalcStats(c);
-  addChat(`🔨 ${c.name}の${slot==='weapon'?'武器':'防具'}を +${lvl+1} に強化した！`,null,true);
+  if(cost.mat2)G.materials[cost.mat2]-=cost.count2;
+  const partName=slot==='weapon'?'武器':'防具';
+  if(Math.random()<(cost.rate??1)){
+    c.enhance[slot]=lvl+1;
+    recalcStats(c);
+    addChat(`🔨 ${c.name}の${partName}を +${lvl+1} に強化した！`,null,true);
+  }else{
+    addChat(`💥 強化失敗…${c.name}の${partName}は +${lvl} のままだった`,null,true);
+  }
   renderSmith();updatePartyHUD();
 }
 
