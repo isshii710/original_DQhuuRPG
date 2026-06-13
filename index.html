@@ -2756,9 +2756,8 @@ function checkAutoJoin() { return false; } // P2P版ではURLからの自動参�
 const MAP_W=24, MAP_H=18;
 
 function initGame(){
-  // タイルセット&扉画像を事前ロード
+  // タイルセットを事前ロード
   getImg(BASECHIP);
-  DOOR_FRAMES.forEach(p=>getImg(p));
   generateMap(G.mapIdx||0);
   startLoop();
   updatePartyHUD();
@@ -2880,7 +2879,7 @@ function generateMap(idx){
     for(const[cx,cy] of [[19,13],[18,13],[12,12]]){
       if(G.tiles[cy]?.[cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
     }
-    [[12,5,'inn'],[3,5,'elder']].forEach(([dx,dy,npcId])=>{
+    [[12,5,'inn'],[3,5,'elder'],[12,10,'weaponshop'],[5,10,'armorshop'],[18,10,'smith'],[8,15,'itemshop'],[14,15,'villager']].forEach(([dx,dy,npcId])=>{
       if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false,npcId});}
     });
     setPlayerPos(11,12);
@@ -3339,12 +3338,9 @@ function render(){
           ctx.drawImage(chestImg,64,animRow*32,32,32,sx,sy,TILE,TILE);
         }else{drawTileEmoji(ch?.opened?'📭':'🎁',sx,sy,TILE);}
       }else if(t===T.DOOR){
-        // 扉アニメーションフレームの描画（Door1=閉,Door2=開き中,Door3=全開）
+        // 扉アニメーションフレームの描画（0=閉,1=開き中,2=全開）
         const fr=(G.doorAnim?.x===tx&&G.doorAnim?.y===ty)?G.doorAnim.frame:0;
-        const doorImg=getImg(DOOR_FRAMES[fr]);
-        if(doorImg.complete&&doorImg.naturalWidth){
-          ctx.drawImage(doorImg,DOOR_FRAME_SRC[0]*32,DOOR_FRAME_SRC[1]*32,32,32,sx,sy,TILE,TILE);
-        }else{drawTileEmoji('🚪',sx,sy,TILE);}
+        drawDoorTile(sx,sy,TILE,fr);
       }else if(t===T.ENTER){
         ctx.fillStyle='rgba(50,200,100,0.5)';ctx.fillRect(sx,sy,TILE,TILE);
         drawTileEmoji('🏠',sx,sy,TILE);
@@ -3357,8 +3353,7 @@ function render(){
         ctx.fillStyle=`rgba(80,180,255,${glow})`;ctx.fillRect(sx,sy,TILE,TILE);
         drawTileEmoji('🌟',sx,sy,TILE);
       }else if(t===T.HOUSE_EXIT){
-        ctx.fillStyle='rgba(180,140,80,0.5)';ctx.fillRect(sx,sy,TILE,TILE);
-        drawTileEmoji('🚪',sx,sy,TILE);
+        drawDoorTile(sx,sy,TILE,0);
       }
     }
   }
@@ -3430,6 +3425,21 @@ function drawTileEmoji(emoji,sx,sy,size){
   ctx.font=`${size*0.65}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(emoji,sx+size/2,sy+size/2);
 }
 
+// 扉タイルの描画（frame: 0=閉, 1=開きかけ, 2=全開）
+function drawDoorTile(sx,sy,size,frame){
+  ctx.fillStyle='#6b4423';ctx.fillRect(sx+1,sy,size-2,size);
+  if(frame<2){
+    const w=frame===0?size-6:size*0.45;
+    ctx.fillStyle='#a9722f';ctx.fillRect(sx+3,sy+2,w,size-4);
+    ctx.fillStyle='#5a3a1a';
+    ctx.fillRect(sx+3,sy+size*0.3,w,2);
+    ctx.fillRect(sx+3,sy+size*0.6,w,2);
+    ctx.fillStyle='#ffe08a';ctx.beginPath();ctx.arc(sx+3+w-5,sy+size/2,2,0,Math.PI*2);ctx.fill();
+  }else{
+    ctx.fillStyle='#2a1c0e';ctx.fillRect(sx+3,sy+2,size-6,size-4);
+  }
+}
+
 // ============================================================
 // タイルセット & 扉アニメーション設定
 // ============================================================
@@ -3447,15 +3457,6 @@ const TILE_DEF = {
   castle:  {floor:[2,2], wall:[7,2]},
   house:   {floor:[0,36], wall:[1,36]},
 };
-
-// 扉アニメーション画像（フレーム0=閉,1=開き中,2=全開）
-const DOOR_FRAMES = [
-  'Map/doorAnimation/Door1_pipo.png',
-  'Map/doorAnimation/Door2_pipo.png',
-  'Map/doorAnimation/Door3_pipo.png',
-];
-// 各扉画像内の使用タイル位置 [列, 行]（32x32px単位）
-const DOOR_FRAME_SRC = [0, 0];
 
 let _doorMoveTrigger = 0; // 移動による扉開放のクールダウン用
 
