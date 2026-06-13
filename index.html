@@ -706,6 +706,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
       <button class="mitem" onclick="menuEquip()">⚔️ そうび</button>
       <button class="mitem" onclick="menuItem()">🎒 どうぐぶくろ</button>
       <button class="mitem" onclick="closeMenu();openSkillTree()">✨ スキル習得</button>
+      <button class="mitem" onclick="closeMenu();openJobScreen()">🔄 転職</button>
       <button class="mitem" onclick="closeMenu();openFullMap()">🗺️ 全体マップ</button>
       <button class="mitem" onclick="closeMenu();openWarpModal()">🌀 帰還の書</button>
       <button class="mitem" id="menu-mount-btn" onclick="toggleMount()">🐴 馬に乗る</button>
@@ -781,6 +782,17 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
     <div style="padding:6px 12px;font-size:10px;color:var(--gold);letter-spacing:1px;" id="sp-info"></div>
     <div class="sp-tree" id="sp-tree"></div>
     <div class="win-close" onclick="closeSkillTree()">▶ とじる</div>
+  </div>
+</div>
+
+<!-- 転職 -->
+<div id="job-screen" class="hidden">
+  <div class="win sp-box">
+    <div class="win-title">🔄 転職</div>
+    <div class="sp-chars" id="job-chars"></div>
+    <div style="padding:6px 12px;font-size:10px;color:var(--gold);letter-spacing:1px;" id="job-info"></div>
+    <div class="sp-tree" id="job-list"></div>
+    <div class="win-close" onclick="closeJobScreen()">▶ とじる</div>
   </div>
 </div>
 
@@ -943,6 +955,10 @@ const CLASSES = {
   sage:    {name:'賢者',icon:'📖',color:'#ddaaff',stats:{hp:80,mp:90,atk:10,def:10,spd:11,int:25}},
   thief:   {name:'盗賊',icon:'🗡️',color:'#aaffdd',stats:{hp:80,mp:30,atk:16,def:9,spd:20,int:10}},
   dancer:  {name:'踊り子',icon:'💃',color:'#ffaadd',stats:{hp:75,mp:50,atk:12,def:8,spd:18,int:15}},
+  // 上級職（村の進行で段階解放、転職システムで習得可能）
+  battlemaster:{name:'バトルマスター',icon:'🪓',color:'#ff6644',stats:{hp:160,mp:30,atk:26,def:22,spd:12,int:8}, advanced:true, unlockVillage:2},
+  spellblade:  {name:'魔法剣士',     icon:'⚡',color:'#66ddff',stats:{hp:120,mp:100,atk:20,def:14,spd:14,int:26}, advanced:true, unlockVillage:5},
+  hero:        {name:'勇者',         icon:'👑',color:'#ffdd44',stats:{hp:180,mp:80,atk:25,def:20,spd:16,int:22}, advanced:true, unlockVillage:8},
 };
 
 // SKILL_TREE: single source of truth for all spells (じゅもん) and skills (とくぎ)
@@ -992,10 +1008,57 @@ const SKILL_TREE = {
     {name:'怪声',     mp:5, power:0, type:'defdown', category:'skill',sp:1, icon:'📢'},
     {name:'癒しの舞', mp:8, power:0, type:'healall', category:'skill',sp:2, icon:'💞'},
   ],
+  battlemaster: [
+    {name:'兜割り',     mp:8, power:2.0, type:'atk',     category:'skill',sp:0, icon:'🪓', range:'close'},
+    {name:'豪腕の構え', mp:6, power:0,   type:'selfbuff',category:'skill',sp:2, icon:'💪'},
+  ],
+  spellblade: [
+    {name:'魔剣突き',   mp:7,  power:1.6, type:'atk',  category:'skill',sp:0, icon:'⚡', range:'close'},
+    {name:'連環の魔刃', mp:10, power:0.9, type:'multi',category:'skill',sp:2, icon:'🌀', range:'close'},
+  ],
+  hero: [
+    {name:'勇者の一撃', mp:6, power:1.8, type:'atk',      category:'skill',sp:0, icon:'⚔️', range:'close'},
+    {name:'勇気の歌',   mp:9, power:0,   type:'rallybuff',category:'skill',sp:2, icon:'🎵'},
+  ],
 };
 
-function getSpells(cls,c){return(SKILL_TREE[cls]||[]).filter(s=>s.category==='spell'&&(s.sp===0||c.unlockedSkills.includes(s.name)));}
-function getSkills(cls,c){return(SKILL_TREE[cls]||[]).filter(s=>s.category==='skill'&&(s.sp===0||c.unlockedSkills.includes(s.name)));}
+// ULTIMATE_SKILLS: 各職業のLv99専用必殺技（職業レベルが99に達すると習得、習得後はどの職業でも使用可能）
+const ULTIMATE_SKILLS = {
+  warrior:     {name:'真・大地斬',     mp:18, power:3.2, type:'atk',     category:'ultimate', viaSkill:true, forceCrit:true, icon:'🌟', range:'close'},
+  mage:        {name:'アルテマフレイム',mp:24, power:2.4, type:'all',     category:'ultimate', viaSpell:true, icon:'🌟'},
+  priest:      {name:'女神の祝福',     mp:20, power:2.0, type:'healall', category:'ultimate', viaSpell:true, icon:'🌟'},
+  ranger:      {name:'千本桜',         mp:16, power:1.8, type:'multi',   category:'ultimate', viaSkill:true, icon:'🌟', range:'mid'},
+  paladin:     {name:'聖剛の裁き',     mp:18, power:3.0, type:'atk',     category:'ultimate', viaSkill:true, forceCrit:true, icon:'🌟', range:'close'},
+  sage:        {name:'天変地異',       mp:28, power:2.6, type:'all',     category:'ultimate', viaSpell:true, icon:'🌟'},
+  thief:       {name:'神速乱舞',       mp:14, power:1.7, type:'multi',   category:'ultimate', viaSkill:true, icon:'🌟', range:'close'},
+  dancer:      {name:'魅惑の万華鏡',   mp:14, power:0,   type:'sleepall',category:'ultimate', viaSkill:true, successRate:0.95, icon:'🌟'},
+  battlemaster:{name:'天地崩拳',       mp:20, power:3.6, type:'atk',     category:'ultimate', viaSkill:true, forceCrit:true, icon:'🌟', range:'close'},
+  spellblade:  {name:'終焉の魔剣',     mp:30, power:3.0, type:'all',     category:'ultimate', viaSpell:true, icon:'🌟'},
+  hero:        {name:'ギガスラッシュ', mp:22, power:4.0, type:'atk',     category:'ultimate', viaSkill:true, forceCrit:true, icon:'🌟', range:'close'},
+};
+
+// 全SKILL_TREEから名前でスキル定義を検索（特技継承用）
+function findSkillDef(name){
+  for(const cls in SKILL_TREE){
+    const s=SKILL_TREE[cls].find(s=>s.name===name);
+    if(s)return s;
+  }
+  return null;
+}
+// 習得済みの必殺技（learnedUltimates）のうち、じゅもん/とくぎいずれかを返す
+function getLearnedUltimates(c,wantCategory){
+  return (c.learnedUltimates||[]).map(cls=>ULTIMATE_SKILLS[cls]).filter(u=>u&&(wantCategory==='spell'?u.viaSpell:u.viaSkill));
+}
+function getSpells(cls,c){
+  const base=(SKILL_TREE[cls]||[]).filter(s=>s.category==='spell'&&(s.sp===0||c.unlockedSkills.includes(s.name)));
+  const inherited=(c.inheritedSkills||[]).map(findSkillDef).filter(s=>s&&s.category==='spell');
+  return [...base,...inherited,...getLearnedUltimates(c,'spell')];
+}
+function getSkills(cls,c){
+  const base=(SKILL_TREE[cls]||[]).filter(s=>s.category==='skill'&&(s.sp===0||c.unlockedSkills.includes(s.name)));
+  const inherited=(c.inheritedSkills||[]).map(findSkillDef).filter(s=>s&&s.category==='skill');
+  return [...base,...inherited,...getLearnedUltimates(c,'skill')];
+}
 function skillTypeLabel(t){
   const L={atk:'単体攻撃',all:'全体攻撃',multi:'連続攻撃',heal:'単体回復',heal2:'単体大回復',healfull:'全快回復',healall:'全体回復',powerCharge:'力溜め',silence:'封魔',stun:'束縛攻撃',taunt:'挑発',sleepall:'全体眠り',rallybuff:'全体鼓舞',buffDef:'防御強化',selfbuff:'隠密強化',speedup:'速度UP',defdown:'防御弱体',debuffall:'全体弱体',steal:'盗む',cure:'状態回復'};
   return L[t]||'';
@@ -1783,6 +1846,7 @@ function makeChar(slot){
     gold:50,buffed:false,powerCharged:false,buffDef:false,buffSpd:false,isNPC:slot>1,
     sp:0,unlockedSkills:[],
     enhance:{weapon:0,armor:0},
+    jobLevels:{},jobExp:{},learnedUltimates:[],inheritedSkills:[],
     x:7*G.TILE,y:7*G.TILE, // pixel position on map
   };
 }
@@ -1856,7 +1920,9 @@ function restoreFromSnapshot(snap) {
   while(G.story.villages.length<9)G.story.villages.push({visited:false,hunt:0,huntDone:false,collectDone:false,mainCleared:false});
   if(!G.story.metalDex)G.story.metalDex={metal:0,gold:0};
   G.materials = snap.materials || {};
-  G.party = snap.party.map(p => ({...p, enhance: p.enhance || {weapon:0, armor:0}}));
+  G.party = snap.party.map(p => ({...p, enhance: p.enhance || {weapon:0, armor:0},
+    jobLevels: p.jobLevels || {}, jobExp: p.jobExp || {},
+    learnedUltimates: p.learnedUltimates || [], inheritedSkills: p.inheritedSkills || []}));
   G.party.forEach(c => recalcStats(c));
 }
 
@@ -3699,6 +3765,7 @@ function startBattle(mapEnemies,isBoss=false){
     _syncBattleStart(G.battleEnemies, isBoss); // 非同期 (await 不要)
   }
 
+  G.party.forEach(p=>p._ultUsed=[]);
   G.pendingLvlUps=[];
   G.tauntIdx=-1;
   G.cmdQueue=[]; G.cmdSelectIdx=0; G.executing=false;
@@ -3788,11 +3855,14 @@ function bCmd(cmd){
 // ---- じゅもん選択 ----
 function openSpellForSelect(actor){
   const spells=getSpells(actor.class,actor);
-  document.getElementById('spell-list').innerHTML=spells.length?spells.map((s,i)=>`
-    <button class="spbtn" ${actor.mp<s.mp?'disabled':''} onclick="onSpellSelected(${i})">
-      <span>${s.icon||'✨'}${s.name}<br><span style="font-size:8px;color:var(--white)">${skillTypeLabel(s.type)}</span></span>
+  document.getElementById('spell-list').innerHTML=spells.length?spells.map((s,i)=>{
+    const used=s.category==='ultimate'&&(actor._ultUsed||[]).includes(s.name);
+    return `
+    <button class="spbtn" ${(actor.mp<s.mp||used)?'disabled':''} onclick="onSpellSelected(${i})">
+      <span>${s.category==='ultimate'?'🌟':''}${s.icon||'✨'}${s.name}<br><span style="font-size:8px;color:var(--white)">${used?'使用済み':skillTypeLabel(s.type)}</span></span>
       <span class="sp-mp">${s.mp}MP</span>
-    </button>`).join(''):'<div style="padding:14px;color:rgba(255,255,255,.4);font-size:10px;text-align:center;">じゅもんがない</div>';
+    </button>`;
+  }).join(''):'<div style="padding:14px;color:rgba(255,255,255,.4);font-size:10px;text-align:center;">じゅもんがない</div>';
   document.getElementById('spell-screen').classList.remove('hidden');
 }
 function onSpellSelected(idx){
@@ -3814,11 +3884,14 @@ function closeSpell(){document.getElementById('spell-screen').classList.add('hid
 // ---- とくぎ選択 ----
 function openSkillForSelect(actor){
   const skills=getSkills(actor.class,actor);
-  document.getElementById('skill-list').innerHTML=skills.length?skills.map((s,i)=>`
-    <button class="spbtn" ${actor.mp<s.mp?'disabled':''} onclick="onSkillSelected(${i})">
-      <span>${s.icon||'💥'}${s.name}<br><span style="font-size:8px;color:var(--white)">${skillTypeLabel(s.type)}</span></span>
+  document.getElementById('skill-list').innerHTML=skills.length?skills.map((s,i)=>{
+    const used=s.category==='ultimate'&&(actor._ultUsed||[]).includes(s.name);
+    return `
+    <button class="spbtn" ${(actor.mp<s.mp||used)?'disabled':''} onclick="onSkillSelected(${i})">
+      <span>${s.category==='ultimate'?'🌟':''}${s.icon||'💥'}${s.name}<br><span style="font-size:8px;color:var(--white)">${used?'使用済み':skillTypeLabel(s.type)}</span></span>
       <span class="sp-mp">${s.mp}MP</span>
-    </button>`).join(''):'<div style="padding:14px;color:rgba(255,255,255,.4);font-size:10px;text-align:center;">とくぎがない</div>';
+    </button>`;
+  }).join(''):'<div style="padding:14px;color:rgba(255,255,255,.4);font-size:10px;text-align:center;">とくぎがない</div>';
   document.getElementById('skill-screen').classList.remove('hidden');
 }
 function onSkillSelected(idx){
@@ -4076,6 +4149,7 @@ function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
   if(!spell){runNextAction();return;}
   if(actor.mp<spell.mp){setBMsg(`${actor.name}はMPが足りない！`);setTimeout(runNextAction,900);return;}
   actor.mp-=spell.mp;
+  if(spell.category==='ultimate'){if(!actor._ultUsed)actor._ultUsed=[];actor._ultUsed.push(spell.name);}
   const alive=G.battleEnemies.filter(e=>e.curHp>0);
   const fromEl=document.getElementById('bally-spr-'+pIdx);
 
@@ -4169,7 +4243,7 @@ function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
     }
     // 全体回復
     else if(spell.type==='healall'){
-      G.party.forEach((p,i)=>{if(p.hp>0){const h=Math.floor(actor.int+10+Math.random()*10);p.hp=Math.min(p.maxHp,p.hp+h);showDmg('+'+h,'dc-heal',true,i);}});
+      G.party.forEach((p,i)=>{if(p.hp>0){const h=Math.floor((actor.int+10+Math.random()*10)*(spell.power||1));p.hp=Math.min(p.maxHp,p.hp+h);showDmg('+'+h,'dc-heal',true,i);}});
       setBMsg(`${actor.name}が ${spell.name}！全員が回復した！`);
     }
     // 単体封魔
@@ -4207,6 +4281,7 @@ function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
   if(!skill){runNextAction();return;}
   if(actor.mp<skill.mp){setBMsg(`${actor.name}はMPが足りない！`);setTimeout(runNextAction,900);return;}
   actor.mp-=skill.mp;
+  if(skill.category==='ultimate'){if(!actor._ultUsed)actor._ultUsed=[];actor._ultUsed.push(skill.name);}
   const alive=G.battleEnemies.filter(e=>e.curHp>0);
   const fromEl=document.getElementById('bally-spr-'+pIdx);
 
@@ -4233,8 +4308,8 @@ function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
               let tot=0;for(let i=0;i<3;i++){const d=calcDmg(actor.atk,t.def,skill.power);applyEnemyDmg(t,d);tot+=d;}
               msg+=`${t.name}に ${tot}　`;
             } else {
-              const dmg=calcDmg(actor.atk,t.def,skill.power);applyEnemyDmg(t,dmg);
-              msg+=`${t.name}に ${dmg}　`;
+              const dmg=calcDmg(actor.atk,t.def,skill.power,!!skill.forceCrit);applyEnemyDmg(t,dmg);
+              msg+=`${t.name}に ${dmg}${skill.forceCrit?'（会心の一撃！）':''}　`;
               if(skill.type==='stun'&&Math.random()<0.5){t.stunned=true;stunned=true;}
             }
           });
@@ -4263,8 +4338,8 @@ function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
     if(skill.type==='atk'){
       const t=alive.find(e=>e.idx===targetIdx)||alive[0];
       if(!t){runNextAction();return;}
-      const dmg=calcDmg(actor.atk,t.def,skill.power);applyEnemyDmg(t,dmg);
-      setBMsg(`${actor.name}の ${skill.name}！\n${t.name}に ${dmg} のダメージ！`);
+      const dmg=calcDmg(actor.atk,t.def,skill.power,!!skill.forceCrit);applyEnemyDmg(t,dmg);
+      setBMsg(`${actor.name}の ${skill.name}！\n${t.name}に ${dmg} のダメージ！${skill.forceCrit?'（会心の一撃！）':''}`);
     }
     else if(skill.type==='stun'){
       const t=alive.find(e=>e.idx===targetIdx)||alive[0];
@@ -4304,7 +4379,7 @@ function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
       setBMsg(`${actor.name}の ${skill.name}！\n防御力UP！敵の攻撃を引きつけた！`);
     }
     else if(skill.type==='sleepall'){
-      let slept=0;alive.forEach(e=>{if(Math.random()<0.55){e.sleeping=true;slept++;}});
+      let slept=0;alive.forEach(e=>{if(Math.random()<(skill.successRate||0.55)){e.sleeping=true;slept++;}});
       setBMsg(`${actor.name}の ${skill.name}！\n${slept>0?`${slept}体の敵が眠りについた！`:'しかし効果がなかった…'}`);
     }
     else if(skill.type==='defdown'){
@@ -4740,7 +4815,37 @@ function battleVictory(){
   // Item drop（宿屋バフ中はお宝発見率UP）
   if(Math.random()<(innBuffActive?0.5:0.35)){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});setTimeout(()=>showItemPop(item),700);}
   if(innBuffActive)G.story.innBuffBattles--;
-  setTimeout(()=>{G.party.forEach(p=>{if(p.hp>0){p.exp+=totalExp;checkLvl(p);}});processPendingLvl();},1500);
+  setTimeout(()=>{G.party.forEach(p=>{if(p.hp>0){p.exp+=totalExp;checkLvl(p);gainJobExp(p);}});processPendingLvl();},1500);
+}
+
+// ============================================================
+// 職業レベル / 必殺技習得
+// ============================================================
+// 職業レベルlv→lv+1に必要な戦闘勝利数（職業ごとの独立カウンタ）
+function jobExpNeeded(lv){return 3+Math.floor((lv-1)/10);}
+function getJobLevel(c,cls){return (c.jobLevels&&c.jobLevels[cls])||1;}
+function gainJobExp(c){
+  const cls=c.class;
+  if(!c.jobLevels)c.jobLevels={};
+  if(!c.jobExp)c.jobExp={};
+  let lv=c.jobLevels[cls]||1;
+  if(lv>=99)return;
+  let exp=(c.jobExp[cls]||0)+1;
+  while(lv<99&&exp>=jobExpNeeded(lv)){
+    exp-=jobExpNeeded(lv);
+    lv++;
+    if(lv===99)learnUltimate(c,cls);
+  }
+  c.jobLevels[cls]=lv;
+  c.jobExp[cls]=exp;
+}
+function learnUltimate(c,cls){
+  if(!c.learnedUltimates)c.learnedUltimates=[];
+  if(c.learnedUltimates.includes(cls))return;
+  const ult=ULTIMATE_SKILLS[cls];
+  if(!ult)return;
+  c.learnedUltimates.push(cls);
+  addChat(`🌟 ${c.name}は職業「${CLASSES[cls].name}」を極め、必殺技「${ult.name}」を習得した！`,null,true);
 }
 
 function checkLvl(c){
@@ -4981,7 +5086,8 @@ function openStatus(){closeMenu();
     <div class="sg-item"><div class="sg-lbl">かしこさ</div><div class="sg-val">${c.int}</div></div>
     <div class="sg-item"><div class="sg-lbl">けいけん</div><div class="sg-val">${c.exp}/${c.expNext}</div></div>
     <div class="sg-item"><div class="sg-lbl">ゴールド</div><div class="sg-val" style="color:var(--gold)">${c.gold}G</div></div>
-    <div class="sg-item"><div class="sg-lbl">SP</div><div class="sg-val" style="color:#aaddff">${c.sp||0}</div></div>`;
+    <div class="sg-item"><div class="sg-lbl">SP</div><div class="sg-val" style="color:#aaddff">${c.sp||0}</div></div>
+    <div class="sg-item"><div class="sg-lbl">職業Lv</div><div class="sg-val" style="color:#ffdd88">${getJobLevel(c,c.class)}${getJobLevel(c,c.class)>=99?'(MAX)':''}</div></div>`;
   const dex=G.story.metalDex||{metal:0,gold:0};
   document.getElementById('st-metaldex').textContent=`📖 メタル図鑑　メタルスライム討伐:${dex.metal}　ゴールドスライム討伐:${dex.gold}`;
   document.getElementById('status-screen').classList.remove('hidden');
@@ -5037,6 +5143,102 @@ function unlockSkill(skillIdx){
   c.unlockedSkills.push(s.name);
   addChat(`${c.name}が「${s.name}」を習得した！`,null,true);
   renderSkillTree();
+}
+
+// ============================================================
+// 転職システム
+// ============================================================
+let jobCharIdx=0;
+let pendingJobChange=null;
+function openJobScreen(){jobCharIdx=0;pendingJobChange=null;renderJobScreen();document.getElementById('job-screen').classList.remove('hidden');}
+function closeJobScreen(){document.getElementById('job-screen').classList.add('hidden');}
+function selJobChar(i){jobCharIdx=i;pendingJobChange=null;renderJobScreen();}
+function isJobUnlocked(clsKey){
+  const cls=CLASSES[clsKey];
+  if(!cls.advanced)return true;
+  const v=G.story.villages[cls.unlockVillage];
+  return !!(v&&v.mainCleared);
+}
+function renderJobScreen(){
+  document.getElementById('job-chars').innerHTML=
+    G.party.map((ch,i)=>`<button class="sp-char-btn ${i===jobCharIdx?'cur':''}" onclick="selJobChar(${i})">
+      ${ch.icon}<br>${ch.name}</button>`).join('');
+  const c=G.party[jobCharIdx];
+  const curCls=CLASSES[c.class];
+  const curJlv=getJobLevel(c,c.class);
+  document.getElementById('job-info').textContent=
+    `${c.name}：現在「${curCls.name}」 職業Lv.${curJlv}${curJlv>=99?'(MAX)':''}　特技継承:${(c.inheritedSkills||[]).length}/2`;
+  document.getElementById('job-list').innerHTML=Object.keys(CLASSES).map(clsKey=>{
+    const cls=CLASSES[clsKey];
+    const jlv=getJobLevel(c,clsKey);
+    const ultLearned=(c.learnedUltimates||[]).includes(clsKey);
+    const lvLbl=`Lv.${jlv}${jlv>=99?'(MAX)':''}${ultLearned?' 🌟':''}`;
+    if(!isJobUnlocked(clsKey)){
+      return `<div class="sp-node locked">
+        <span>？？？</span>
+        <span class="sp-cat">未解放</span>
+        <span class="sp-cost">${VILLAGES[cls.unlockVillage].name}を解放</span></div>`;
+    }
+    if(clsKey===c.class){
+      return `<div class="sp-node unlocked">
+        <span>${cls.icon}${cls.name}</span>
+        <span class="sp-cat">${lvLbl}</span>
+        <span class="sp-badge-ok">現在の職業</span></div>`;
+    }
+    return `<button class="sp-node available" onclick="startJobChange('${clsKey}')">
+      <span>${cls.icon}${cls.name}</span>
+      <span class="sp-cat">${lvLbl}</span>
+      <span class="sp-cost">転職する</span></button>`;
+  }).join('');
+}
+function startJobChange(clsKey){
+  const c=G.party[jobCharIdx];
+  pendingJobChange=clsKey;
+  const tree=SKILL_TREE[c.class]||[];
+  const candidates=tree.filter(s=>s.sp>0&&c.unlockedSkills.includes(s.name)&&!(c.inheritedSkills||[]).includes(s.name));
+  if(candidates.length&&(c.inheritedSkills||[]).length<2){
+    renderJobInheritChoice(candidates);
+  } else {
+    confirmJobChange(null);
+  }
+}
+function renderJobInheritChoice(candidates){
+  document.getElementById('job-list').innerHTML=
+    `<div class="sp-node locked" style="color:var(--gold);">引き継ぐ特技を1つ選べます（最大2つまで）</div>`+
+    candidates.map(s=>`<button class="sp-node available" onclick="confirmJobChange(${JSON.stringify(s.name)})">
+      <span>${s.icon||'✨'}${s.name}</span>
+      <span class="sp-cat">${s.category==='spell'?'じゅもん':'とくぎ'}</span>
+      <span class="sp-cost">継承する</span></button>`).join('')+
+    `<button class="sp-node available" onclick="confirmJobChange(null)">
+      <span>引き継がない</span><span class="sp-cat"></span><span class="sp-cost">転職する</span></button>`;
+}
+function confirmJobChange(inheritName){
+  const c=G.party[jobCharIdx];
+  const newCls=pendingJobChange;
+  if(!newCls){renderJobScreen();return;}
+  if(inheritName){
+    if(!c.inheritedSkills)c.inheritedSkills=[];
+    if(c.inheritedSkills.length<2&&!c.inheritedSkills.includes(inheritName))c.inheritedSkills.push(inheritName);
+  }
+  // 成長分（レベルアップでの上昇分）を保持して新職業の素質ステータスに適用
+  const oldBase=CLASSES[c.class].stats;
+  const newBase=CLASSES[newCls].stats;
+  c.baseAtk=newBase.atk+(c.baseAtk-oldBase.atk);
+  c.baseDef=newBase.def+(c.baseDef-oldBase.def);
+  c.baseMaxMp=newBase.mp+(c.baseMaxMp-oldBase.mp);
+  c.baseSpd=newBase.spd;
+  c.baseInt=newBase.int;
+  const oldName=CLASSES[c.class].name;
+  c.class=newCls;
+  c.icon=CLASSES[newCls].icon;
+  c.color=CLASSES[newCls].color;
+  c.unlockedSkills=[];
+  recalcStats(c);
+  c.hp=Math.min(c.hp,c.maxHp);
+  c.mp=Math.min(c.mp,c.maxMp);
+  addChat(`${c.name}は「${oldName}」から「${CLASSES[newCls].name}」に転職した！`,null,true);
+  pendingJobChange=null;
+  renderJobScreen();
 }
 
 function menuItem(){closeMenu();const items=G.party[0].items;addChat(items.length?'どうぐ: '+items.map(i=>i.icon+i.name).join(' '):'どうぐがない',null,true);}
