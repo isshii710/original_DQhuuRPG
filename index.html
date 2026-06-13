@@ -431,6 +431,15 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 .smith-btn{background:rgba(50,90,200,.5);border:1px solid rgba(120,160,255,.4);color:var(--white);font-family:'DotGothic16',serif;font-size:9px;padding:5px 8px;border-radius:2px;cursor:pointer;white-space:nowrap;}
 .smith-btn.disabled{opacity:.35;cursor:default;background:rgba(80,80,80,.3);border-color:rgba(150,150,150,.2);}
 
+/* 購入リストのページ送り表示（2列×3行=6件/ページ） */
+.shop-grid{display:grid;grid-template-rows:repeat(3,1fr);grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;background:rgba(60,90,160,.12);max-height:none;overflow:visible;}
+.shop-row{display:flex;flex-direction:column;gap:4px;padding:7px 9px;font-size:10px;color:var(--white);background:var(--win-bg);min-height:0;}
+.shop-row-top{display:flex;align-items:center;gap:6px;}
+.shop-row-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.shop-row-bottom{display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap;}
+.shop-pagenav{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;font-size:9px;color:var(--white);}
+.shop-pagenav:empty{display:none;}
+
 /* Item popup */
 #item-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:70;padding:18px 28px;text-align:center;animation:ipop 2.4s forwards;}
 #item-popup.hidden{display:none;}
@@ -769,7 +778,8 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
     <div style="padding:6px 12px;font-size:9px;color:var(--gold);letter-spacing:2px;">⚒️ 強化</div>
     <div class="smith-list" id="smith-enhance"></div>
     <div style="padding:6px 12px;font-size:9px;color:var(--gold);letter-spacing:2px;">🔓 新装備の解放</div>
-    <div class="smith-list" id="smith-unlock"></div>
+    <div class="smith-list shop-grid" id="smith-unlock"></div>
+    <div class="shop-pagenav" id="smith-unlock-pagenav"></div>
     <div class="win-close" onclick="closeSmith()">▶ とじる</div>
   </div>
 </div>
@@ -782,7 +792,8 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
     </div>
     <div class="smith-materials" id="village-shop-materials"></div>
     <div class="eq-chars" id="village-shop-chars"></div>
-    <div class="smith-list" id="village-shop-list"></div>
+    <div class="smith-list shop-grid" id="village-shop-list"></div>
+    <div class="shop-pagenav" id="village-shop-pagenav"></div>
     <div class="win-close" onclick="closeVillageShop()">▶ とじる</div>
   </div>
 </div>
@@ -3317,6 +3328,8 @@ function render(){
           const nf=Math.floor(performance.now()/400)%3;
           drawCharaChip(ctx,npc.chipImg,sx+TILE/2,sy+TILE/2,TILE*0.85,TILE*0.85,0,nf)||drawTileEmoji(npc.icon||'👤',sx,sy,TILE);
         }else{drawTileEmoji(npc?.icon||'👤',sx,sy,TILE);}
+        const qm=getQuestMarker(npc);
+        if(qm)drawQuestMarker(sx,sy,qm);
       }else if(t===T.EXIT){
         ctx.fillStyle='rgba(180,180,30,0.5)';ctx.fillRect(sx,sy,TILE,TILE);
         drawTileEmoji('🚪',sx,sy,TILE);
@@ -3362,6 +3375,13 @@ function render(){
   ctx.strokeStyle='rgba(0,0,0,0.08)';ctx.lineWidth=0.5;
   for(let ty=startY;ty<=endY;ty++){ctx.beginPath();ctx.moveTo(0,ty*TILE-G.cam.y);ctx.lineTo(canvas.width,ty*TILE-G.cam.y);ctx.stroke();}
   for(let tx=startX;tx<=endX;tx++){ctx.beginPath();ctx.moveTo(tx*TILE-G.cam.x,0);ctx.lineTo(tx*TILE-G.cam.x,canvas.height);ctx.stroke();}
+
+  // 村の主要施設(宿屋・武器屋・防具屋・道具屋)に看板を表示
+  if(!G.inHouse&&map.type==='town'){
+    VILLAGE_SIGNS.forEach(sign=>{
+      if(sign.x>=startX-1&&sign.x<=endX&&sign.y>=startY-1&&sign.y<=endY)drawBuildingSign(sign);
+    });
+  }
 
   // Map enemies
   G.mapEnemies.forEach(e=>{
@@ -3438,6 +3458,48 @@ function drawDoorTile(sx,sy,size,frame){
   }else{
     ctx.fillStyle='#2a1c0e';ctx.fillRect(sx+3,sy+2,size-6,size-4);
   }
+}
+
+// 村の主要施設の看板（出入口の真上のタイル座標・アイコン・施設名）
+const VILLAGE_SIGNS=[
+  {x:12,y:2, icon:'🏠',name:'宿屋'},
+  {x:12,y:8, icon:'⚔️',name:'武器屋'},
+  {x:5, y:8, icon:'🛡️',name:'防具屋'},
+  {x:8, y:13,icon:'🧪',name:'道具屋'},
+];
+// 施設の看板を建物の上に描画
+function drawBuildingSign(sign){
+  const TILE=G.TILE;
+  const cx=sign.x*TILE-G.cam.x+TILE/2;
+  const topY=sign.y*TILE-G.cam.y;
+  const w=TILE*1.8, h=TILE*0.55;
+  const bx=cx-w/2, by=topY-h-2;
+  ctx.fillStyle='rgba(70,45,20,0.92)';ctx.fillRect(bx,by,w,h);
+  ctx.strokeStyle='rgba(255,224,160,0.7)';ctx.lineWidth=1;ctx.strokeRect(bx+0.5,by+0.5,w-1,h-1);
+  ctx.font=`${TILE*0.32}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#fff';
+  ctx.fillText(`${sign.icon} ${sign.name}`,cx,by+h/2);
+}
+
+// NPCの上に表示するクエストマーカー（メインクエスト=緑！/ サブクエスト=青！）の種別を判定
+function getQuestMarker(npc){
+  if(!npc||npc.villageIdx==null)return null;
+  const s=G.story.villages[npc.villageIdx];
+  if(!s)return null;
+  if(npc.id==='elder'&&!s.mainCleared&&(!s.visited||(s.huntDone&&s.collectDone)))return'main';
+  if(npc.id==='villager'&&!(s.huntDone&&s.collectDone))return'sub';
+  return null;
+}
+// クエストマーカー（！）を描画
+function drawQuestMarker(sx,sy,type){
+  const TILE=G.TILE;
+  const bob=Math.sin(performance.now()/250)*2;
+  const cx=sx+TILE/2, cy=sy-TILE*0.15+bob;
+  ctx.font=`bold ${TILE*0.55}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.lineWidth=2;ctx.strokeStyle='rgba(0,0,0,0.6)';
+  ctx.strokeText('!',cx,cy);
+  ctx.fillStyle=type==='main'?'#33ee55':'#3399ff';
+  ctx.fillText('!',cx,cy);
 }
 
 // ============================================================
@@ -5499,6 +5561,33 @@ function equipItm(id){
 }
 
 // ============================================================
+// 購入リストのページ送り表示（2列×3行=6件/ページ）共通ヘルパー
+// ============================================================
+const SHOP_PAGE_SIZE=6;
+const shopPages={};
+const shopRerenders={};
+function renderShopPage(containerId,navId,rowsHtml,rerenderFn){
+  shopRerenders[containerId]=rerenderFn;
+  const totalPages=Math.max(1,Math.ceil(rowsHtml.length/SHOP_PAGE_SIZE));
+  let page=shopPages[containerId]||0;
+  if(page>=totalPages)page=totalPages-1;
+  if(page<0)page=0;
+  shopPages[containerId]=page;
+  const start=page*SHOP_PAGE_SIZE;
+  document.getElementById(containerId).innerHTML=rowsHtml.slice(start,start+SHOP_PAGE_SIZE).join('');
+  const navEl=document.getElementById(navId);
+  if(!navEl)return;
+  if(totalPages<=1){navEl.innerHTML='';return;}
+  navEl.innerHTML=`<button class="smith-btn ${page<=0?'disabled':''}" ${page<=0?'disabled':''} onclick="changeShopPage('${containerId}',-1)">◀ 前へ</button>
+    <span>${page+1} / ${totalPages}</span>
+    <button class="smith-btn ${page>=totalPages-1?'disabled':''}" ${page>=totalPages-1?'disabled':''} onclick="changeShopPage('${containerId}',1)">次へ ▶</button>`;
+}
+function changeShopPage(containerId,delta){
+  shopPages[containerId]=(shopPages[containerId]||0)+delta;
+  shopRerenders[containerId]?.();
+}
+
+// ============================================================
 // SMITH (鍛冶屋) — 強化 & 新装備の解放
 // ============================================================
 // 強化レベルごとの必要ゴールド・素材・成功率（最大レベル10）
@@ -5517,7 +5606,7 @@ const ENHANCE_COSTS=[
 const ENHANCE_MAX=ENHANCE_COSTS.length;
 
 let smithCharIdx=0;
-function openSmith(){smithCharIdx=0;renderSmith();document.getElementById('smith-screen').classList.remove('hidden');}
+function openSmith(){smithCharIdx=0;shopPages['smith-unlock']=0;renderSmith();document.getElementById('smith-screen').classList.remove('hidden');}
 function closeSmith(){document.getElementById('smith-screen').classList.add('hidden');}
 function selSmithChar(i){smithCharIdx=i;renderSmith();}
 
@@ -5566,7 +5655,7 @@ function renderSmith(){
 
   // ─── 新装備の解放（ダンジョン素材を消費） ───
   const lockable=EQUIP_CATALOG.filter(e=>e.reqMat);
-  document.getElementById('smith-unlock').innerHTML=lockable.map(e=>{
+  const unlockRows=lockable.map(e=>{
     const owned=c.inventory.includes(e.id);
     const reqEntries=Object.entries(e.reqMat);
     const matReqs=reqEntries.map(([mid,cnt])=>{
@@ -5577,13 +5666,14 @@ function renderSmith(){
     const haveAllMat=reqEntries.every(([mid,cnt])=>(G.materials[mid]||0)>=cnt);
     const canUnlock=!owned&&haveGold&&haveAllMat;
     const stat=[e.atk&&'攻+'+e.atk,e.def&&'守+'+e.def,e.int&&'魔+'+e.int,e.maxMp&&'MP+'+e.maxMp].filter(Boolean).join(' ');
-    return `<div class="smith-row">
-      <span class="eq-sico">${e.icon}</span>
-      <span class="smith-row-info">${e.name}<br><span style="font-size:8px;color:#88ddff;">${stat}</span></span>
+    return `<div class="shop-row">
+      <div class="shop-row-top"><span class="eq-sico">${e.icon}</span><span class="shop-row-name">${e.name}</span></div>
+      <div style="font-size:8px;color:#88ddff;">${stat}</div>
       <div class="smith-cost">${e.reqGold?`<span class="${haveGold?'':'smith-lack'}">${e.reqGold}G</span>`:''} ${matReqs}</div>
-      ${owned?'<span class="eq-badge">所持済み</span>':`<button class="smith-btn ${canUnlock?'':'disabled'}" ${canUnlock?'':'disabled'} onclick="unlockEquip('${e.id}')">解放</button>`}
+      <div class="shop-row-bottom">${owned?'<span class="eq-badge">所持済み</span>':`<button class="smith-btn ${canUnlock?'':'disabled'}" ${canUnlock?'':'disabled'} onclick="unlockEquip('${e.id}')">解放</button>`}</div>
     </div>`;
-  }).join('');
+  });
+  renderShopPage('smith-unlock','smith-unlock-pagenav',unlockRows,renderSmith);
 }
 
 function enhanceEquip(slot){
@@ -5627,6 +5717,7 @@ function unlockEquip(id){
 let villageShopType=null, villageShopVillageIdx=0, villageShopCharIdx=0;
 function openVillageShop(type,villageIdx){
   villageShopType=type;villageShopVillageIdx=villageIdx;villageShopCharIdx=0;
+  shopPages['village-shop-list']=0;
   renderVillageShop();
   document.getElementById('village-shop-screen').classList.remove('hidden');
 }
@@ -5643,15 +5734,17 @@ function renderVillageShop(){
     document.getElementById('village-shop-chars').innerHTML='';
     const matEl0=document.getElementById('village-shop-materials');
     matEl0.style.display='none';matEl0.innerHTML='';
-    document.getElementById('village-shop-list').innerHTML=ITEM_SHOP_CATALOG.map((item,idx)=>{
+    const itemRows=ITEM_SHOP_CATALOG.map((item,idx)=>{
       const canBuy=gold>=item.price;
-      return `<div class="smith-row">
-        <span class="eq-sico">${item.icon}</span>
-        <span class="smith-row-info">${item.name}</span>
-        <div class="smith-cost"><span class="${canBuy?'':'smith-lack'}">${item.price}G</span></div>
-        <button class="smith-btn ${canBuy?'':'disabled'}" ${canBuy?'':'disabled'} onclick="buyShopItem(${idx})">購入</button>
+      return `<div class="shop-row">
+        <div class="shop-row-top"><span class="eq-sico">${item.icon}</span><span class="shop-row-name">${item.name}</span></div>
+        <div class="shop-row-bottom">
+          <span class="${canBuy?'':'smith-lack'}">${item.price}G</span>
+          <button class="smith-btn ${canBuy?'':'disabled'}" ${canBuy?'':'disabled'} onclick="buyShopItem(${idx})">購入</button>
+        </div>
       </div>`;
-    }).join('');
+    });
+    renderShopPage('village-shop-list','village-shop-pagenav',itemRows,renderVillageShop);
     return;
   }
 
@@ -5678,7 +5771,7 @@ function renderVillageShop(){
     matEl.style.display='none';matEl.innerHTML='';
   }
 
-  document.getElementById('village-shop-list').innerHTML=ids.map(id=>{
+  const equipRows=ids.map(id=>{
     const e=getEquip(id);if(!e)return'';
     const owned=c.inventory.includes(id);
     const stat=[e.atk&&'攻+'+e.atk,e.def&&'守+'+e.def,e.int&&'魔+'+e.int,e.maxMp&&'MP+'+e.maxMp].filter(Boolean).join(' ');
@@ -5697,13 +5790,14 @@ function renderVillageShop(){
       canBuy=!owned&&gold>=e.price;
       costHtml=`<span class="${gold>=e.price?'':'smith-lack'}">${e.price}G</span>`;
     }
-    return `<div class="smith-row">
-      <span class="eq-sico">${e.icon}</span>
-      <span class="smith-row-info">${e.name}<br><span style="font-size:8px;color:#88ddff;">${stat}</span></span>
+    return `<div class="shop-row">
+      <div class="shop-row-top"><span class="eq-sico">${e.icon}</span><span class="shop-row-name">${e.name}</span></div>
+      <div style="font-size:8px;color:#88ddff;">${stat}</div>
       <div class="smith-cost">${costHtml}</div>
-      ${owned?'<span class="eq-badge">所持済み</span>':`<button class="smith-btn ${canBuy?'':'disabled'}" ${canBuy?'':'disabled'} onclick="buyVillageEquip('${id}')">購入</button>`}
+      <div class="shop-row-bottom">${owned?'<span class="eq-badge">所持済み</span>':`<button class="smith-btn ${canBuy?'':'disabled'}" ${canBuy?'':'disabled'} onclick="buyVillageEquip('${id}')">購入</button>`}</div>
     </div>`;
-  }).join('');
+  });
+  renderShopPage('village-shop-list','village-shop-pagenav',equipRows,renderVillageShop);
 }
 
 function buyVillageEquip(id){
