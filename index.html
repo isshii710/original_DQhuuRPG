@@ -189,7 +189,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 }
 #battle-screen.hidden{display:none;}
 #battle-bg{
-  flex:1;min-height:0;position:relative;overflow:hidden;
+  flex:1 1 0;min-height:0;position:relative;overflow:hidden;
 }
 .battle-field-top{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;}
 .battle-field-bot{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;}
@@ -283,9 +283,8 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 
 /* Battle window */
 #battle-win{
-  flex-shrink:0;border-radius:0;border-left:none;border-right:none;border-bottom:none;
+  flex:1 1 0;min-height:0;border-radius:0;border-left:none;border-right:none;border-bottom:none;
   border-top:2px solid var(--win-bd);
-  max-height:56svh;max-height:56vh;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 #battle-msg{padding:8px 14px;font-size:clamp(11px,3.5vw,13px);line-height:1.6;letter-spacing:1px;border-bottom:1px solid rgba(60,90,160,.2);}
