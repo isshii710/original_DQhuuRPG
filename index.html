@@ -411,6 +411,12 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 #smith-screen.hidden{display:none;}
 #village-shop-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #village-shop-screen.hidden{display:none;}
+#quest-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#quest-screen.hidden{display:none;}
+.quest-row{display:flex;flex-direction:column;gap:4px;padding:8px 12px;font-size:10px;color:var(--white);background:var(--win-bg);}
+.quest-row-hd{display:flex;justify-content:space-between;align-items:center;color:var(--gold);font-size:11px;letter-spacing:1px;}
+.quest-row-line{font-size:10px;color:rgba(255,255,255,.85);}
+.quest-route-btn{align-self:flex-end;margin-top:2px;}
 .smith-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:100%;}
 .smith-materials{padding:7px 12px;display:flex;flex-wrap:wrap;gap:6px 14px;border-bottom:1px solid rgba(60,90,160,.2);font-size:10px;}
 .smith-mat-zero{opacity:.35;}
@@ -700,6 +706,7 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
       <button class="mitem" onclick="closeMenu();openSkillTree()">✨ スキル習得</button>
       <button class="mitem" onclick="closeMenu();openJobScreen()">🔄 転職</button>
       <button class="mitem" onclick="closeMenu();openFullMap()">🗺️ 全体マップ</button>
+      <button class="mitem" onclick="closeMenu();openQuestLog()">📜 クエスト</button>
       <button class="mitem" onclick="closeMenu();openWarpModal()">🌀 帰還の書</button>
       <button class="mitem" id="menu-mount-btn" onclick="toggleMount()">🐴 馬に乗る</button>
       <button class="mitem" onclick="closeMenu();openSaveModal()">💾 セーブ / ロード</button>
@@ -763,6 +770,15 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
     <div class="eq-chars" id="village-shop-chars"></div>
     <div class="smith-list" id="village-shop-list"></div>
     <div class="win-close" onclick="closeVillageShop()">▶ とじる</div>
+  </div>
+</div>
+
+<!-- Quest Log (クエスト一覧) -->
+<div id="quest-screen" class="hidden">
+  <div class="win smith-box">
+    <div class="win-title">📜 クエスト一覧</div>
+    <div class="smith-list" id="quest-list" style="max-height:none;flex:1;"></div>
+    <div class="win-close" onclick="closeQuestLog()">▶ とじる</div>
   </div>
 </div>
 
@@ -1146,6 +1162,15 @@ const ITEMS_DROP = [
   {name:'魔力の雫',icon:'💎',type:'mpitem',value:20},
 ];
 
+// 道具屋の販売アイテム一覧
+const ITEM_SHOP_CATALOG = [
+  {name:'癒し草',icon:'🌿',type:'heal',value:30,price:10},
+  {name:'星光草',icon:'🌙',type:'heal',value:80,price:50},
+  {name:'解毒草',icon:'💊',type:'cure',price:8},
+  {name:'魔力の雫',icon:'💎',type:'mpitem',value:20,price:15},
+];
+const ITEM_SHOP_DIALOG=['いらっしゃい！旅の薬草や道具を取り揃えていますよ。','必要な物があれば、いつでも声をかけてくださいね。'];
+
 // ============================================================
 // VILLAGES（全9村のストーリー・難易度スケーリング・施設データ）
 // ============================================================
@@ -1402,25 +1427,33 @@ function buildMapsDef(){
 }
 const MAPS_DEF = buildMapsDef();
 
-// 村の5つのNPC（村長・宿屋・武器屋・防具屋・鍛冶屋）を生成
+// 村の7つのNPC（村長・宿屋・武器屋・防具屋・鍛冶屋・道具屋・村人）を生成
 function getVillageNPCs(i){
   const v=VILLAGES[i];if(!v)return[];
   return [
-    {id:'elder',     name:'村長',  icon:'👴', chipImg:'Villager/pipo-charachip010.png', x:3,  y:3, dialog:getElderDialog(i), villageIdx:i},
-    {id:'inn',       name:'宿屋',  icon:'🏠', chipImg:'Villager/pipo-charachip001.png', x:12, y:4, dialog:v.innDialog, villageIdx:i},
-    {id:'weaponshop',name:'武器屋',icon:'⚔️', chipImg:'Soldier/pipo-charachip018.png',  x:12, y:9, dialog:v.weaponShopDialog, villageIdx:i},
-    {id:'armorshop', name:'防具屋',icon:'🛡️', chipImg:'Villager/pipo-charachip003.png', x:5,  y:9, dialog:v.armorShopDialog, villageIdx:i},
-    {id:'smith',     name:'鍛冶屋',icon:'🔨', chipImg:'Villager/pipo-charachip004.png', x:18, y:9, dialog:v.smithDialog, villageIdx:i},
+    {id:'elder',     name:'村長',  icon:'👴', chipImg:'Villager/pipo-charachip010.png', x:3,  y:3,  dialog:getElderDialog(i), villageIdx:i},
+    {id:'inn',       name:'宿屋',  icon:'🏠', chipImg:'Villager/pipo-charachip001.png', x:12, y:4,  dialog:v.innDialog, villageIdx:i},
+    {id:'weaponshop',name:'武器屋',icon:'⚔️', chipImg:'Soldier/pipo-charachip018.png',  x:12, y:9,  dialog:v.weaponShopDialog, villageIdx:i},
+    {id:'armorshop', name:'防具屋',icon:'🛡️', chipImg:'Villager/pipo-charachip003.png', x:5,  y:9,  dialog:v.armorShopDialog, villageIdx:i},
+    {id:'smith',     name:'鍛冶屋',icon:'🔨', chipImg:'Villager/pipo-charachip004.png', x:18, y:9,  dialog:v.smithDialog, villageIdx:i},
+    {id:'itemshop',  name:'道具屋',icon:'🧪', chipImg:'Villager/pipo-charachip002.png', x:8,  y:14, dialog:ITEM_SHOP_DIALOG, villageIdx:i},
+    {id:'villager',  name:'村人',  icon:'🧑', chipImg:'Villager/pipo-charachip006.png', x:14, y:14, dialog:getVillagerDialog(i), villageIdx:i},
   ];
 }
 
-// 村長の会話内容を進行状況に応じて切り替える
+// 村長の会話内容を進行状況に応じて切り替える（メインクエスト専用）
 function getElderDialog(i){
   const v=VILLAGES[i],s=G.story.villages[i];
   if(s.mainCleared)return v.unlockDialog;
   if(s.huntDone&&s.collectDone)return v.mainEventDialog;
-  const status=buildQuestStatusLines(i);
-  return s.visited?status:[...v.arrivalDialog,...status];
+  if(s.visited)return ['まずは村人たちの頼みを聞いて、力になってやってくれ。'];
+  return v.arrivalDialog;
+}
+// 村人の会話内容（サブクエスト：討伐・納品）を進行状況に応じて切り替える
+function getVillagerDialog(i){
+  const s=G.story.villages[i];
+  if(s.huntDone&&s.collectDone)return ['おかげで困りごとが片付いたよ。本当にありがとう！'];
+  return ['実は困っていることがあって…力を借りたいんだ。',...buildQuestStatusLines(i)];
 }
 // サブクエスト(討伐・納品)の進捗テキストを生成
 function buildQuestStatusLines(i){
@@ -1578,6 +1611,8 @@ const G = {
   // Map
   mapIdx:0, dungeonFloor:0, prevMapIdx:0,
   clearedDungeons:{}, chests:[], chestAnim:null, doors:[], doorAnim:null,
+  // クエストログで表示する道順（タイル座標の配列）
+  questRoute:null,
   // 強化・装備解放に使う素材（ダンジョンボスがドロップ）
   materials:{},
   // 現在のフロアでセーブポイントを使用済みか（フロア移動でリセット）
@@ -1643,7 +1678,7 @@ window.addEventListener('resize', resizeCanvas);
 window.addEventListener('load',()=>{
   // 画面の初期状態を強制リセット（CSS キャッシュ対策）
   ['lobby-screen','battle-screen','spell-screen','target-screen',
-   'ally-target-screen','menu-screen','status-screen','equip-screen','skill-screen','sp-screen','smith-screen','village-shop-screen',
+   'ally-target-screen','menu-screen','status-screen','equip-screen','skill-screen','sp-screen','smith-screen','village-shop-screen','quest-screen',
    'lvlup-screen','dialog','save-modal','online-modal','join-modal','fullmap-modal','warp-modal',
    'item-popup','chat-input'].forEach(id=>{
     const el=document.getElementById(id);
@@ -2728,8 +2763,18 @@ function buildVillageTiles(){
   [[11,2],[12,2],[13,2],[11,3],[13,3],[11,4],[13,4],[11,5],[13,5]].forEach(([x,y])=>g[y][x]=W);
   // 建物C: 倉庫（chest配置用, 入口 x:18,y:14）
   [[17,11],[18,11],[19,11],[20,11],[17,12],[20,12],[17,13],[20,13],[17,14],[19,14],[20,14]].forEach(([x,y])=>g[y][x]=W);
+  // 建物D: 武器屋（weaponshop NPC x:12,y:9, 入口 x:12,y:10）
+  [[11,8],[12,8],[13,8],[11,9],[13,9],[11,10],[13,10]].forEach(([x,y])=>g[y][x]=W);
+  // 建物E: 防具屋（armorshop NPC x:5,y:9, 入口 x:5,y:10）
+  [[4,8],[5,8],[6,8],[4,9],[6,9],[4,10],[6,10]].forEach(([x,y])=>g[y][x]=W);
+  // 建物F: 鍛冶屋（smith NPC x:18,y:9, 入口 x:18,y:10）
+  [[17,8],[18,8],[19,8],[17,9],[19,9],[17,10],[19,10]].forEach(([x,y])=>g[y][x]=W);
+  // 建物G: 道具屋（itemshop NPC x:8,y:14, 入口 x:8,y:15）
+  [[7,13],[8,13],[9,13],[7,14],[9,14],[7,15],[9,15]].forEach(([x,y])=>g[y][x]=W);
+  // 建物H: 村人の家（villager NPC x:14,y:14, 入口 x:14,y:15）
+  [[13,13],[14,13],[15,13],[13,14],[15,14],[13,15],[15,15]].forEach(([x,y])=>g[y][x]=W);
   // 木々の装飾
-  [[6,6],[16,6],[3,12],[8,12],[15,3]].forEach(([x,y])=>{if(g[y][x]===F)g[y][x]=Tr;});
+  [[6,6],[16,6],[3,12],[15,3]].forEach(([x,y])=>{if(g[y][x]===F)g[y][x]=Tr;});
   // 東の出口（フィールドへ）row9, col22
   g[9][MAP_W-2]=X;
   return g;
@@ -2760,20 +2805,20 @@ function generateMap(idx){
   const map=MAPS_DEF[idx];
   // 村・ダンジョンに入ると自動下馬（フィールドのみ騎乗可能）
   if(G.mounted&&map.type!=='field'){G.mounted=false;addChat('🐴 馬を降りた',null,true);}
-  G.tiles=[];G.npcsOnMap=[];G.chests=[];G.doors=[];G.doorAnim=null;G.mapEnemies=[];
+  G.tiles=[];G.npcsOnMap=[];G.chests=[];G.doors=[];G.doorAnim=null;G.mapEnemies=[];G.questRoute=null;
   const rng=n=>Math.floor(Math.random()*n);
 
   if(idx%3===0){
     // ─── 固定レイアウト: 村 ────────────────────────────────────
     G.tiles=buildVillageTiles();
     getVillageNPCs(idx/3).forEach(n=>{if(G.tiles[n.y]?.[n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
-    for(const[cx,cy] of [[19,13],[18,13],[7,13]]){
+    for(const[cx,cy] of [[19,13],[18,13],[12,12]]){
       if(G.tiles[cy]?.[cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
     }
     [[12,5],[3,5]].forEach(([dx,dy])=>{
       if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false});}
     });
-    setPlayerPos(12,9);
+    setPlayerPos(11,12);
 
   } else if(idx%3===1){
     // ─── 固定レイアウト: フィールド ──────────────────────────
@@ -3345,6 +3390,13 @@ function drawMinimap(){
   mmCtx.clearRect(0,0,88,88);
   mmCtx.fillStyle='rgba(0,20,0,0.6)';mmCtx.fillRect(0,0,88,88);
   const sx=88/MAP_W,sy=88/MAP_H;
+  if(G.questRoute){
+    mmCtx.fillStyle='#ffee44';
+    G.questRoute.forEach(p=>{
+      const px=(p.x+0.5)*sx,py=(p.y+0.5)*sy;
+      mmCtx.fillRect(px-1,py-1,2,2);
+    });
+  }
   G.mapEnemies.forEach(e=>{
     if(e.dead)return;
     const ex=e.x/G.TILE*sx,ey=e.y/G.TILE*sy;
@@ -4804,6 +4856,8 @@ function battleVictory(){
     if(vs.hunt!==before){
       const elder=G.npcsOnMap.find(n=>n.id==='elder');
       if(elder)elder.dialog=getElderDialog(vIdx);
+      const villager=G.npcsOnMap.find(n=>n.id==='villager');
+      if(villager)villager.dialog=getVillagerDialog(vIdx);
     }
   }
 
@@ -4982,8 +5036,10 @@ function advDialog(){
       case 'inn':handleInnStay();break;
       case 'weaponshop':openVillageShop('weapon',npc.villageIdx);break;
       case 'armorshop':openVillageShop('armor',npc.villageIdx);break;
+      case 'itemshop':openVillageShop('item',npc.villageIdx);break;
       case 'smith':openSmith();break;
       case 'elder':handleElderEnd(npc.villageIdx);break;
+      case 'villager':handleVillagerEnd(npc.villageIdx);break;
     }
     return;
   }
@@ -5453,9 +5509,27 @@ function selVillageShopChar(i){villageShopCharIdx=i;renderVillageShop();}
 function renderVillageShop(){
   const v=VILLAGES[villageShopVillageIdx];
   const gold=G.party[0].gold;
+  document.getElementById('village-shop-gold').textContent=`💰 ${gold} G`;
+
+  if(villageShopType==='item'){
+    document.getElementById('village-shop-title').textContent=`🧪 ${v.name} 道具屋`;
+    document.getElementById('village-shop-chars').innerHTML='';
+    const matEl0=document.getElementById('village-shop-materials');
+    matEl0.style.display='none';matEl0.innerHTML='';
+    document.getElementById('village-shop-list').innerHTML=ITEM_SHOP_CATALOG.map((item,idx)=>{
+      const canBuy=gold>=item.price;
+      return `<div class="smith-row">
+        <span class="eq-sico">${item.icon}</span>
+        <span class="smith-row-info">${item.name}</span>
+        <div class="smith-cost"><span class="${canBuy?'':'smith-lack'}">${item.price}G</span></div>
+        <button class="smith-btn ${canBuy?'':'disabled'}" ${canBuy?'':'disabled'} onclick="buyShopItem(${idx})">購入</button>
+      </div>`;
+    }).join('');
+    return;
+  }
+
   const isWeapon=villageShopType==='weapon';
   document.getElementById('village-shop-title').textContent=isWeapon?`⚔️ ${v.name} 武器屋`:`🛡️ ${v.name} 防具屋`;
-  document.getElementById('village-shop-gold').textContent=`💰 ${gold} G`;
 
   const ids=[isWeapon?'ws'+v.idx:'as'+v.idx];
   if(v.idx>=3)ids.push(isWeapon?v.specialWeaponId:v.specialArmorId);
@@ -5524,6 +5598,95 @@ function buyVillageEquip(id){
   renderVillageShop();
 }
 
+// 道具屋でアイテムを購入
+function buyShopItem(idx){
+  const item=ITEM_SHOP_CATALOG[idx];
+  if(G.party[0].gold<item.price)return;
+  G.party[0].gold-=item.price;
+  G.party[0].items.push({name:item.name,icon:item.icon,type:item.type,value:item.value});
+  addChat(`🛒 ${item.icon}${item.name}を購入した！`,null,true);
+  showItemPop({icon:item.icon,name:item.name});
+  renderVillageShop();
+}
+
+// ============================================================
+// QUEST LOG (クエスト一覧)
+// ============================================================
+function openQuestLog(){
+  renderQuestLog();
+  document.getElementById('quest-screen').classList.remove('hidden');
+}
+function closeQuestLog(){document.getElementById('quest-screen').classList.add('hidden');}
+
+function renderQuestLog(){
+  const rows=[];
+  VILLAGES.forEach((v,i)=>{
+    const s=G.story.villages[i];
+    if(!s.visited)return;
+    let mainLine;
+    if(s.mainCleared)mainLine=`✅ メイン: ${v.mainBossName}を討伐済み`;
+    else if(s.huntDone&&s.collectDone)mainLine=`⭐ メイン: 村長に報告できる（${v.mainBossName}が出現）`;
+    else mainLine='📖 メイン: 村人の頼みを解決しよう';
+    const subLines=buildQuestStatusLines(i);
+    rows.push(`<div class="quest-row">
+      <div class="quest-row-hd"><span>${v.icon} ${v.name}</span></div>
+      <div class="quest-row-line">${mainLine}</div>
+      ${subLines.map(l=>`<div class="quest-row-line">${l}</div>`).join('')}
+      <button class="smith-btn quest-route-btn" onclick="showQuestRoute(${i})">🧭 村人への道順</button>
+    </div>`);
+  });
+  document.getElementById('quest-list').innerHTML=rows.length?rows.join(''):
+    '<div class="quest-row"><div class="quest-row-line">まだクエストがありません。村長や村人に話しかけてみよう。</div></div>';
+}
+
+// クエストを依頼した村人の場所までの道順をミニマップに表示
+function showQuestRoute(i){
+  const v=VILLAGES[i];
+  const townMapIdx=i*3;
+  if(G.mapIdx===townMapIdx){
+    const target=G.npcsOnMap.find(n=>n.id==='villager');
+    const leader=G.party[0];
+    const start={x:Math.floor(leader.x/G.TILE),y:Math.floor(leader.y/G.TILE)};
+    if(target){
+      const path=bfsPath(start,{x:target.x,y:target.y});
+      if(path){
+        G.questRoute=path;
+        addChat(`🧭 ${v.name}の村人への道順をミニマップに表示しました`,null,true);
+      }else{
+        addChat('🧭 道が見つかりませんでした…',null,true);
+      }
+    }
+  }else{
+    G.questRoute=null;
+    addChat(`🧭 まずは${v.name}へ向かいましょう`,null,true);
+  }
+  closeQuestLog();
+}
+
+// 簡易BFS探索：startからgoalまでの通行可能な経路（タイル座標の配列）を求める
+function bfsPath(start,goal){
+  if(start.x===goal.x&&start.y===goal.y)return[{x:start.x,y:start.y}];
+  const key=(x,y)=>x+','+y;
+  const visited=new Set([key(start.x,start.y)]);
+  const queue=[{x:start.x,y:start.y,path:[{x:start.x,y:start.y}]}];
+  const passable=(x,y)=>{
+    const t=G.tiles[y]?.[x];
+    return t!==undefined&&t!==T.WALL&&t!==T.TREE&&t!==T.CHEST&&t!==T.DOOR&&t!==T.NPC;
+  };
+  while(queue.length){
+    const cur=queue.shift();
+    for(const[dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]){
+      const nx=cur.x+dx,ny=cur.y+dy;
+      if(visited.has(key(nx,ny)))continue;
+      if(nx===goal.x&&ny===goal.y)return[...cur.path,{x:nx,y:ny}];
+      if(!passable(nx,ny))continue;
+      visited.add(key(nx,ny));
+      queue.push({x:nx,y:ny,path:[...cur.path,{x:nx,y:ny}]});
+    }
+  }
+  return null;
+}
+
 // ============================================================
 // INN / STORY EVENTS (宿屋・村長イベント)
 // ============================================================
@@ -5538,10 +5701,19 @@ function handleInnStay(){
   openSaveModal();
 }
 
-// 村長との会話終了時：納品クエストの判定と、討伐・納品が両方完了していれば村ボス戦を開始
+// 村長との会話終了時：討伐・納品（村人のサブクエスト）が両方完了していれば村ボス戦を開始
 function handleElderEnd(i){
-  const v=VILLAGES[i],s=G.story.villages[i];
+  const s=G.story.villages[i];
   s.visited=true;
+  const readyForBoss=s.huntDone&&s.collectDone&&!s.mainCleared;
+  const elder=G.npcsOnMap.find(n=>n.id==='elder');
+  if(elder)elder.dialog=getElderDialog(i);
+  if(readyForBoss)startVillageBossFight(i);
+}
+
+// 村人との会話終了時：納品クエストの判定（サブクエスト）
+function handleVillagerEnd(i){
+  const v=VILLAGES[i],s=G.story.villages[i];
   if(!s.collectDone){
     const col=v.collectQuest;
     const have=G.party[0].items.filter(it=>it.name===col.itemName).length;
@@ -5552,13 +5724,13 @@ function handleElderEnd(i){
         return true;
       });
       s.collectDone=true;
-      addChat(`📦 ${col.itemName}を村長に渡した！`,null,true);
+      addChat(`📦 ${col.itemName}を村人に渡した！`,null,true);
     }
   }
-  const readyForBoss=s.huntDone&&s.collectDone&&!s.mainCleared;
+  const villager=G.npcsOnMap.find(n=>n.id==='villager');
+  if(villager)villager.dialog=getVillagerDialog(i);
   const elder=G.npcsOnMap.find(n=>n.id==='elder');
   if(elder)elder.dialog=getElderDialog(i);
-  if(readyForBoss)startVillageBossFight(i);
 }
 
 // 村のメインイベント（村ボス）戦を開始（マルチプレイ人数でスケーリング）
