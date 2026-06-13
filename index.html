@@ -330,19 +330,19 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .dc-hit{color:#ffe055;}.dc-crit{color:#ff6600;font-size:26px;}.dc-heal{color:#44ff88;}.dc-miss{color:#aaa;font-size:14px;}
 
 /* Spell select */
-#spell-screen{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#spell-screen{position:fixed;top:50%;left:0;right:0;bottom:0;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #spell-screen.hidden{display:none;}
-#skill-screen{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#skill-screen{position:fixed;top:50%;left:0;right:0;bottom:0;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #skill-screen.hidden{display:none;}
-#target-screen{position:fixed;inset:0;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#target-screen{position:fixed;top:50%;left:0;right:0;bottom:0;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #target-screen.hidden{display:none;}
-#ally-target-screen{position:fixed;inset:0;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#ally-target-screen{position:fixed;top:50%;left:0;right:0;bottom:0;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #ally-target-screen.hidden{display:none;}
 .tgt-btn{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:13px;padding:11px 14px;cursor:pointer;text-align:left;transition:background .06s;width:100%;display:flex;align-items:center;gap:10px;}
 .tgt-btn:active{background:rgba(50,90,200,.5);color:var(--gold);}
 .tgt-hp-bar{flex:1;height:5px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;max-width:80px;}
 .tgt-hp-fill{height:100%;border-radius:2px;}
-.spell-box{width:100%;max-width:480px;}
+.spell-box{width:100%;max-width:480px;max-height:100%;display:flex;flex-direction:column;overflow-y:auto;}
 .spell-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:rgba(60,90,160,.12);max-height:200px;overflow-y:auto;}
 .spbtn{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:11px;padding:9px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background .06s;}
 .spbtn:active{background:rgba(50,90,200,.5);color:var(--gold);}
@@ -351,16 +351,16 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .sp-cancel{padding:10px;background:rgba(80,20,20,.9);color:var(--text2);cursor:pointer;font-family:'DotGothic16',serif;font-size:11px;text-align:center;border-top:1px solid rgba(255,100,100,.2);transition:background .1s;}
 
 /* Menu */
-#menu-screen{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:flex-end;padding:0 12px;}
+#menu-screen{position:fixed;top:50%;left:0;right:0;bottom:0;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:flex-end;padding:0 12px;}
 #menu-screen.hidden{display:none;}
-.menu-box{width:min(240px,78vw);}
+.menu-box{width:min(240px,78vw);max-height:100%;overflow-y:auto;}
 .mitem{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:13px;padding:11px 14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:9px;transition:background .06s;width:100%;letter-spacing:1px;}
 .mitem:active{background:rgba(50,90,200,.5);color:var(--gold);}
 
 /* Status */
-#status-screen{position:fixed;inset:0;z-index:65;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#status-screen{position:fixed;top:50%;left:0;right:0;bottom:0;z-index:65;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #status-screen.hidden{display:none;}
-.status-box{width:100%;max-width:420px;}
+.status-box{width:100%;max-width:420px;max-height:100%;overflow-y:auto;}
 .stat-hd{padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--win-bd);}
 .stat-ico{font-size:36px;}.stat-nm{font-size:17px;color:var(--gold);font-family:'Noto Serif JP',serif;font-weight:700;}
 .stat-cl{font-size:10px;color:var(--text2);letter-spacing:2px;margin-top:2px;}
@@ -370,9 +370,9 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .sg-val{font-size:17px;color:var(--white);}
 
 /* Equip screen */
-#equip-screen{position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#equip-screen{position:fixed;top:50%;left:0;right:0;bottom:0;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #equip-screen.hidden{display:none;}
-.eq-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:90vh;}
+.eq-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:100%;}
 .eq-slots{display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);}
 .eqslot{background:var(--win-bg);border:none;display:flex;align-items:center;gap:9px;padding:9px 12px;cursor:pointer;color:var(--white);font-family:'DotGothic16',serif;font-size:12px;width:100%;text-align:left;transition:background .06s;}
 .eqslot:active,.eqslot.cur{background:rgba(50,90,200,.5);}
@@ -391,9 +391,9 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .eq-char-btn.cur{background:rgba(50,90,200,.55);}
 .eq-char-ico{font-size:17px;display:block;}
 .eq-char-nm{font-size:7px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:1px;}
-#sp-screen{position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:12px;}
+#sp-screen{position:fixed;top:50%;left:0;right:0;bottom:0;z-index:66;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:12px;}
 #sp-screen.hidden{display:none;}
-.sp-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:90vh;}
+.sp-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:100%;}
 .sp-chars{display:flex;gap:1px;background:rgba(60,90,160,.18);}
 .sp-char-btn{flex:1;background:var(--win-bg);border:none;padding:7px 4px;cursor:pointer;color:var(--white);font-family:'DotGothic16',serif;text-align:center;transition:background .06s;min-width:0;font-size:7px;}
 .sp-char-btn.cur{background:rgba(50,90,200,.55);}
@@ -408,11 +408,11 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .sp-cat{font-size:8px;color:rgba(150,180,255,.7);letter-spacing:1px;}
 
 /* Smith (鍛冶屋) */
-#smith-screen{position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#smith-screen{position:fixed;top:50%;left:0;right:0;bottom:0;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #smith-screen.hidden{display:none;}
-#village-shop-screen{position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#village-shop-screen{position:fixed;top:50%;left:0;right:0;bottom:0;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #village-shop-screen.hidden{display:none;}
-.smith-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:90vh;}
+.smith-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:100%;}
 .smith-materials{padding:7px 12px;display:flex;flex-wrap:wrap;gap:6px 14px;border-bottom:1px solid rgba(60,90,160,.2);font-size:10px;}
 .smith-mat-zero{opacity:.35;}
 .smith-list{display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);overflow-y:auto;max-height:160px;}
@@ -482,11 +482,11 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 
 /* ========== SAVE / ONLINE MODAL ========== */
 #save-modal,#online-modal,#join-modal,#fullmap-modal,#warp-modal{
-  position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.75);
+  position:fixed;top:50%;left:0;right:0;bottom:0;z-index:90;background:rgba(0,0,0,.75);
   display:flex;align-items:center;justify-content:center;padding:16px;
 }
 #save-modal.hidden,#online-modal.hidden,#join-modal.hidden,#fullmap-modal.hidden,#warp-modal.hidden{display:none;}
-.modal-box{width:min(420px,96vw);max-height:90vh;overflow-y:auto;}
+.modal-box{width:min(420px,96vw);max-height:100%;overflow-y:auto;}
 #fullmap-canvas{display:block;width:100%;image-rendering:pixelated;background:#000;}
 .warp-village{
   display:flex;align-items:center;gap:10px;padding:10px 14px;
@@ -727,6 +727,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
       <div><div class="stat-nm" id="st-nm"></div><div class="stat-cl" id="st-cl"></div></div>
     </div>
     <div class="stat-grid" id="st-grid"></div>
+    <div id="st-metaldex" style="padding:8px 14px;font-size:9px;color:rgba(255,255,255,.7);letter-spacing:1px;border-top:1px solid var(--win-bd);"></div>
     <div class="win-close" onclick="closeStatus()">▶ とじる</div>
   </div>
 </div>
@@ -1012,7 +1013,12 @@ const ENEMIES_DATA = [
   {name:'石の番兵',    imgPath:'Monster/pipo-enemy008.png', sprite:'gargoyle', hp:70,  atk:25, def:18, exp:60,  gold:35,  color:'#8899aa',spd:0.9,range:'mid'},
   {name:'闇の眷属',    imgPath:'Monster/pipo-boss001.png',  sprite:'reaper',   hp:200, atk:35, def:20, exp:200, gold:100, color:'#aa44dd',spd:1.1,boss:true,range:'long'},
   {name:'闇の帝王',    imgPath:'Monster/pipo-boss002.png',  sprite:'demonlord',hp:350, atk:50, def:30, exp:500, gold:250, color:'#cc2244',spd:1.3,boss:true,range:'long'},
+  // ─── レアエンカウント: メタル系・ゴールド系（低HP・超高防御・高回避・すぐ逃げる）───
+  {name:'メタルスライム',imgPath:'Monster/pipo-enemy001b.png',sprite:'metalslime',hp:5,  atk:14, def:999,exp:500, gold:5,   color:'#ccccdd',spd:2.8,range:'close',evasion:0.7,fleeRate:0.5,rare:true},
+  {name:'ゴールドスライム',imgPath:'Monster/pipo-enemy001b.png',sprite:'metalslime',hp:5,atk:14, def:999,exp:100, gold:1000,color:'#ffdd44',spd:2.8,range:'close',evasion:0.7,fleeRate:0.5,rare:true},
 ];
+const METAL_SLIME_IDX=ENEMIES_DATA.findIndex(e=>e.name==='メタルスライム');
+const GOLD_SLIME_IDX=ENEMIES_DATA.findIndex(e=>e.name==='ゴールドスライム');
 
 const EQUIP_CATALOG = [
   {id:'w1',name:'粗末な棒',icon:'🪵',slot:'weapon',atk:4,price:20},
@@ -1538,6 +1544,7 @@ const G = {
   story:{
     villages:Array.from({length:9},()=>({visited:false,hunt:0,huntDone:false,collectDone:false,mainCleared:false})),
     innBuffBattles:0,
+    metalDex:{metal:0,gold:0}, // メタル図鑑（メタル/ゴールドスライム討伐数）
   },
   // メインイベント(村ボス)戦の対象村index。通常戦闘ではnull
   villageBossVillage:null,
@@ -1843,10 +1850,12 @@ function restoreFromSnapshot(snap) {
   G.story = snap.story || {
     villages:Array.from({length:9},()=>({visited:false,hunt:0,huntDone:false,collectDone:false,mainCleared:false})),
     innBuffBattles:0,
+    metalDex:{metal:0,gold:0},
   };
   // 旧バージョンのセーブデータ互換: villages配列が9件ない場合は補完
   if(!Array.isArray(G.story.villages))G.story.villages=[];
   while(G.story.villages.length<9)G.story.villages.push({visited:false,hunt:0,huntDone:false,collectDone:false,mainCleared:false});
+  if(!G.story.metalDex)G.story.metalDex={metal:0,gold:0};
   G.materials = snap.materials || {};
   G.party = snap.party.map(p => ({...p, enhance: p.enhance || {weapon:0, armor:0}}));
   G.party.forEach(c => recalcStats(c));
@@ -2749,15 +2758,37 @@ function setPlayerPos(tx,ty){
   G.party.forEach((c,i)=>{c.x=px+(i%2)*12;c.y=py+Math.floor(i/2)*12;});
 }
 
+// レアエンカウント（メタル/ゴールドスライム）の出現率。町では出現しない
+const RARE_ENCOUNTER_RATE=0.015;
+
 // Spawn a roaming enemy on the map
 function spawnMapEnemy(){
   const map=MAPS_DEF[G.mapIdx];
-  const eIdx=map.enemies[Math.floor(Math.random()*map.enemies.length)];
+  let eIdx;
+  if(map.type!=='town' && Math.random()<RARE_ENCOUNTER_RATE){
+    eIdx=Math.random()<0.5?METAL_SLIME_IDX:GOLD_SLIME_IDX;
+  }else{
+    eIdx=map.enemies[Math.floor(Math.random()*map.enemies.length)];
+  }
   const tmpl=ENEMIES_DATA[eIdx];
   let tx,ty,tries=0;
   do{tx=Math.floor(Math.random()*(MAP_W-2))+1;ty=Math.floor(Math.random()*(MAP_H-2))+1;tries++;}
   while((G.tiles[ty]?.[tx]!==T.FLOOR||Math.hypot(tx-12,ty-9)<5)&&tries<60);
   if(G.tiles[ty]?.[tx]!==T.FLOOR)return;
+
+  const angle=Math.random()*Math.PI*2;
+  // レア（メタル/ゴールド系）は村のスケーリングを受けず単独で出現する
+  if(tmpl.rare){
+    G.mapEnemies.push({
+      ...tmpl,idx:eIdx,
+      maxHp:tmpl.hp,curHp:tmpl.hp,
+      x:tx*G.TILE+G.TILE/2, y:ty*G.TILE+G.TILE/2,
+      vx:Math.cos(angle)*tmpl.spd*0.6,
+      vy:Math.sin(angle)*tmpl.spd*0.6,
+      dirTimer:0, dead:false, scale:1, groupSize:1,_mult:1,_vMult:1,_rewardMult:1,
+    });
+    return;
+  }
 
   // ダンジョンは階層に応じて強さ(tier)と編成人数を変える
   // tier0(B1-3):そのまま tier1(B4-6):強化版×1.35 tier2(B7-9):強化版×1.75+複数編成
@@ -2770,8 +2801,6 @@ function spawnMapEnemy(){
   }
   // 村の難易度スケーリングによる敵の強さ倍率（HP/ATK/DEFのみ。EXP/Goldは別途expMult/goldMultで調整）
   const vMult=(VILLAGES[Math.floor(G.mapIdx/3)]||{}).enemyMult||1;
-
-  const angle=Math.random()*Math.PI*2;
   G.mapEnemies.push({
     ...tmpl,idx:eIdx,
     name:(mult>1?'強 ':'')+tmpl.name,
@@ -3981,9 +4010,14 @@ function executePlayerCmd(cmd, actor){
           }
           let msg=`${actor.name}の攻撃！\n`;
           hitList.forEach(t=>{
-            const dmg=calcDmg(actor.atk+atkBonus,t.def,pwrMult);
+            if(t.evasion&&Math.random()<t.evasion){
+              msg+=`${t.name}はひらりと身をかわした！　`;
+              return;
+            }
+            const crit=Math.random()<CRIT_RATE;
+            const dmg=calcDmg(actor.atk+atkBonus,t.def,pwrMult,crit);
             applyEnemyDmg(t,dmg);
-            msg+=`${t.name}に ${dmg}　`;
+            msg+=`${t.name}に ${dmg}${crit?'（会心の一撃！）':''}　`;
           });
           if(pwrMult>1)msg+='（力溜め！）';
           setBMsg(msg);
@@ -3997,11 +4031,19 @@ function executePlayerCmd(cmd, actor){
     animPlayerAttack(pIdx, tgt.idx, ()=>{
       const atkBonus=actor.buffed?Math.floor(actor.atk*.5):0;
       const pwrMult=actor.powerCharged?2.0:1.0;
-      const dmg=calcDmg(actor.atk+atkBonus,tgt.def,pwrMult);
       actor.buffed=false;actor.powerCharged=false;
+      if(tgt.evasion&&Math.random()<tgt.evasion){
+        setBMsg(`${actor.name}の攻撃！\nしかし${tgt.name}はひらりと身をかわした！`);
+        renderBattle();
+        checkBattleEnd(()=>setTimeout(runNextAction,1000));
+        return;
+      }
+      const crit=Math.random()<CRIT_RATE;
+      const dmg=calcDmg(actor.atk+atkBonus,tgt.def,pwrMult,crit);
       applyEnemyDmg(tgt,dmg);
       const chargeMsg=pwrMult>1?' （力溜め！）':'';
-      setBMsg(`${actor.name}の攻撃！\n${tgt.name}に ${dmg} のダメージ！${chargeMsg}`);
+      const critMsg=crit?'（会心の一撃！）':'';
+      setBMsg(`${actor.name}の攻撃！\n${tgt.name}に ${dmg} のダメージ！${chargeMsg}${critMsg}`);
       renderBattle();
       checkBattleEnd(()=>setTimeout(runNextAction,1000));
     });
@@ -4282,6 +4324,19 @@ function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
 function executeEnemyAction(e){
   const partyAlive=G.party.filter(p=>p.hp>0);
   if(!partyAlive.length){gameover();return;}
+  // 逃走チェック（メタル系・ゴールド系は数ターンで逃げる）
+  if(e.fleeRate&&Math.random()<e.fleeRate){
+    e.curHp=0;e.fled=true;e.exp=0;e.gold=0;
+    setBMsg(`${e.name}は逃げ出した！`);
+    renderBattle();
+    if(G.battleEnemies.every(en=>en.curHp<=0)){
+      if(G.battleEnemies.some(en=>!en.fled)){setTimeout(battleVictory,800);}
+      else{setTimeout(endBattle,1200);}
+    }else{
+      setTimeout(runNextAction,1000);
+    }
+    return;
+  }
   // 行動不能チェック
   if(e.stunned){e.stunned=false;setBMsg(`${e.name}は行動不能で動けない！`);setTimeout(runNextAction,800);return;}
   if(e.sleeping){setBMsg(`${e.name}は眠っている…`);setTimeout(runNextAction,800);return;}
@@ -4592,7 +4647,12 @@ function setBMsg(t){
 }
 function enableCmds(on){['bc-atk','bc-spl','bc-itm','bc-def','bc-fle'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!on;});}
 
-function calcDmg(atk,def,mult=1){return Math.max(1,Math.floor(Math.max(1,atk-Math.floor(def*.5))*(0.85+Math.random()*.3)*mult));}
+// 通常攻撃の会心率（防御力を無視した大ダメージ）
+const CRIT_RATE=0.0625; // 1/16
+function calcDmg(atk,def,mult=1,crit=false){
+  if(crit)return Math.max(1,Math.floor(atk*(1.5+Math.random()*0.5)*mult));
+  return Math.max(1,Math.floor(Math.max(1,atk-Math.floor(def*.5))*(0.85+Math.random()*.3)*mult));
+}
 
 function applyEnemyDmg(enemy,dmg){
   enemy.curHp=Math.max(0,enemy.curHp-dmg);
@@ -4616,6 +4676,12 @@ function showDmg(val,cls,isAlly,idx){
 function battleVictory(){
   let totalExp=0,totalGold=0;
   G.battleEnemies.forEach(e=>{totalExp+=e.exp;totalGold+=e.gold;});
+  // メタル図鑑：撃破したメタル系・ゴールド系を記録
+  G.battleEnemies.forEach(e=>{
+    if(e.fled||e.curHp>0)return;
+    if(e.srcIdx===METAL_SLIME_IDX)G.story.metalDex.metal++;
+    else if(e.srcIdx===GOLD_SLIME_IDX)G.story.metalDex.gold++;
+  });
   let bonusMsg='';
   if(G.isBoss){
     const map=MAPS_DEF[G.mapIdx];
@@ -4917,6 +4983,8 @@ function openStatus(){closeMenu();
     <div class="sg-item"><div class="sg-lbl">けいけん</div><div class="sg-val">${c.exp}/${c.expNext}</div></div>
     <div class="sg-item"><div class="sg-lbl">ゴールド</div><div class="sg-val" style="color:var(--gold)">${c.gold}G</div></div>
     <div class="sg-item"><div class="sg-lbl">SP</div><div class="sg-val" style="color:#aaddff">${c.sp||0}</div></div>`;
+  const dex=G.story.metalDex||{metal:0,gold:0};
+  document.getElementById('st-metaldex').textContent=`📖 メタル図鑑　メタルスライム討伐:${dex.metal}　ゴールドスライム討伐:${dex.gold}`;
   document.getElementById('status-screen').classList.remove('hidden');
 }
 function closeStatus(){document.getElementById('status-screen').classList.add('hidden');}
