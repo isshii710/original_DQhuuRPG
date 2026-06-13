@@ -17,81 +17,80 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none;}
 body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);font-family:'DotGothic16',serif;color:var(--white);}
 
-/* ========== CANVAS ========== */
+/* ========== フィールド画面（上半分） ========== */
+#field-area{position:fixed;top:0;left:0;right:0;height:calc(var(--vh) * 50);overflow:hidden;background:#000;}
 #game-canvas{display:block;width:100%;height:100%;image-rendering:pixelated;}
-#canvas-wrap{position:fixed;inset:0;background:#000;}
+#canvas-wrap{position:absolute;inset:0;background:#000;}
 
-/* ========== HUD ========== */
-#hud{position:fixed;inset:0;pointer-events:none;z-index:10;}
+#map-label{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  background:rgba(6,12,36,0.85);border:1px solid rgba(60,90,160,0.5);
+  border-radius:3px;padding:4px 14px;font-size:11px;letter-spacing:2px;color:var(--gold);
+  white-space:nowrap;pointer-events:none;z-index:5;
+}
 
-#party-hud{position:absolute;top:8px;left:8px;display:flex;flex-direction:column;gap:3px;}
+/* ========== 操作パネル（下半分・DS下画面風） ========== */
+#console-area{
+  position:fixed;bottom:0;left:0;right:0;height:calc(var(--vh) * 50);
+  background:linear-gradient(180deg,#0a1530,#04070f);
+  border-top:2px solid rgba(60,90,160,0.5);
+  display:flex;flex-direction:column;gap:6px;
+  padding:8px;z-index:20;box-sizing:border-box;
+}
+
+#console-top{display:flex;gap:8px;flex-shrink:0;}
+
+#party-hud{flex:1;min-width:0;display:grid;grid-template-columns:repeat(2,1fr);gap:3px;align-content:start;}
 .hud-card{
   background:rgba(8,16,60,0.95);border:1px solid rgba(60,90,180,0.7);
-  border-radius:3px;padding:4px 8px;display:flex;align-items:center;gap:6px;min-width:140px;
+  border-radius:3px;padding:3px 6px;display:flex;align-items:center;gap:4px;min-width:0;
 }
-.hud-icon{font-size:14px;width:18px;text-align:center;}
-.hud-bars{flex:1;}
-.hud-name{font-size:9px;color:var(--white);letter-spacing:1px;margin-bottom:2px;}
+.hud-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0;}
+.hud-bars{flex:1;min-width:0;}
+.hud-name{font-size:8px;color:var(--white);letter-spacing:1px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .bar-row{display:flex;align-items:center;gap:3px;margin-bottom:1px;}
 .bar-lbl{font-size:7px;width:12px;color:var(--white);}
 .bar-track{flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
 .bar-hp{height:100%;background:linear-gradient(90deg,#ee4444,#ff8844);border-radius:2px;transition:width .2s;}
 .bar-mp{height:100%;background:linear-gradient(90deg,#4488ee,#88aaff);border-radius:2px;transition:width .2s;}
-.hud-lv{font-size:8px;color:var(--gold);white-space:nowrap;}
+.hud-lv{font-size:8px;color:var(--gold);white-space:nowrap;flex-shrink:0;}
 
-#map-label{
-  position:absolute;top:8px;left:calc(50% + 35px);transform:translateX(-50%);
-  background:rgba(6,12,36,0.85);border:1px solid rgba(60,90,160,0.5);
-  border-radius:3px;padding:4px 14px;font-size:11px;letter-spacing:2px;color:var(--gold);
-  white-space:nowrap;
-}
-
-#chatbox{
-  position:absolute;bottom:130px;left:8px;right:8px;
-  display:flex;flex-direction:column;gap:2px;
-}
-.chat-line{
-  background:rgba(6,12,36,0.8);border:1px solid rgba(60,90,160,0.25);
-  border-radius:2px;padding:2px 8px;font-size:10px;
-  animation:cfade 6s forwards;
-}
-@keyframes cfade{0%{opacity:1}80%{opacity:1}100%{opacity:0}}
-.chat-sys{color:#88ccff;font-style:italic;}
-.chat-name{color:var(--gold);}
-
-/* ========== CONTROLS ========== */
-#controls{
-  position:fixed;bottom:0;left:0;right:0;height:120px;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 16px;z-index:20;pointer-events:none;
-}
-
-/* Joystick */
-#joy-wrap{width:110px;height:110px;pointer-events:all;position:relative;}
+/* ぷにこん（疑似十字キー） */
+#joy-wrap{width:90px;height:90px;position:relative;flex-shrink:0;}
 #joy-base{
   width:100%;height:100%;border-radius:50%;
   background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.18);
   position:relative;
 }
 #joy-knob{
-  position:absolute;width:42px;height:42px;border-radius:50%;
+  position:absolute;width:36px;height:36px;border-radius:50%;
   background:rgba(255,255,255,0.22);border:2px solid rgba(255,255,255,0.45);
   top:50%;left:50%;transform:translate(-50%,-50%);
   box-shadow:0 0 10px rgba(255,255,255,0.1);
 }
 
-/* Right buttons */
-#right-btns{display:flex;flex-direction:column;gap:6px;pointer-events:all;}
+/* ミニマップ */
+#minimap{width:90px;height:90px;flex-shrink:0;background:rgba(4,8,24,.7);border:1px solid rgba(60,90,160,.4);border-radius:3px;overflow:hidden;}
+#minimap canvas{width:100%;height:100%;}
+
+/* 会話・チャットログ表示エリア */
+#console-mid{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;touch-action:pan-y;-webkit-overflow-scrolling:touch;}
+
+/* 操作ボタン */
+#console-bottom{display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
 .act-row{display:flex;gap:6px;}
 .act-btn{
+  flex:1;
   background:rgba(20,40,100,0.85);border:1px solid rgba(60,90,160,0.5);
   border-radius:4px;color:var(--white);font-family:'DotGothic16',serif;
-  font-size:11px;letter-spacing:1px;padding:8px 10px;cursor:pointer;
-  transition:all .08s;white-space:nowrap;pointer-events:all;
+  font-size:11px;letter-spacing:1px;padding:8px 4px;cursor:pointer;
+  transition:all .08s;white-space:nowrap;
 }
 .act-btn:active{background:rgba(60,100,200,0.85);transform:scale(.95);}
 .btn-chat{background:rgba(10,50,30,0.85);border-color:rgba(40,150,80,0.5);}
 .btn-menu{background:rgba(50,20,80,0.85);border-color:rgba(130,60,200,0.5);}
+.btn-save{background:rgba(20,40,80,.85);border-color:rgba(60,90,160,.5);color:var(--gold);}
+
 
 /* ========== WIN SYSTEM ========== */
 .win{
@@ -451,15 +450,14 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 .chat-send-btn{background:linear-gradient(180deg,#4477ff,#1133cc);border:1px solid #6699ff;color:#fff;font-family:'DotGothic16',serif;font-size:12px;padding:7px 14px;border-radius:2px;cursor:pointer;}
 
 /* Dialog */
-#dialog{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:7px;}
 #dialog.hidden{display:none;}
-.dialog-inner{padding:12px 14px;min-height:64px;position:relative;background:var(--win-bg);color:var(--white);}
+.dialog-inner{padding:8px 10px;position:relative;background:var(--win-bg);color:var(--white);}
 .dialog-nm{font-size:9px;color:var(--gold);letter-spacing:2px;margin-bottom:3px;}
-.dialog-tx{font-size:13px;line-height:1.7;letter-spacing:1px;color:var(--white);}
-.dialog-next{text-align:right;font-size:10px;color:var(--white);margin-top:6px;}
+.dialog-tx{font-size:12px;line-height:1.6;letter-spacing:1px;color:var(--white);}
+.dialog-next{text-align:right;font-size:10px;color:var(--white);margin-top:4px;}
 
 /* Wave / boss banner */
-#wave-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:35;text-align:center;display:none;pointer-events:none;}
+#wave-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:35;text-align:center;display:none;pointer-events:none;}
 .wb-txt{font-size:clamp(22px,7vw,44px);font-weight:900;color:var(--gold);font-family:'Noto Serif JP',serif;letter-spacing:4px;text-shadow:0 0 24px rgba(255,215,0,.5);animation:wbp .5s ease-in-out infinite alternate;}
 @keyframes wbp{0%{opacity:.75}100%{opacity:1}}
 .wb-sub{font-size:11px;color:rgba(255,215,0,.5);letter-spacing:3px;margin-top:4px;}
@@ -475,10 +473,6 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 .ld-bar{width:180px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
 .ld-fill{height:100%;background:linear-gradient(90deg,#4477ff,#44aaff);animation:ldfill 1.4s ease-in-out infinite;}
 @keyframes ldfill{0%{width:0}100%{width:100%}}
-
-/* ========== MINIMAP ========== */
-#minimap{position:absolute;top:8px;right:8px;width:88px;height:88px;background:rgba(4,8,24,.7);border:1px solid rgba(60,90,160,.4);border-radius:3px;overflow:hidden;}
-#minimap canvas{width:100%;height:100%;}
 
 /* ========== SAVE / ONLINE MODAL ========== */
 #save-modal,#online-modal,#join-modal,#fullmap-modal,#warp-modal{
@@ -536,9 +530,6 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 .oc-sys{color:#88ccff;font-style:italic;}
 .oc-msg{color:var(--white);}
 .oc-name{color:var(--gold);}
-#save-btn-hud{
-  position:absolute;bottom:130px;right:8px;z-index:15;pointer-events:all;
-}
 .hud-save-btn{
   background:rgba(20,40,80,.85);border:1px solid rgba(60,90,160,.5);
   border-radius:3px;color:var(--gold);font-family:'DotGothic16',serif;
@@ -566,29 +557,41 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 <div id="loading"><div class="ld-title">LOADING...</div><div class="ld-bar"><div class="ld-fill"></div></div></div>
 <div id="transition"></div>
 
-<!-- Canvas -->
-<div id="canvas-wrap"><canvas id="game-canvas"></canvas></div>
-
-<!-- HUD -->
-<div id="hud">
+<!-- ===== 上半分: フィールド画面 ===== -->
+<div id="field-area">
+  <div id="canvas-wrap"><canvas id="game-canvas"></canvas></div>
   <div id="online-status-bar" class="online-status-bar" style="display:none;"></div>
-  <div id="party-hud"></div>
   <div id="map-label">🏰 はじまりの村</div>
-  <div id="minimap"><canvas id="mm-canvas" width="88" height="88"></canvas></div>
-  <div id="chatbox"></div>
   <div id="online-players-badge" class="players-count-badge" style="display:none;">🌐 オンライン中</div>
-  <div id="save-btn-hud">
-    <button class="hud-save-btn" onclick="openSaveModal()">💾 セーブ</button>
-  </div>
+  <!-- Wave banner -->
+  <div id="wave-banner"><div class="wb-txt" id="wb-txt"></div><div class="wb-sub" id="wb-sub"></div></div>
 </div>
 
-<!-- Controls -->
-<div id="controls">
-  <div id="joy-wrap"><div id="joy-base"><div id="joy-knob"></div></div></div>
-  <div id="right-btns">
+<!-- ===== 下半分: 操作パネル（DS下画面風） ===== -->
+<div id="console-area">
+  <div id="console-top">
+    <div id="joy-wrap"><div id="joy-base"><div id="joy-knob"></div></div></div>
+    <div id="minimap"><canvas id="mm-canvas" width="88" height="88"></canvas></div>
+    <div id="party-hud"></div>
+  </div>
+  <div id="console-mid">
+    <!-- Dialog -->
+    <div id="dialog" class="hidden" onclick="advDialog()">
+      <div class="win dialog-inner">
+        <div class="dialog-nm" id="dialog-nm"></div>
+        <div class="dialog-tx" id="dialog-tx"></div>
+        <div class="dialog-next">▼ タップで次へ</div>
+      </div>
+    </div>
+    <div id="chatbox"></div>
+  </div>
+  <div id="console-bottom">
     <div class="act-row">
       <button class="act-btn" onclick="handleTalk()">💬 話す</button>
       <button class="act-btn btn-menu" onclick="openMenu()">📋 メニュー</button>
+      <div id="save-btn-hud" style="flex:1;display:flex;flex-direction:column;gap:4px;">
+        <button class="act-btn btn-save" onclick="openSaveModal()">💾 セーブ</button>
+      </div>
     </div>
     <div class="act-row">
       <button class="act-btn btn-chat" onclick="openChatInput()">✉ チャット</button>
@@ -596,18 +599,6 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
     </div>
   </div>
 </div>
-
-<!-- Dialog -->
-<div id="dialog" class="hidden">
-  <div class="win dialog-inner">
-    <div class="dialog-nm" id="dialog-nm"></div>
-    <div class="dialog-tx" id="dialog-tx"></div>
-    <div class="dialog-next">▼ タップで次へ</div>
-  </div>
-</div>
-
-<!-- Wave banner -->
-<div id="wave-banner"><div class="wb-txt" id="wb-txt"></div><div class="wb-sub" id="wb-sub"></div></div>
 
 <!-- ===== BATTLE ===== -->
 <div id="battle-screen" class="hidden">
@@ -1639,8 +1630,9 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 function resizeCanvas(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const wrap=document.getElementById('canvas-wrap');
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
@@ -3162,7 +3154,7 @@ const TILE_EMOJI={
 
 function updateCamera(){
   const leader=G.party[0];if(!leader)return;
-  const tw=canvas.width,th=canvas.height-120; // controls height
+  const tw=canvas.width,th=canvas.height;
   G.cam.x=leader.x-tw/2;
   G.cam.y=leader.y-th/2;
   const maxX=MAP_W*G.TILE-tw, maxY=MAP_H*G.TILE-th;
@@ -3178,7 +3170,7 @@ function render(){
   // Draw tiles
   const startX=Math.floor(G.cam.x/TILE), startY=Math.floor(G.cam.y/TILE);
   const endX=Math.min(MAP_W,startX+Math.ceil(canvas.width/TILE)+1);
-  const endY=Math.min(MAP_H,startY+Math.ceil((canvas.height-120)/TILE)+1);
+  const endY=Math.min(MAP_H,startY+Math.ceil(canvas.height/TILE)+1);
 
   for(let ty=startY;ty<endY;ty++){
     for(let tx=startX;tx<endX;tx++){
@@ -3254,7 +3246,7 @@ function render(){
   // Grid lines (subtle)
   ctx.strokeStyle='rgba(0,0,0,0.08)';ctx.lineWidth=0.5;
   for(let ty=startY;ty<=endY;ty++){ctx.beginPath();ctx.moveTo(0,ty*TILE-G.cam.y);ctx.lineTo(canvas.width,ty*TILE-G.cam.y);ctx.stroke();}
-  for(let tx=startX;tx<=endX;tx++){ctx.beginPath();ctx.moveTo(tx*TILE-G.cam.x,0);ctx.lineTo(tx*TILE-G.cam.x,canvas.height-120);ctx.stroke();}
+  for(let tx=startX;tx<=endX;tx++){ctx.beginPath();ctx.moveTo(tx*TILE-G.cam.x,0);ctx.lineTo(tx*TILE-G.cam.x,canvas.height);ctx.stroke();}
 
   // Map enemies
   G.mapEnemies.forEach(e=>{
