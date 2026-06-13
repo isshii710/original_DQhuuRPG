@@ -12,9 +12,10 @@
   --gold:#FFD700;--gold2:#FFA500;--blue:#1a3a6a;--blue2:#0d2244;--blue3:#061528;
   --white:#ffffff;--red:#cc2200;--green:#00aa44;
   --win-bg:rgba(8,16,44,0.97);--win-bd:#3a5a99;--text:#ffffff;--text2:#ccddf0;
+  --vh:1vh;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none;}
-body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGothic16',serif;color:var(--white);}
+body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);font-family:'DotGothic16',serif;color:var(--white);}
 
 /* ========== CANVAS ========== */
 #game-canvas{display:block;width:100%;height:100%;image-rendering:pixelated;}
@@ -329,13 +330,13 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .dc-hit{color:#ffe055;}.dc-crit{color:#ff6600;font-size:26px;}.dc-heal{color:#44ff88;}.dc-miss{color:#aaa;font-size:14px;}
 
 /* Spell select */
-#spell-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#spell-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #spell-screen.hidden{display:none;}
-#skill-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#skill-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #skill-screen.hidden{display:none;}
-#target-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#target-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #target-screen.hidden{display:none;}
-#ally-target-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#ally-target-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #ally-target-screen.hidden{display:none;}
 .tgt-btn{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:13px;padding:11px 14px;cursor:pointer;text-align:left;transition:background .06s;width:100%;display:flex;align-items:center;gap:10px;}
 .tgt-btn:active{background:rgba(50,90,200,.5);color:var(--gold);}
@@ -350,14 +351,14 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .sp-cancel{padding:10px;background:rgba(80,20,20,.9);color:var(--text2);cursor:pointer;font-family:'DotGothic16',serif;font-size:11px;text-align:center;border-top:1px solid rgba(255,100,100,.2);transition:background .1s;}
 
 /* Menu */
-#menu-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:flex-end;padding:0 12px;}
+#menu-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:flex-end;padding:0 12px;}
 #menu-screen.hidden{display:none;}
 .menu-box{width:min(240px,78vw);max-height:100%;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;}
 .mitem{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:13px;padding:11px 14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:9px;transition:background .06s;width:100%;letter-spacing:1px;}
 .mitem:active{background:rgba(50,90,200,.5);color:var(--gold);}
 
 /* Status */
-#status-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:65;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#status-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:65;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #status-screen.hidden{display:none;}
 .status-box{width:100%;max-width:420px;max-height:100%;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;}
 .stat-hd{padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--win-bd);}
@@ -369,7 +370,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .sg-val{font-size:17px;color:var(--white);}
 
 /* Equip screen */
-#equip-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#equip-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #equip-screen.hidden{display:none;}
 .eq-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:100%;touch-action:pan-y;-webkit-overflow-scrolling:touch;}
 .eq-slots{display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);}
@@ -390,7 +391,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .eq-char-btn.cur{background:rgba(50,90,200,.55);}
 .eq-char-ico{font-size:17px;display:block;}
 .eq-char-nm{font-size:7px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:1px;}
-#sp-screen,#job-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:66;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:12px;}
+#sp-screen,#job-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:12px;}
 #sp-screen.hidden,#job-screen.hidden{display:none;}
 .sp-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:100%;}
 .sp-chars{display:flex;gap:1px;background:rgba(60,90,160,.18);}
@@ -407,9 +408,9 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .sp-cat{font-size:8px;color:rgba(150,180,255,.7);letter-spacing:1px;}
 
 /* Smith (鍛冶屋) */
-#smith-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#smith-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #smith-screen.hidden{display:none;}
-#village-shop-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#village-shop-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #village-shop-screen.hidden{display:none;}
 .smith-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:100%;}
 .smith-materials{padding:7px 12px;display:flex;flex-wrap:wrap;gap:6px 14px;border-bottom:1px solid rgba(60,90,160,.2);font-size:10px;}
@@ -916,8 +917,6 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
   <div class="title-menu">
     <button class="tmenu-btn" id="btn-continue" onclick="showContinue()" style="display:none;border-color:var(--gold);"><span class="tmenu-arrow">★</span>冒険を続ける</button>
     <button class="tmenu-btn" onclick="showLobby('solo')"><span class="tmenu-arrow">▶</span>ひとりで冒険</button>
-    <button class="tmenu-btn" onclick="showLobby('create')"><span class="tmenu-arrow">▶</span>仲間と冒険（ホスト）</button>
-    <button class="tmenu-btn" onclick="showLobby('join')"><span class="tmenu-arrow">▶</span>仲間に合流（ゲスト）</button>
   </div>
 </div>
 
@@ -943,6 +942,19 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 
 <script>
 'use strict';
+// ============================================================
+// 実視野ビューポート高さの補正（モバイルブラウザのアドレスバー等で
+// 100vh/100dvh が実際の表示領域とズレ、画面下部が見切れる問題への対策）
+// ============================================================
+function setRealVh(){
+  const h=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+  document.documentElement.style.setProperty('--vh',(h*0.01)+'px');
+}
+setRealVh();
+window.addEventListener('resize',setRealVh);
+window.addEventListener('orientationchange',setRealVh);
+if(window.visualViewport)window.visualViewport.addEventListener('resize',setRealVh);
+
 // ============================================================
 // CONSTANTS
 // ============================================================
@@ -1857,6 +1869,9 @@ async function startGame(){
   for(let i=1;i<=4;i++){const c=makeChar(i);if(c)G.party.push(c);}
   if(!G.party.length)return;
   G.party.forEach(c=>recalcStats(c));
+
+  // デバッグ用「全クリ」モード: 自分の名前を「99999」にすると全要素を解放
+  if(G.party[0]&&G.party[0].name==='99999')applyDebugAllClear();
 
   // セーブデータがあれば自分のパーティ情報で上書き（継続プレイのため）
   // ※ 「冒険を続ける」ボタンからではなく普通に新規で始める場合は上書きしない
@@ -4846,6 +4861,31 @@ function learnUltimate(c,cls){
   if(!ult)return;
   c.learnedUltimates.push(cls);
   addChat(`🌟 ${c.name}は職業「${CLASSES[cls].name}」を極め、必殺技「${ult.name}」を習得した！`,null,true);
+}
+
+// ============================================================
+// デバッグ用「全クリ」モード（名前を「99999」にして冒険開始すると有効）
+// ============================================================
+function applyDebugAllClear(){
+  // 村: 全イベント・サブクエストをクリア済みに
+  G.story.villages.forEach(v=>{v.visited=true;v.huntDone=true;v.collectDone=true;v.mainCleared=true;});
+  // メタル図鑑をコンプリート
+  G.story.metalDex={metal:99,gold:99};
+  // 全ダンジョンのボスを討伐済みに
+  VILLAGES.forEach(v=>{G.clearedDungeons[v.idx*3+2]=true;});
+  // 強化・特別装備に必要な素材をカンスト
+  MATERIALS_CATALOG.forEach(m=>{G.materials[m.id]=99;});
+  // パーティ全員のレベル・ステータス・全職業レベル・必殺技を全開放
+  G.party.forEach(c=>{
+    c.lv=99;c.exp=0;c.expNext=999999;c.gold=999999;
+    c.maxHp=9999;c.hp=9999;c.baseMaxMp=999;c.mp=999;
+    c.baseAtk=999;c.baseDef=999;c.baseSpd=999;c.baseInt=999;
+    c.sp=99;
+    c.jobLevels={};c.jobExp={};
+    Object.keys(CLASSES).forEach(k=>{c.jobLevels[k]=99;c.jobExp[k]=0;});
+    c.learnedUltimates=Object.keys(ULTIMATE_SKILLS);
+    recalcStats(c);
+  });
 }
 
 function checkLvl(c){
