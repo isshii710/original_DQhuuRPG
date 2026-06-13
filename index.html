@@ -408,6 +408,8 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 /* Smith (鍛冶屋) */
 #smith-screen{position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #smith-screen.hidden{display:none;}
+#village-shop-screen{position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#village-shop-screen.hidden{display:none;}
 .smith-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:90vh;}
 .smith-materials{padding:7px 12px;display:flex;flex-wrap:wrap;gap:6px 14px;border-bottom:1px solid rgba(60,90,160,.2);font-size:10px;}
 .smith-mat-zero{opacity:.35;}
@@ -743,6 +745,19 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
   </div>
 </div>
 
+<!-- Village Shop (村の武器屋・防具屋) -->
+<div id="village-shop-screen" class="hidden">
+  <div class="win smith-box">
+    <div class="win-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span id="village-shop-title">⚔️ 武器屋</span><span id="village-shop-gold" style="font-size:11px;color:var(--gold);"></span>
+    </div>
+    <div class="smith-materials" id="village-shop-materials"></div>
+    <div class="eq-chars" id="village-shop-chars"></div>
+    <div class="smith-list" id="village-shop-list"></div>
+    <div class="win-close" onclick="closeVillageShop()">▶ とじる</div>
+  </div>
+</div>
+
 <!-- SP / スキル習得 -->
 <div id="sp-screen" class="hidden">
   <div class="win sp-box">
@@ -1023,37 +1038,292 @@ const ITEMS_DROP = [
   {name:'魔力の雫',icon:'💎',type:'mpitem',value:20},
 ];
 
-const NPCS = [
-  {id:'elder', name:'村長',  icon:'👴', chipImg:'Villager/pipo-charachip010.png', x:3,  y:3, dialog:['ようこそ、旅人よ。ここは「はじまりの村」じゃ。','世界は今、魔王の影に脅かされておる。','汝らが世界を救う者か…頼んだぞ。']},
-  {id:'inn',   name:'宿屋',  icon:'🏠', chipImg:'Villager/pipo-charachip001.png', x:12, y:4, dialog:['いらっしゃいませ！','泊まっていかれますか？一泊50Gです。','ゆっくりお休みください！（HP・MP全快）']},
-  {id:'shop',  name:'武器屋',icon:'⚔️', chipImg:'Soldier/pipo-charachip018.png',  x:12, y:9, dialog:['いらっしゃい！良い武器が揃ってるよ。','ダンジョンのボス素材があれば、装備の強化や新装備の解放もできるぞ。']},
-  {id:'girl',  name:'村娘',  icon:'👧', chipImg:'Villager/pipo-charachip003.png', x:5,  y:9, dialog:['最近、夜になると変な音が聞こえるの…','村はずれの洞窟から来てるみたい。怖い！']},
+// ============================================================
+// VILLAGES（全9村のストーリー・難易度スケーリング・施設データ）
+// ============================================================
+// levelRange         : 周辺モンスターのLv目安
+// expMult / goldMult : 戦闘勝利時の経験値・ゴールド獲得倍率（第1村×1.0 〜 第9村×3.0、等差スケーリング）
+// enemyMult          : フィールド・ダンジョンの敵のHP/攻撃/防御に乗算する強さ倍率
+// baseLv             : その村のダンジョン(B1〜B10)の基準レベル
+// materialDrop / rareMaterialDrop : 村のダンジョンB10ボスが落とす強化・装備解放素材
+// specialWeaponId / specialArmorId: 上記素材で鍛冶屋から解放できる特別装備（EQUIP_CATALOG参照）
+// huntQuest / collectQuest        : 村のサブクエスト（討伐・納品の2種）
+// mainBossStats      : 村のメインイベント（村長クエスト）で戦う村ボスのベースステータス
+const VILLAGE_THEMES=[
+  { // 第1村: Lv1〜5
+    name:'はじまりの村', icon:'🏡', bg:'#2d6a30', wall:'#3a2a1a',
+    fieldName:'魔物の森', fieldBg:'#1a4a1a', fieldWall:'#0d2a0d', fieldEnemies:[1,2,4,5],
+    dungeonName:'試練の洞窟', dungeonBg:'#1a1426', dungeonWall:'#2a1e38', dungeonEnemies:[0,1,2],
+    dungeonBossName:'洞窟の守護者', dungeonBossSprite:'gargoyle', dungeonBossColor:'#8899aa', dungeonBossImg:'Monster/pipo-boss003.png',
+    dungeonBossStats:{hp:220,atk:28,def:16,exp:220,gold:120}, dungeonMinions:[2],
+    materialDrop:'mat_cave', rareMaterialDrop:'mat_cave_r', specialWeaponId:'w6', specialArmorId:'a5',
+    mainBossName:'ならず者の頭ガロン', mainBossSprite:'reaper', mainBossColor:'#aa5533',
+    mainBossStats:{hp:150,atk:22,def:10,exp:180,gold:150},
+    shopWeaponName:'銅の剣', shopWeaponIcon:'🗡️', shopWeaponAtk:6, shopWeaponPrice:50,
+    shopArmorName:'銅の鎧', shopArmorIcon:'🛡️', shopArmorDef:6, shopArmorPrice:50,
+    huntQuest:{enemyIdx:1,count:3}, collectQuest:{itemName:'癒し草',count:3},
+    arrivalDialog:['ようこそ、旅人よ。ここは「はじまりの村」じゃ。','世界は今、魔王の影に脅かされておる。','最近、村の周りにならず者一味が住み着いて困っておるんじゃ…','力を貸してくれぬか？'],
+    mainEventDialog:['ついに、ならず者の頭・ガロンの居場所がわかった！','村のため、奴を倒してくれ！'],
+    unlockDialog:['おお…ガロンを討ち取ってくれたのか！','これで隣の村への道も安全じゃ。さあ、東へ進むのじゃ。'],
+    innDialog:['いらっしゃいませ！一泊50Gでお部屋をご用意します。','ゆっくりお休みください！（HP・MP全快、状態異常も治ります）','翌日は経験値+10%、アイテム運もアップしますよ！'],
+    weaponShopDialog:['いらっしゃい！銅の剣はいかが？','ボス素材を持ち込めば鍛冶屋でもっと良い武器が手に入るぞ。'],
+    armorShopDialog:['防具も大事だよ！銅の鎧でしっかり守ろう。','奥の鍛冶屋では特別な防具も解放できるよ。'],
+    smithDialog:['ここでは装備の強化と、ボス素材を使った特別装備の解放ができるぞ。','腕によりをかけて打ってやろう！'],
+  },
+  { // 第2村: Lv6〜10
+    name:'渓谷の村セルバ', icon:'⛰️', bg:'#3a5a2a', wall:'#2a3a1a',
+    fieldName:'竜の渓谷', fieldBg:'#2a3a1a', fieldWall:'#1a2a10', fieldEnemies:[1,2,6],
+    dungeonName:'竜の山', dungeonBg:'#2a1816', dungeonWall:'#3a2420', dungeonEnemies:[4,5,6],
+    dungeonBossName:'山の竜', dungeonBossSprite:'demonlord', dungeonBossColor:'#cc6622', dungeonBossImg:'Monster/pipo-boss004.png',
+    dungeonBossStats:{hp:380,atk:42,def:24,exp:420,gold:220}, dungeonMinions:[6,6],
+    materialDrop:'mat_dragon', rareMaterialDrop:'mat_dragon_r', specialWeaponId:'w7', specialArmorId:'a6',
+    mainBossName:'渓谷の魔狼ジャグド', mainBossSprite:'lizard', mainBossColor:'#779933',
+    mainBossStats:{hp:280,atk:35,def:16,exp:350,gold:280},
+    shopWeaponName:'鋼の剣', shopWeaponIcon:'⚔️', shopWeaponAtk:14, shopWeaponPrice:250,
+    shopArmorName:'鋼の鎧', shopArmorIcon:'🛡️', shopArmorDef:13, shopArmorPrice:260,
+    huntQuest:{enemyIdx:6,count:4}, collectQuest:{itemName:'星光草',count:3},
+    arrivalDialog:['ここは渓谷の村セルバじゃ。','竜の山から巨大な魔狼が下りてきて、家畜が襲われておるんじゃ。','退治してくれんか？'],
+    mainEventDialog:['魔狼ジャグドのねぐらを見つけたぞ！','頼む、村の家畜たちを守ってくれ！'],
+    unlockDialog:['おお、ジャグドを倒してくれたのか…！','これで東へ続く道も安心じゃ。'],
+    innDialog:['いらっしゃい！山育ちの食事も自慢なんだ。','一泊でHP・MP全快、状態異常も治るよ。','翌日は経験値+10%、アイテム運もアップするぞ！'],
+    weaponShopDialog:['鋼の剣だ、よく切れるぞ！','竜の素材があれば特別な剣も打てるって聞いたぜ。'],
+    armorShopDialog:['鋼の鎧でしっかり身を守ってくれ。','竜の鱗を持ってくれば鍛冶屋で凄い防具が作れるらしいぞ。'],
+    smithDialog:['竜の素材か…持ってきてくれたら良いものを打てるぞ。','強化もお手の物だ！'],
+  },
+  { // 第3村: Lv11〜15
+    name:'古都ルミエス', icon:'🏯', bg:'#4a3a5a', wall:'#2a1a3a',
+    fieldName:'亡霊の平原', fieldBg:'#2a1a3a', fieldWall:'#1a0e2a', fieldEnemies:[5,6,8],
+    dungeonName:'闇の城塞', dungeonBg:'#1a0a1a', dungeonWall:'#2a142a', dungeonEnemies:[6,7,8],
+    dungeonBossName:'闇の帝王', dungeonBossSprite:'demonlord', dungeonBossColor:'#cc2244', dungeonBossImg:'Monster/pipo-boss002.png',
+    dungeonBossStats:{hp:600,atk:60,def:35,exp:800,gold:400}, dungeonMinions:[7,7],
+    materialDrop:'mat_dark', rareMaterialDrop:'mat_dark_r', specialWeaponId:'w8', specialArmorId:'a7',
+    mainBossName:'古都の怨霊王ザガス', mainBossSprite:'ghost', mainBossColor:'#6644aa',
+    mainBossStats:{hp:400,atk:45,def:22,exp:450,gold:380},
+    shopWeaponName:'業物の大剣', shopWeaponIcon:'🔪', shopWeaponAtk:20, shopWeaponPrice:600,
+    shopArmorName:'重厚な鎧', shopArmorIcon:'⛓️', shopArmorDef:22, shopArmorPrice:650,
+    huntQuest:{enemyIdx:5,count:4}, collectQuest:{itemName:'解毒草',count:3},
+    arrivalDialog:['古都ルミエスへようこそ。','かつて栄えたこの都には、怨霊たちが今も住み着いておる。','怨霊王ザガスを鎮めねば、この先には進めぬじゃろう…'],
+    mainEventDialog:['怨霊王ザガスの気配が城塞の奥から強まっておる…','どうか、古都に安らぎを取り戻してくれ。'],
+    unlockDialog:['ザガスの呪縛が解けた…！古都にも光が戻る。','感謝するぞ、勇者たちよ。東への道が開けた。'],
+    innDialog:['古都の宿でゆっくりお休みください。','一泊でHP・MP全快、状態異常も治りますよ。','翌日は経験値+10%、アイテム運もアップします。'],
+    weaponShopDialog:['この大剣、なかなかの業物ですよ。','闇のオーブを持ってくれば、もっと凄い剣も打てるでしょう。'],
+    armorShopDialog:['この重厚な鎧、身を守るには十分でしょう。','帝王の心臓があれば特別な鎧も解放できますよ。'],
+    smithDialog:['闇の素材は強力だが、扱いには注意が必要だ。','強化も解放も任せてくれ。'],
+  },
+  { // 第4村: Lv16〜20
+    name:'砂塵の街サハラ', icon:'🏜️', bg:'#9a8a3a', wall:'#6a5a2a',
+    fieldName:'黄金の砂漠', fieldBg:'#8a7a2a', fieldWall:'#5a4a1a', fieldEnemies:[2,3,6],
+    dungeonName:'灼熱の遺跡', dungeonBg:'#6a4a1a', dungeonWall:'#4a3010', dungeonEnemies:[3,6,7],
+    dungeonBossName:'黄金の巨像', dungeonBossSprite:'golem', dungeonBossColor:'#ddaa33',
+    dungeonBossStats:{hp:700,atk:70,def:40,exp:900,gold:500}, dungeonMinions:[6,6],
+    materialDrop:'mat_sand', rareMaterialDrop:'mat_sand_r',
+    materialName:'砂塵の結晶', materialIcon:'🟨', rareMaterialName:'太陽の宝珠', rareMaterialIcon:'☀️',
+    specialWeaponName:'黄金の剣', specialWeaponIcon:'🏆', specialWeaponAtk:46,
+    specialArmorName:'黄金の鎧', specialArmorIcon:'🥇', specialArmorDef:40, specialReqGold:2400,
+    mainBossName:'砂漠の盗賊王バルク', mainBossSprite:'reaper', mainBossColor:'#cc9933',
+    mainBossStats:{hp:520,atk:60,def:28,exp:600,gold:500},
+    shopWeaponName:'灼熱の剣', shopWeaponIcon:'🔥', shopWeaponAtk:28, shopWeaponPrice:1200,
+    shopArmorName:'砂蛇の鎧', shopArmorIcon:'🦎', shopArmorDef:26, shopArmorPrice:1250,
+    huntQuest:{enemyIdx:6,count:5}, collectQuest:{itemName:'魔力の雫',count:3},
+    arrivalDialog:['よく来たね、砂塵の街サハラへ。','最近、盗賊王バルクの一味が隊商を襲って困っているんだ。','力を貸してくれないか？'],
+    mainEventDialog:['バルクの隠れ家がついに見つかったぞ！','街の平和のため、奴を倒してくれ！'],
+    unlockDialog:['バルクを倒してくれたのか…！本当にありがとう。','これで東への道も安全だ。'],
+    innDialog:['砂漠の宿でゆっくり休んでいってくれ。','一泊でHP・MP全快、状態異常も治るよ。','翌日は経験値+10%、アイテム運もアップするぞ。'],
+    weaponShopDialog:['灼熱の剣、砂漠の鍛冶で鍛え上げた逸品だ。','砂塵の結晶を持ってくれば鍛冶屋で凄い剣が打てるぞ。'],
+    armorShopDialog:['砂蛇の鎧は軽くて丈夫だよ。','太陽の宝珠があれば黄金の鎧も作れるらしい。'],
+    smithDialog:['砂塵の結晶か…これは良い素材だ。','強化も解放も任せてくれ！'],
+  },
+  { // 第5村: Lv21〜25
+    name:'潮風の港町マレラ', icon:'⚓', bg:'#2a4a5a', wall:'#1a3040',
+    fieldName:'荒波の海岸', fieldBg:'#1a3a4a', fieldWall:'#0e2430', fieldEnemies:[1,4,5],
+    dungeonName:'深海の洞窟', dungeonBg:'#0a2a3a', dungeonWall:'#0a1a2a', dungeonEnemies:[4,5,8],
+    dungeonBossName:'深海の支配者クラーケン', dungeonBossSprite:'reaper', dungeonBossColor:'#2266aa',
+    dungeonBossStats:{hp:950,atk:85,def:45,exp:1300,gold:750}, dungeonMinions:[5,5],
+    materialDrop:'mat_sea', rareMaterialDrop:'mat_sea_r',
+    materialName:'深海の鱗', materialIcon:'🐟', rareMaterialName:'人魚の真珠', rareMaterialIcon:'💧',
+    specialWeaponName:'人魚の剣', specialWeaponIcon:'🧜', specialWeaponAtk:56,
+    specialArmorName:'真珠の鎧', specialArmorIcon:'🦪', specialArmorDef:50, specialReqGold:5200,
+    mainBossName:'海賊船長デッドアイ', mainBossSprite:'gargoyle', mainBossColor:'#336699',
+    mainBossStats:{hp:680,atk:75,def:35,exp:850,gold:700},
+    shopWeaponName:'海神の槍', shopWeaponIcon:'🔱', shopWeaponAtk:35, shopWeaponPrice:2800,
+    shopArmorName:'鱗の鎧', shopArmorIcon:'🐠', shopArmorDef:33, shopArmorPrice:2900,
+    huntQuest:{enemyIdx:5,count:5}, collectQuest:{itemName:'癒し草',count:4},
+    arrivalDialog:['港町マレラへようこそ！','海賊船長デッドアイの一団が、漁師たちを苦しめているんだ。','どうにかしてくれないか？'],
+    mainEventDialog:['デッドアイの船を見つけたぞ！','頼む、海の平和を取り戻してくれ！'],
+    unlockDialog:['デッドアイを倒してくれたのか！','海が静かになった。東への航路も安全だ。'],
+    innDialog:['潮風が気持ちいい宿だよ。','一泊でHP・MP全快、状態異常も治るよ。','翌日は経験値+10%、アイテム運もアップするよ！'],
+    weaponShopDialog:['海神の槍、潮の力が込められているぞ。','深海の鱗を持ってくれば、もっと凄い槍が打てるかもな。'],
+    armorShopDialog:['鱗の鎧は水に強いよ。','人魚の真珠があれば特別な鎧も作れるらしい。'],
+    smithDialog:['深海の素材は珍しいな。','腕によりをかけて打とう！'],
+  },
+  { // 第6村: Lv26〜30
+    name:'白銀の村スノウディア', icon:'❄️', bg:'#cce6ff', wall:'#7799cc',
+    fieldName:'凍土の荒野', fieldBg:'#aaccee', fieldWall:'#5577aa', fieldEnemies:[0,3,7],
+    dungeonName:'氷結の迷宮', dungeonBg:'#335577', dungeonWall:'#224466', dungeonEnemies:[0,7,8],
+    dungeonBossName:'氷の女王フリージア', dungeonBossSprite:'ghost', dungeonBossColor:'#aaddff',
+    dungeonBossStats:{hp:1300,atk:105,def:55,exp:1800,gold:1000}, dungeonMinions:[7,7],
+    materialDrop:'mat_ice', rareMaterialDrop:'mat_ice_r',
+    materialName:'氷結の結晶', materialIcon:'❄️', rareMaterialName:'極寒の聖石', rareMaterialIcon:'🧊',
+    specialWeaponName:'氷結の剣', specialWeaponIcon:'❄️', specialWeaponAtk:66,
+    specialArmorName:'極寒の鎧', specialArmorIcon:'🧊', specialArmorDef:58, specialReqGold:7200,
+    mainBossName:'雪山の魔獣イエティ', mainBossSprite:'golem', mainBossColor:'#ddeeff',
+    mainBossStats:{hp:950,atk:95,def:48,exp:1150,gold:950},
+    shopWeaponName:'氷剣', shopWeaponIcon:'🗡️', shopWeaponAtk:42, shopWeaponPrice:4000,
+    shopArmorName:'白銀の鎧', shopArmorIcon:'🛡️', shopArmorDef:40, shopArmorPrice:4100,
+    huntQuest:{enemyIdx:7,count:5}, collectQuest:{itemName:'星光草',count:4},
+    arrivalDialog:['白銀の村スノウディアへ、ようこそ。','雪山に住む魔獣イエティが、村に近づいてきておる…','このままでは村が危ない。助けてくれ。'],
+    mainEventDialog:['イエティが村の近くまで来ておる！','頼む、村を守ってくれ！'],
+    unlockDialog:['イエティを退けてくれたか…！','これで村も安心じゃ。東への雪道も開けたぞ。'],
+    innDialog:['暖かい暖炉のある宿ですよ。','一泊でHP・MP全快、状態異常も治ります。','翌日は経験値+10%、アイテム運もアップしますよ。'],
+    weaponShopDialog:['氷剣、冷気をまとった一振りです。','氷結の結晶を持ってくれば、もっと凄い剣が打てますよ。'],
+    armorShopDialog:['白銀の鎧は寒さにも強いですよ。','極寒の聖石があれば特別な鎧も作れます。'],
+    smithDialog:['氷の素材は扱いが難しいが、良いものが打てるぞ。','腕は確かだ、任せてくれ。'],
+  },
+  { // 第7村: Lv31〜35
+    name:'浮雲の都エテラ', icon:'☁️', bg:'#aaccff', wall:'#6699dd',
+    fieldName:'雲海の回廊', fieldBg:'#88bbee', fieldWall:'#5588cc', fieldEnemies:[1,5,8],
+    dungeonName:'天空の塔', dungeonBg:'#4466aa', dungeonWall:'#335588', dungeonEnemies:[1,5,7],
+    dungeonBossName:'雷神鳥サンダーバード', dungeonBossSprite:'bat', dungeonBossColor:'#ffee44',
+    dungeonBossStats:{hp:1700,atk:130,def:65,exp:2400,gold:1350}, dungeonMinions:[1,1],
+    materialDrop:'mat_sky', rareMaterialDrop:'mat_sky_r',
+    materialName:'天空の羽根', materialIcon:'🪶', rareMaterialName:'雷神の宝玉', rareMaterialIcon:'⚡',
+    specialWeaponName:'雷神の剣', specialWeaponIcon:'⚡', specialWeaponAtk:76,
+    specialArmorName:'雷神の鎧', specialArmorIcon:'🌩️', specialArmorDef:68, specialReqGold:9800,
+    mainBossName:'嵐の守護者ガルディオ', mainBossSprite:'gargoyle', mainBossColor:'#6699ff',
+    mainBossStats:{hp:1250,atk:120,def:60,exp:1500,gold:1300},
+    shopWeaponName:'天空の剣', shopWeaponIcon:'🌤️', shopWeaponAtk:50, shopWeaponPrice:5800,
+    shopArmorName:'天翔の鎧', shopArmorIcon:'🦅', shopArmorDef:48, shopArmorPrice:5900,
+    huntQuest:{enemyIdx:8,count:4}, collectQuest:{itemName:'解毒草',count:4},
+    arrivalDialog:['浮雲の都エテラへ、ようこそ。','嵐の守護者ガルディオが暴走し、都が荒れておる。','どうか、鎮めてくれぬか。'],
+    mainEventDialog:['ガルディオの暴走が激しくなってきた！','都を守るため、戦ってくれ！'],
+    unlockDialog:['ガルディオを鎮めてくれたか…！','都に静寂が戻った。東への雲路も開けたぞ。'],
+    innDialog:['雲の上の宿、最高の眺めですよ。','一泊でHP・MP全快、状態異常も治ります。','翌日は経験値+10%、アイテム運もアップします。'],
+    weaponShopDialog:['天空の剣、風をまとった一振りです。','天空の羽根を持ってくれば、もっと凄い剣が打てますよ。'],
+    armorShopDialog:['天翔の鎧は身軽になれますよ。','雷神の宝玉があれば特別な鎧も作れます。'],
+    smithDialog:['雷の素材は扱いが難しいが、良いものが打てるぞ。','腕によりをかけて打とう！'],
+  },
+  { // 第8村: Lv36〜40
+    name:'紅蓮の村イグニス', icon:'🌋', bg:'#cc4422', wall:'#882211',
+    fieldName:'溶岩の荒野', fieldBg:'#aa3311', fieldWall:'#661c0a', fieldEnemies:[2,6,7],
+    dungeonName:'灼炎の火口', dungeonBg:'#661a0a', dungeonWall:'#441005', dungeonEnemies:[6,7,8],
+    dungeonBossName:'炎獄の魔王イフリート', dungeonBossSprite:'demonlord', dungeonBossColor:'#ff5511',
+    dungeonBossStats:{hp:2200,atk:165,def:80,exp:3200,gold:1800}, dungeonMinions:[7,7],
+    materialDrop:'mat_fire', rareMaterialDrop:'mat_fire_r',
+    materialName:'灼熱の魔石', materialIcon:'🔥', rareMaterialName:'不死鳥の尾羽', rareMaterialIcon:'🪶',
+    specialWeaponName:'不死鳥の剣', specialWeaponIcon:'🪶', specialWeaponAtk:88,
+    specialArmorName:'不死鳥の鎧', specialArmorIcon:'🔥', specialArmorDef:78, specialReqGold:13000,
+    mainBossName:'溶岩の巨人マグマス', mainBossSprite:'golem', mainBossColor:'#ff6622',
+    mainBossStats:{hp:1650,atk:150,def:75,exp:2000,gold:1650},
+    shopWeaponName:'紅蓮の剣', shopWeaponIcon:'🔥', shopWeaponAtk:60, shopWeaponPrice:8000,
+    shopArmorName:'火竜の鎧', shopArmorIcon:'🐲', shopArmorDef:58, shopArmorPrice:8200,
+    huntQuest:{enemyIdx:2,count:6}, collectQuest:{itemName:'魔力の雫',count:5},
+    arrivalDialog:['紅蓮の村イグニスへ、ようこそ。','溶岩の巨人マグマスが暴れ、火口が不安定になっておる。','このままでは村が焼かれてしまう…助けてくれ。'],
+    mainEventDialog:['マグマスが火口から這い出てきた！','村を守るため、奴を討ってくれ！'],
+    unlockDialog:['マグマスを討ち倒してくれたか…！','火口も静かになった。東への道も開けたぞ。'],
+    innDialog:['溶岩の熱を利用した温泉宿だよ。','一泊でHP・MP全快、状態異常も治るぞ。','翌日は経験値+10%、アイテム運もアップするぞ。'],
+    weaponShopDialog:['紅蓮の剣、炎を纏った一振りだ。','灼熱の魔石を持ってくれば、もっと凄い剣が打てるぞ。'],
+    armorShopDialog:['火竜の鎧は炎にも耐えるぞ。','不死鳥の尾羽があれば特別な鎧も作れるぞ。'],
+    smithDialog:['炎の素材は熱いが、良いものが打てるぞ。','強化も解放も任せてくれ！'],
+  },
+  { // 第9村: Lv41〜45
+    name:'王都グランディア', icon:'👑', bg:'#5a2a5a', wall:'#3a1a3a',
+    fieldName:'終焉の荒野', fieldBg:'#4a1a4a', fieldWall:'#2a0e2a', fieldEnemies:[3,5,8],
+    dungeonName:'魔王城', dungeonBg:'#1a0a2a', dungeonWall:'#0a0518', dungeonEnemies:[5,7,8],
+    dungeonBossName:'大魔王ヴァルドラス', dungeonBossSprite:'demonlord', dungeonBossColor:'#220033',
+    dungeonBossStats:{hp:3000,atk:220,def:100,exp:5000,gold:3000}, dungeonMinions:[8,8],
+    materialDrop:'mat_final', rareMaterialDrop:'mat_final_r',
+    materialName:'魔王の欠片', materialIcon:'🖤', rareMaterialName:'世界樹の雫', rareMaterialIcon:'🌟',
+    specialWeaponName:'真・聖剣エクスカリス', specialWeaponIcon:'✨', specialWeaponAtk:100,
+    specialArmorName:'真・聖鎧イージス', specialArmorIcon:'🌟', specialArmorDef:90, specialReqGold:20000,
+    mainBossName:'魔王軍将軍ノクス', mainBossSprite:'reaper', mainBossColor:'#aa00ff',
+    mainBossStats:{hp:2400,atk:200,def:95,exp:2800,gold:2500},
+    shopWeaponName:'聖剣エクスカリス', shopWeaponIcon:'⚔️', shopWeaponAtk:75, shopWeaponPrice:12000,
+    shopArmorName:'聖鎧イージス', shopArmorIcon:'🛡️', shopArmorDef:72, shopArmorPrice:12200,
+    huntQuest:{enemyIdx:8,count:6}, collectQuest:{itemName:'星光草',count:5},
+    arrivalDialog:['ついに王都グランディアへたどり着いたのね。','魔王軍将軍ノクスが王都を包囲しておる…','勇者たちよ、最後の戦いに力を貸してほしい。'],
+    mainEventDialog:['ノクスが王都の門に迫っておる！','これが最後の戦いじゃ。共に戦ってくれ！'],
+    unlockDialog:['ノクスを打ち倒してくれたのか…！','王都に平和が戻った。残るは魔王城のみじゃ…！'],
+    innDialog:['王都の宿、最高のもてなしをいたします。','一泊でHP・MP全快、状態異常も治ります。','翌日は経験値+10%、アイテム運も最高になりますよ。'],
+    weaponShopDialog:['聖剣エクスカリス、王家秘蔵の一振りです。','魔王の欠片を持ってくれば、真の力を解放できるかもしれません。'],
+    armorShopDialog:['聖鎧イージス、王家の守りです。','世界樹の雫があれば、真の鎧も解放できるでしょう。'],
+    smithDialog:['魔王の素材か…これは凄まじい力を感じる。','真の力を解放してみせよう。'],
+  },
 ];
 
-// Map types
-// baseLv     : このダンジョンがあるエリアの基準レベル（モンスターの強さの目安）
-// floors     : ダンジョンの階層数（地下1階〜地下10階）
-// enemies    : B1〜B3に出現する雑魚モンスター（ENEMIES_DATAのindex）
-//              B4〜B6は同じ敵の強化版(×1.35)、B7〜B9は強化版(×1.75)が複数編成で出現
-// bossTemplate: B10に出現するボスのベースステータス（マルチプレイ時は参加人数でスケーリング）
-// materialDrop / rareMaterialDrop: ボスを倒すと手に入る強化・装備解放素材
-const MAPS_DEF = [
-  {name:'はじまりの村',type:'town',bg:'#2d6a30',wall:'#3a2a1a',encounter:0,enemies:[0,1,2]},
-  {name:'魔物の森',type:'field',bg:'#1a4a1a',wall:'#0d2a0d',encounter:0.003,enemies:[1,2,4,5]},
-  {name:'試練の洞窟',type:'dungeon',bg:'#1a1426',wall:'#2a1e38',encounter:0.004,enemies:[0,1,2],floors:10,baseLv:3,
-    bossName:'洞窟の守護者',
-    bossTemplate:{name:'洞窟の守護者',imgPath:'Monster/pipo-boss003.png',sprite:'gargoyle',hp:220,atk:28,def:16,exp:220,gold:120,color:'#8899aa',boss:true,minions:[2]},
-    materialDrop:'mat_cave',rareMaterialDrop:'mat_cave_r'},
-  {name:'砂漠のほこら',type:'field',bg:'#8a7a2a',wall:'#5a4a1a',encounter:0.003,enemies:[2,3,6]},
-  {name:'竜の山',type:'dungeon',bg:'#2a1816',wall:'#3a2420',encounter:0.005,enemies:[4,5,6],floors:10,baseLv:8,
-    bossName:'山の竜',
-    bossTemplate:{name:'山の竜',imgPath:'Monster/pipo-boss004.png',sprite:'demonlord',hp:380,atk:42,def:24,exp:420,gold:220,color:'#cc6622',boss:true,minions:[6,6]},
-    materialDrop:'mat_dragon',rareMaterialDrop:'mat_dragon_r'},
-  {name:'闇の城塞',type:'dungeon',bg:'#1a0a1a',wall:'#2a142a',encounter:0.006,enemies:[6,7,8],floors:10,baseLv:15,
-    bossName:'闇の帝王',
-    bossTemplate:{name:'闇の帝王',imgPath:'Monster/pipo-boss002.png',sprite:'demonlord',hp:600,atk:60,def:35,exp:800,gold:400,color:'#cc2244',boss:true,minions:[7,7]},
-    materialDrop:'mat_dark',rareMaterialDrop:'mat_dark_r'},
-];
+// levelRange/expMult/goldMult/enemyMult/baseLvを算出して付与
+const VILLAGES = VILLAGE_THEMES.map((v,i)=>({
+  ...v, idx:i,
+  levelRange:[i*5+1,i*5+5],
+  expMult:Math.round((1+0.25*i)*100)/100,
+  goldMult:Math.round((1+0.25*i)*100)/100,
+  enemyMult:1+0.5*i,
+  baseLv:[3,8,15,22,29,36,43,50,57][i],
+}));
+
+// 第4〜9村の新規素材をMATERIALS_CATALOGに登録（第1〜3村は既存のmat_cave/mat_dragon/mat_darkを使用）
+VILLAGES.forEach(v=>{
+  if(v.idx<3)return;
+  MATERIALS_CATALOG.push({id:v.materialDrop,name:v.materialName,icon:v.materialIcon});
+  MATERIALS_CATALOG.push({id:v.rareMaterialDrop,name:v.rareMaterialName,icon:v.rareMaterialIcon});
+});
+
+// 村ごとの武器屋・防具屋ラインアップ(通常購入)と特別装備(ボス素材で鍛冶屋から解放)をEQUIP_CATALOGに登録
+VILLAGES.forEach(v=>{
+  EQUIP_CATALOG.push({id:'ws'+v.idx,name:v.shopWeaponName,icon:v.shopWeaponIcon,slot:'weapon',atk:v.shopWeaponAtk,price:v.shopWeaponPrice});
+  EQUIP_CATALOG.push({id:'as'+v.idx,name:v.shopArmorName,icon:v.shopArmorIcon,slot:'armor',def:v.shopArmorDef,price:v.shopArmorPrice});
+  if(v.idx>=3){
+    v.specialWeaponId='wb'+v.idx; v.specialArmorId='ab'+v.idx;
+    EQUIP_CATALOG.push({id:v.specialWeaponId,name:v.specialWeaponName,icon:v.specialWeaponIcon,slot:'weapon',atk:v.specialWeaponAtk,price:0,reqGold:v.specialReqGold,reqMat:{[v.materialDrop]:3}});
+    EQUIP_CATALOG.push({id:v.specialArmorId,name:v.specialArmorName,icon:v.specialArmorIcon,slot:'armor',def:v.specialArmorDef,price:0,reqGold:v.specialReqGold,reqMat:{[v.materialDrop]:3}});
+  }
+});
+
+// VILLAGESデータからMAPS_DEFを構築（3i=村, 3i+1=フィールド, 3i+2=ダンジョン）
+function buildMapsDef(){
+  const maps=[];
+  VILLAGES.forEach(v=>{
+    maps.push({name:v.name,type:'town',bg:v.bg,wall:v.wall,encounter:0,enemies:v.fieldEnemies,villageIdx:v.idx});
+    maps.push({name:v.fieldName,type:'field',bg:v.fieldBg,wall:v.fieldWall,encounter:0.003+v.idx*0.0005,enemies:v.fieldEnemies,villageIdx:v.idx});
+    maps.push({name:v.dungeonName,type:'dungeon',bg:v.dungeonBg,wall:v.dungeonWall,encounter:0.004+v.idx*0.0006,enemies:v.dungeonEnemies,floors:10,baseLv:v.baseLv,
+      bossName:v.dungeonBossName,
+      bossTemplate:{name:v.dungeonBossName,sprite:v.dungeonBossSprite,color:v.dungeonBossColor,...(v.dungeonBossImg?{imgPath:v.dungeonBossImg}:{}),
+        ...v.dungeonBossStats,boss:true,minions:v.dungeonMinions},
+      materialDrop:v.materialDrop,rareMaterialDrop:v.rareMaterialDrop,villageIdx:v.idx});
+  });
+  return maps;
+}
+const MAPS_DEF = buildMapsDef();
+
+// 村の5つのNPC（村長・宿屋・武器屋・防具屋・鍛冶屋）を生成
+function getVillageNPCs(i){
+  const v=VILLAGES[i];if(!v)return[];
+  return [
+    {id:'elder',     name:'村長',  icon:'👴', chipImg:'Villager/pipo-charachip010.png', x:3,  y:3, dialog:getElderDialog(i), villageIdx:i},
+    {id:'inn',       name:'宿屋',  icon:'🏠', chipImg:'Villager/pipo-charachip001.png', x:12, y:4, dialog:v.innDialog, villageIdx:i},
+    {id:'weaponshop',name:'武器屋',icon:'⚔️', chipImg:'Soldier/pipo-charachip018.png',  x:12, y:9, dialog:v.weaponShopDialog, villageIdx:i},
+    {id:'armorshop', name:'防具屋',icon:'🛡️', chipImg:'Villager/pipo-charachip003.png', x:5,  y:9, dialog:v.armorShopDialog, villageIdx:i},
+    {id:'smith',     name:'鍛冶屋',icon:'🔨', chipImg:'Villager/pipo-charachip004.png', x:18, y:9, dialog:v.smithDialog, villageIdx:i},
+  ];
+}
+
+// 村長の会話内容を進行状況に応じて切り替える
+function getElderDialog(i){
+  const v=VILLAGES[i],s=G.story.villages[i];
+  if(s.mainCleared)return v.unlockDialog;
+  if(s.huntDone&&s.collectDone)return v.mainEventDialog;
+  const status=buildQuestStatusLines(i);
+  return s.visited?status:[...v.arrivalDialog,...status];
+}
+// サブクエスト(討伐・納品)の進捗テキストを生成
+function buildQuestStatusLines(i){
+  const v=VILLAGES[i],s=G.story.villages[i];
+  const hunt=v.huntQuest,col=v.collectQuest;
+  const huntName=ENEMIES_DATA[hunt.enemyIdx]?.name||'モンスター';
+  return [
+    s.huntDone?`✅ ${huntName}の討伐: 完了！`:`🗡 ${huntName}を${hunt.count}体たおしてくれ（進捗 ${s.hunt}/${hunt.count}）`,
+    s.collectDone?`✅ ${col.itemName}の納品: 完了！`:`📦 ${col.itemName}を${col.count}個とどけてくれ`,
+  ];
+}
 
 // 階層(0=B1〜9=B10)に応じた経験値・ゴールド倍率: B1=×1.0 〜 B10=×2.0
 function floorRewardMult(floor){return 1+Math.max(0,floor)/9;}
@@ -1227,10 +1497,17 @@ const G = {
   pendingSpawn:null,
   // Sync
   syncInterval:null, lastSync:0,
+  // ストーリー進行（村ごとのサブクエスト進捗・メインイベントクリア状況）
+  story:{
+    villages:Array.from({length:9},()=>({visited:false,hunt:0,huntDone:false,collectDone:false,mainCleared:false})),
+    innBuffBattles:0,
+  },
+  // メインイベント(村ボス)戦の対象村index。通常戦闘ではnull
+  villageBossVillage:null,
 };
 
 // Tile IDs
-const T={FLOOR:0,WALL:1,TREE:3,NPC:4,EXIT:5,STAIR_D:6,STAIR_U:7,BOSS_GATE:8,CHEST:10,DOOR:11,ENTER:12,SAVE:13};
+const T={FLOOR:0,WALL:1,TREE:3,NPC:4,EXIT:5,STAIR_D:6,STAIR_U:7,BOSS_GATE:8,CHEST:10,DOOR:11,ENTER:12,SAVE:13,EXIT_NEXT:14};
 
 // ============================================================
 // CANVAS SETUP
@@ -1252,7 +1529,7 @@ window.addEventListener('resize', resizeCanvas);
 window.addEventListener('load',()=>{
   // 画面の初期状態を強制リセット（CSS キャッシュ対策）
   ['lobby-screen','battle-screen','spell-screen','target-screen',
-   'ally-target-screen','menu-screen','status-screen','equip-screen','skill-screen','sp-screen','smith-screen',
+   'ally-target-screen','menu-screen','status-screen','equip-screen','skill-screen','sp-screen','smith-screen','village-shop-screen',
    'lvlup-screen','dialog','save-modal','online-modal','join-modal',
    'item-popup','chat-input'].forEach(id=>{
     const el=document.getElementById(id);
@@ -1488,6 +1765,8 @@ async function startGame(){
 // ============================================================
 const SAVE_SLOTS = 3;
 const SAVE_KEY_PREFIX = 'al1_save_';
+const AUTOSAVE_SLOT = 'auto';
+const AUTOSAVE_INTERVAL_MS = 180000; // 3分
 
 function getSaveData(slot) {
   try { return JSON.parse(localStorage.getItem(SAVE_KEY_PREFIX + slot)); } catch(e){ return null; }
@@ -1498,15 +1777,20 @@ function setSaveData(slot, data) {
 function deleteSaveData(slot) {
   localStorage.removeItem(SAVE_KEY_PREFIX + slot);
 }
+function slotLabel(slot) {
+  return slot === AUTOSAVE_SLOT ? 'オートセーブ' : ('スロット' + slot);
+}
 
-function buildSaveSnapshot() {
+function buildSaveSnapshot(autosave=false) {
   return {
-    version: 2,
+    version: 3,
     savedAt: Date.now(),
+    autosave,
     mapIdx: G.mapIdx,
     dungeonFloor: G.dungeonFloor,
     clearedDungeons: G.clearedDungeons,
     materials: G.materials,
+    story: G.story,
     party: G.party.map(p => ({...p})),
   };
 }
@@ -1515,6 +1799,13 @@ function restoreFromSnapshot(snap) {
   G.mapIdx = snap.mapIdx || 0;
   G.dungeonFloor = snap.dungeonFloor || 0;
   G.clearedDungeons = snap.clearedDungeons || {};
+  G.story = snap.story || {
+    villages:Array.from({length:9},()=>({visited:false,hunt:0,huntDone:false,collectDone:false,mainCleared:false})),
+    innBuffBattles:0,
+  };
+  // 旧バージョンのセーブデータ互換: villages配列が9件ない場合は補完
+  if(!Array.isArray(G.story.villages))G.story.villages=[];
+  while(G.story.villages.length<9)G.story.villages.push({visited:false,hunt:0,huntDone:false,collectDone:false,mainCleared:false});
   G.materials = snap.materials || {};
   G.party = snap.party.map(p => ({...p, enhance: p.enhance || {weapon:0, armor:0}}));
   G.party.forEach(c => recalcStats(c));
@@ -1528,37 +1819,45 @@ function closeSaveModal() {
   document.getElementById('save-modal').classList.add('hidden');
 }
 
+function renderSaveSlotEntry(slot, data) {
+  if (data) {
+    const leader = data.party[0];
+    const d = new Date(data.savedAt);
+    const dtStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const mapName = MAPS_DEF[data.mapIdx]?.name || '不明';
+    const titlePrefix = slot === AUTOSAVE_SLOT ? '💾 [自動] ' : '';
+    return `<div class="save-slot">
+      <div class="save-slot-ico">${leader?.icon||'⚔️'}</div>
+      <div class="save-slot-info">
+        <div class="save-slot-title">${titlePrefix}${leader?.name||'???'} Lv.${leader?.lv||1} ／ ${mapName}</div>
+        <div class="save-slot-sub">パーティ${data.party.length}人 ・ ${dtStr}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <button onclick="loadGame('${slot}')" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">📂 ロード</button>
+        ${slot === AUTOSAVE_SLOT ? '' : `<button onclick="saveGame(${slot})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;color:#88ccff;">💾 上書き</button>`}
+        <button onclick="confirmDeleteSave('${slot}')" class="hud-save-btn" style="font-size:9px;padding:4px 8px;color:#ff8888;">🗑 削除</button>
+      </div>
+    </div>`;
+  } else {
+    return `<div class="save-slot">
+      <div class="save-slot-ico">📭</div>
+      <div class="save-slot-info">
+        <div class="save-slot-title" style="color:var(--white);">${slotLabel(slot)}（空き）</div>
+      </div>
+      ${slot === AUTOSAVE_SLOT ? '' : `<button onclick="saveGame(${slot})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">💾 セーブ</button>`}
+    </div>`;
+  }
+}
+
 function renderSaveSlots() {
   const el = document.getElementById('save-slots-list');
   let html = '';
+  const autoData = getSaveData(AUTOSAVE_SLOT);
+  if (autoData) {
+    html += renderSaveSlotEntry(AUTOSAVE_SLOT, autoData);
+  }
   for (let s = 1; s <= SAVE_SLOTS; s++) {
-    const data = getSaveData(s);
-    if (data) {
-      const leader = data.party[0];
-      const d = new Date(data.savedAt);
-      const dtStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
-      const mapName = MAPS_DEF[data.mapIdx]?.name || '不明';
-      html += `<div class="save-slot">
-        <div class="save-slot-ico">${leader?.icon||'⚔️'}</div>
-        <div class="save-slot-info">
-          <div class="save-slot-title">${leader?.name||'???'} Lv.${leader?.lv||1} ／ ${mapName}</div>
-          <div class="save-slot-sub">パーティ${data.party.length}人 ・ ${dtStr}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <button onclick="loadGame(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">📂 ロード</button>
-          <button onclick="saveGame(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;color:#88ccff;">💾 上書き</button>
-          <button onclick="confirmDeleteSave(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;color:#ff8888;">🗑 削除</button>
-        </div>
-      </div>`;
-    } else {
-      html += `<div class="save-slot">
-        <div class="save-slot-ico">📭</div>
-        <div class="save-slot-info">
-          <div class="save-slot-title" style="color:var(--white);">スロット ${s}（空き）</div>
-        </div>
-        <button onclick="saveGame(${s})" class="hud-save-btn" style="font-size:9px;padding:4px 8px;">💾 セーブ</button>
-      </div>`;
-    }
+    html += renderSaveSlotEntry(s, getSaveData(s));
   }
   el.innerHTML = html;
 }
@@ -1566,7 +1865,7 @@ function renderSaveSlots() {
 function saveGame(slot) {
   const snap = buildSaveSnapshot();
   setSaveData(slot, snap);
-  addChat('💾 スロット'+slot+'にセーブしました！', null, true);
+  addChat('💾 ' + slotLabel(slot) + 'にセーブしました！', null, true);
   closeSaveModal();
   // オートセーブ通知
   showAutoSaveFlash();
@@ -1583,12 +1882,12 @@ function loadGame(slot) {
   fadeIn(() => {
     restoreFromSnapshot(data);
     initGame();
-    addChat('📂 スロット' + slot + 'からロードしました！', null, true);
+    addChat('📂 ' + slotLabel(slot) + 'からロードしました！', null, true);
   });
 }
 
 function confirmDeleteSave(slot) {
-  if (confirm('スロット'+slot+'のデータを削除しますか？')) {
+  if (confirm(slotLabel(slot)+'のデータを削除しますか？')) {
     deleteSaveData(slot);
     renderSaveSlots();
   }
@@ -1602,8 +1901,39 @@ function showAutoSaveFlash() {
   setTimeout(() => el.remove(), 3000);
 }
 
+// ============================================================
+// オートセーブ
+// ============================================================
+let autoSaveTimer = null;
+
+function showAutoSavingIndicator() {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:6px;right:10px;z-index:200;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);border-radius:3px;padding:3px 8px;font-family:DotGothic16,serif;font-size:9px;color:#ccddff;letter-spacing:1px;animation:cfade 2s forwards;';
+  el.textContent = '💾 オートセーブ中…';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2000);
+}
+
+function autoSaveTick() {
+  if (G.inBattle) return;
+  if (ONLINE.isOnline && !ONLINE.isHost) return;
+  if (!G.party || !G.party.length) return;
+  const snap = buildSaveSnapshot(true);
+  setSaveData(AUTOSAVE_SLOT, snap);
+  showAutoSavingIndicator();
+}
+
+function startAutoSave() {
+  if (autoSaveTimer) clearInterval(autoSaveTimer);
+  autoSaveTimer = setInterval(autoSaveTick, AUTOSAVE_INTERVAL_MS);
+}
+
 // タイトル画面でセーブデータ確認
 function checkExistingSave() {
+  if (getSaveData(AUTOSAVE_SLOT)) {
+    document.getElementById('btn-continue').style.display = '';
+    return;
+  }
   for (let s = 1; s <= SAVE_SLOTS; s++) {
     if (getSaveData(s)) {
       document.getElementById('btn-continue').style.display = '';
@@ -1615,6 +1945,8 @@ function checkExistingSave() {
 function showContinue() {
   // セーブスロットを調べて、1つなら直接ロード、複数なら選択モーダル
   const slots = [];
+  const autoData = getSaveData(AUTOSAVE_SLOT);
+  if (autoData) slots.push({ slot: AUTOSAVE_SLOT, data: autoData });
   for (let s = 1; s <= SAVE_SLOTS; s++) {
     const d = getSaveData(s);
     if (d) slots.push({ slot: s, data: d });
@@ -1637,7 +1969,7 @@ function directLoadGame(slot, data) {
   fadeIn(() => {
     restoreFromSnapshot(data);
     initGame();
-    addChat('📂 スロット' + slot + 'からロードしました！', null, true);
+    addChat('📂 ' + slotLabel(slot) + 'からロードしました！', null, true);
   });
 }
 
@@ -1881,7 +2213,8 @@ function _handleP2P(msg) {
         G.chests  = msg.chests || [];
         G.doors   = msg.doors  || [];
         G.mapEnemies = [];
-        G.npcsOnMap  = NPCS.filter(n => msg.tiles[n.y]?.[n.x] === T.NPC).map(n => ({...n}));
+        G.npcsOnMap  = (msg.mapIdx % 3 === 0 ? getVillageNPCs(Math.floor(msg.mapIdx / 3)) : [])
+          .filter(n => msg.tiles[n.y]?.[n.x] === T.NPC).map(n => ({...n}));
         const mapName = MAPS_DEF[msg.mapIdx]?.name || '';
         const lbl = document.getElementById('map-label');
         if (lbl) lbl.textContent = '📍 ' + mapName;
@@ -2209,6 +2542,7 @@ function initGame(){
   updatePartyHUD();
   addChat('冒険が始まった！',null,true);
   setTimeout(()=>showDialog('elder'),1500);
+  startAutoSave();
 
   // オンラインモードなら接続済みバッジを表示
   if (ONLINE.isOnline) {
@@ -2280,7 +2614,7 @@ function buildVillageTiles(){
 }
 
 function buildFieldTiles(){
-  const F=T.FLOOR,W=T.WALL,Tr=T.TREE,X=T.EXIT,En=T.ENTER;
+  const F=T.FLOOR,W=T.WALL,Tr=T.TREE,X=T.EXIT,En=T.ENTER,XN=T.EXIT_NEXT;
   const g=[];
   for(let y=0;y<MAP_H;y++){g[y]=[];for(let x=0;x<MAP_W;x++)g[y][x]=F;}
   for(let x=0;x<MAP_W;x++){g[0][x]=W;g[MAP_H-1][x]=W;}
@@ -2293,6 +2627,9 @@ function buildFieldTiles(){
   g[9][1]=En;
   // 北東の出口（ダンジョンへ）row1, col22
   g[1][MAP_W-2]=X;
+  // 東の道（次の村へ）：村のメインイベントをクリアすると開放される（row9, col22）
+  const villageIdx=Math.floor(G.mapIdx/3);
+  if(villageIdx<8&&G.story.villages[villageIdx]?.mainCleared)g[9][MAP_W-2]=XN;
   return g;
 }
 
@@ -2302,10 +2639,10 @@ function generateMap(idx){
   G.tiles=[];G.npcsOnMap=[];G.chests=[];G.doors=[];G.doorAnim=null;G.mapEnemies=[];
   const rng=n=>Math.floor(Math.random()*n);
 
-  if(idx===0){
+  if(idx%3===0){
     // ─── 固定レイアウト: 村 ────────────────────────────────────
     G.tiles=buildVillageTiles();
-    NPCS.forEach(n=>{if(G.tiles[n.y]?.[n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
+    getVillageNPCs(idx/3).forEach(n=>{if(G.tiles[n.y]?.[n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
     for(const[cx,cy] of [[19,13],[18,13],[7,13]]){
       if(G.tiles[cy]?.[cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
     }
@@ -2314,43 +2651,34 @@ function generateMap(idx){
     });
     setPlayerPos(12,9);
 
-  } else if(idx===1){
+  } else if(idx%3===1){
     // ─── 固定レイアウト: フィールド ──────────────────────────
     G.tiles=buildFieldTiles();
     setPlayerPos(3,9);
 
   } else {
-    // ─── 手続き生成 (idx >= 2: ダンジョン・その他) ────────────
+    // ─── 手続き生成 (idx%3===2: ダンジョン) ────────────────────
     for(let y=0;y<MAP_H;y++){G.tiles[y]=[];for(let x=0;x<MAP_W;x++)G.tiles[y][x]=(x===0||y===0||x===MAP_W-1||y===MAP_H-1)?T.WALL:T.FLOOR;}
-    if(map.type==='dungeon'){
-      for(let i=0;i<15;i++){const w=rng(3)+1,h=rng(3)+1,wx=rng(MAP_W-w-2)+1,wy=rng(MAP_H-h-2)+1;
-        for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){if(Math.abs(wx+xx-12)<3&&Math.abs(wy+yy-14)<3)continue;G.tiles[wy+yy][wx+xx]=T.WALL;}}
-      G.tiles[14][12]=T.FLOOR;
-      G.tiles[15][12]=T.STAIR_U;
-      const isLast=(G.dungeonFloor===(map.floors||1)-1);
-      // B3・B6・B9は「安らぎの扉」（セーブ＆全回復ポイント）を設置
-      const isSaveFloor=(G.dungeonFloor===2||G.dungeonFloor===5||G.dungeonFloor===8);
-      if(isLast){
-        // B10: 最深部はボス専用フロア。中央上部にボス（取り巻き付き）を配置
-        G.tiles[2][12]=T.BOSS_GATE;
-        G.mapEnemies.push(makeBossMapEnemy(map,12,3));
-      }else{
-        let sx,sy,t=0;do{sx=rng(MAP_W-4)+2;sy=rng(5)+1;t++;}while(G.tiles[sy][sx]!==T.FLOOR&&t<60);G.tiles[sy][sx]=T.STAIR_D;
-      }
-      if(isSaveFloor){
-        let svx,svy,t3=0;do{svx=rng(MAP_W-4)+2;svy=rng(MAP_H-4)+2;t3++;}while(G.tiles[svy][svx]!==T.FLOOR&&t3<60);
-        if(G.tiles[svy][svx]===T.FLOOR)G.tiles[svy][svx]=T.SAVE;
-      }
-      for(let i=0;i<2;i++){let cx,cy,t2=0;do{cx=rng(MAP_W-2)+1;cy=rng(MAP_H-2)+1;t2++;}while(G.tiles[cy][cx]!==T.FLOOR&&t2<40);if(G.tiles[cy][cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});}}
-      setPlayerPos(12,14);
-    } else {
-      if(map.type==='field'){
-        for(let i=0;i<10;i++){const wx=rng(MAP_W-2)+1,wy=rng(MAP_H-2)+1;if(Math.abs(wx-12)<2&&Math.abs(wy-9)<2)continue;G.tiles[wy][wx]=T.WALL;}
-        for(let i=0;i<8;i++){const tx=rng(MAP_W-2)+1,ty=rng(MAP_H-2)+1;if(G.tiles[ty][tx]===T.FLOOR)G.tiles[ty][tx]=T.TREE;}
-        if(idx<MAPS_DEF.length-1)G.tiles[1][MAP_W-2]=T.EXIT;
-      }
-      setPlayerPos(12,9);
+    for(let i=0;i<15;i++){const w=rng(3)+1,h=rng(3)+1,wx=rng(MAP_W-w-2)+1,wy=rng(MAP_H-h-2)+1;
+      for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){if(Math.abs(wx+xx-12)<3&&Math.abs(wy+yy-14)<3)continue;G.tiles[wy+yy][wx+xx]=T.WALL;}}
+    G.tiles[14][12]=T.FLOOR;
+    G.tiles[15][12]=T.STAIR_U;
+    const isLast=(G.dungeonFloor===(map.floors||1)-1);
+    // B3・B6・B9は「安らぎの扉」（セーブ＆全回復ポイント）を設置
+    const isSaveFloor=(G.dungeonFloor===2||G.dungeonFloor===5||G.dungeonFloor===8);
+    if(isLast){
+      // B10: 最深部はボス専用フロア。中央上部にボス（取り巻き付き）を配置
+      G.tiles[2][12]=T.BOSS_GATE;
+      G.mapEnemies.push(makeBossMapEnemy(map,12,3));
+    }else{
+      let sx,sy,t=0;do{sx=rng(MAP_W-4)+2;sy=rng(5)+1;t++;}while(G.tiles[sy][sx]!==T.FLOOR&&t<60);G.tiles[sy][sx]=T.STAIR_D;
     }
+    if(isSaveFloor){
+      let svx,svy,t3=0;do{svx=rng(MAP_W-4)+2;svy=rng(MAP_H-4)+2;t3++;}while(G.tiles[svy][svx]!==T.FLOOR&&t3<60);
+      if(G.tiles[svy][svx]===T.FLOOR)G.tiles[svy][svx]=T.SAVE;
+    }
+    for(let i=0;i<2;i++){let cx,cy,t2=0;do{cx=rng(MAP_W-2)+1;cy=rng(MAP_H-2)+1;t2++;}while(G.tiles[cy][cx]!==T.FLOOR&&t2<40);if(G.tiles[cy][cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});}}
+    setPlayerPos(12,14);
   }
 
   // ─── ゲート通過時のカスタムスポーン ─────────────────────────
@@ -2359,14 +2687,14 @@ function generateMap(idx){
   // ─── エネミースポーン（村 encounter:0 / ボス専用フロアB10はスキップ）────
   const isBossFloor=(map.type==='dungeon'&&G.dungeonFloor===(map.floors||1)-1);
   if(map.encounter>0&&!isBossFloor){
-    const count=3+G.mapIdx*2;
+    const count=3+Math.floor(G.mapIdx/3)*2;
     for(let i=0;i<count;i++) spawnMapEnemy();
   }
   G.saveTileUsed=false;
 
   document.getElementById('map-label').textContent=
-    idx===0?`🏘️ ${map.name}`:idx===1?`🌿 ${map.name}`:
-    map.type==='dungeon'?`🏰 ${map.name} B${G.dungeonFloor+1}F`:`🗺️ ${map.name}`;
+    idx%3===0?`🏘️ ${map.name}`:idx%3===1?`🌿 ${map.name}`:
+    `🏰 ${map.name} B${G.dungeonFloor+1}F`;
 
   if(ONLINE.isOnline&&ONLINE.isHost){
     _sendP2P({type:'map_sync',mapIdx:idx,tiles:G.tiles,chests:G.chests,doors:G.doors});
@@ -2397,22 +2725,24 @@ function spawnMapEnemy(){
     else if(tier===2){mult=1.75;groupSize=2+(Math.random()<0.5?1:0);}
     rewardMult=floorRewardMult(G.dungeonFloor);
   }
+  // 村の難易度スケーリングによる敵の強さ倍率（HP/ATK/DEFのみ。EXP/Goldは別途expMult/goldMultで調整）
+  const vMult=(VILLAGES[Math.floor(G.mapIdx/3)]||{}).enemyMult||1;
 
   const angle=Math.random()*Math.PI*2;
   G.mapEnemies.push({
     ...tmpl,idx:eIdx,
     name:(mult>1?'強 ':'')+tmpl.name,
-    hp:Math.floor(tmpl.hp*mult),maxHp:Math.floor(tmpl.hp*mult),
-    atk:Math.floor(tmpl.atk*mult),def:Math.floor(tmpl.def*mult),
+    hp:Math.floor(tmpl.hp*mult*vMult),maxHp:Math.floor(tmpl.hp*mult*vMult),
+    atk:Math.floor(tmpl.atk*mult*vMult),def:Math.floor(tmpl.def*mult*vMult),
     exp:Math.floor(tmpl.exp*mult*rewardMult),gold:Math.floor(tmpl.gold*mult*rewardMult),
     x:tx*G.TILE+G.TILE/2, y:ty*G.TILE+G.TILE/2,
     vx:Math.cos(angle)*tmpl.spd*0.6,
     vy:Math.sin(angle)*tmpl.spd*0.6,
     dirTimer:0,
-    curHp:Math.floor(tmpl.hp*mult),
+    curHp:Math.floor(tmpl.hp*mult*vMult),
     dead:false,
     scale:1,
-    groupSize,_mult:mult,_rewardMult:rewardMult,
+    groupSize,_mult:mult,_vMult:vMult,_rewardMult:rewardMult,
   });
 }
 
@@ -2423,12 +2753,13 @@ function makeBossMapEnemy(map,tx,ty){
   const hpMult=1+(adv-1)*0.5;
   const atkMult=1+(adv-1)*0.25;
   const rewardMult=floorRewardMult((map.floors||1)-1);
-  const hp=Math.floor((t.hp||100)*hpMult);
+  const vMult=(VILLAGES[Math.floor(G.mapIdx/3)]||{}).enemyMult||1;
+  const hp=Math.floor((t.hp||100)*hpMult*vMult);
   return {
     ...t,idx:-1,
     name:'👑 '+(t.name||'ボス'),
     hp,maxHp:hp,curHp:hp,
-    atk:Math.floor((t.atk||10)*atkMult),def:t.def||0,
+    atk:Math.floor((t.atk||10)*atkMult*vMult),def:Math.floor((t.def||0)*vMult),
     exp:Math.floor((t.exp||0)*rewardMult),gold:Math.floor((t.gold||0)*rewardMult),
     x:tx*G.TILE+G.TILE/2, y:ty*G.TILE+G.TILE/2,
     vx:0,vy:0,dirTimer:Infinity,
@@ -2551,10 +2882,11 @@ function handleTileAt(tx,ty){
   if(ty<0||ty>=MAP_H||tx<0||tx>=MAP_W)return;
   const t=G.tiles[ty][tx];
   if(t===T.EXIT){
-    if(G.mapIdx===0)changeMap(1,2,9); // 村→フィールド: フィールド西入口付近に出現
+    if(G.mapIdx%3===0)changeMap(G.mapIdx+1,2,9); // 村→フィールド: フィールド西入口付近に出現
     else changeMap(G.mapIdx+1);
   }
-  else if(t===T.ENTER){changeMap(0,MAP_W-3,9);} // フィールド→村: 村の東ゲート付近に出現
+  else if(t===T.EXIT_NEXT){changeMap(G.mapIdx+2,2,9);} // フィールド→次の村: 村の西入口付近に出現
+  else if(t===T.ENTER){changeMap(G.mapIdx-1,MAP_W-3,9);} // フィールド→村: 村の東ゲート付近に出現
   else if(t===T.STAIR_D){descendFloor();}
   else if(t===T.STAIR_U){ascendFloor();}
   else if(t===T.SAVE&&!G.saveTileUsed){
@@ -2623,12 +2955,12 @@ function buildEncounterGroup(e){
   for(let k=0;k<extra;k++){
     const eIdx=map.enemies[Math.floor(Math.random()*map.enemies.length)];
     const tmpl=ENEMIES_DATA[eIdx];
-    const mult=e._mult||1, rewardMult=e._rewardMult||1;
+    const mult=e._mult||1, vMult=e._vMult||1, rewardMult=e._rewardMult||1;
     group.push({
       ...tmpl,idx:eIdx,
       name:(mult>1?'強 ':'')+tmpl.name,
-      hp:Math.floor(tmpl.hp*mult),maxHp:Math.floor(tmpl.hp*mult),curHp:Math.floor(tmpl.hp*mult),
-      atk:Math.floor(tmpl.atk*mult),def:Math.floor(tmpl.def*mult),
+      hp:Math.floor(tmpl.hp*mult*vMult),maxHp:Math.floor(tmpl.hp*mult*vMult),curHp:Math.floor(tmpl.hp*mult*vMult),
+      atk:Math.floor(tmpl.atk*mult*vMult),def:Math.floor(tmpl.def*mult*vMult),
       exp:Math.floor(tmpl.exp*mult*rewardMult),gold:Math.floor(tmpl.gold*mult*rewardMult),
     });
   }
@@ -2642,13 +2974,14 @@ function buildBossGroup(bossEnemy){
   const adv=getTotalAdventurers();
   const mult=1+(adv-1)*0.4;
   const rewardMult=floorRewardMult((map.floors||1)-1);
+  const vMult=(VILLAGES[Math.floor(G.mapIdx/3)]||{}).enemyMult||1;
   const group=[bossEnemy];
   (t.minions||[]).forEach((mIdx,i)=>{
     const tmpl=ENEMIES_DATA[mIdx];if(!tmpl)return;
     group.push({
       ...tmpl,idx:100+i,
-      hp:Math.floor(tmpl.hp*mult),maxHp:Math.floor(tmpl.hp*mult),curHp:Math.floor(tmpl.hp*mult),
-      atk:Math.floor(tmpl.atk*mult),def:tmpl.def,
+      hp:Math.floor(tmpl.hp*mult*vMult),maxHp:Math.floor(tmpl.hp*mult*vMult),curHp:Math.floor(tmpl.hp*mult*vMult),
+      atk:Math.floor(tmpl.atk*mult*vMult),def:Math.floor(tmpl.def*vMult),
       exp:Math.floor(tmpl.exp*rewardMult),gold:Math.floor(tmpl.gold*rewardMult),
     });
   });
@@ -2671,7 +3004,7 @@ const TILE_COLORS={
   [T.SAVE]:'#224466',
 };
 const TILE_EMOJI={
-  [T.EXIT]:'🚪',[T.ENTER]:'🏠',[T.STAIR_D]:'🔽',[T.STAIR_U]:'🔼',[T.BOSS_GATE]:'⛩️',[T.SAVE]:'🌟',
+  [T.EXIT]:'🚪',[T.ENTER]:'🏠',[T.STAIR_D]:'🔽',[T.STAIR_U]:'🔼',[T.BOSS_GATE]:'⛩️',[T.SAVE]:'🌟',[T.EXIT_NEXT]:'🌈',
 };
 
 function updateCamera(){
@@ -2753,6 +3086,10 @@ function render(){
       }else if(t===T.ENTER){
         ctx.fillStyle='rgba(50,200,100,0.5)';ctx.fillRect(sx,sy,TILE,TILE);
         drawTileEmoji('🏠',sx,sy,TILE);
+      }else if(t===T.EXIT_NEXT){
+        const glow2=0.4+0.3*Math.sin(performance.now()/250);
+        ctx.fillStyle=`rgba(60,220,170,${glow2})`;ctx.fillRect(sx,sy,TILE,TILE);
+        drawTileEmoji('🌈',sx,sy,TILE);
       }else if(t===T.SAVE){
         const glow=0.4+0.3*Math.sin(performance.now()/300);
         ctx.fillStyle=`rgba(80,180,255,${glow})`;ctx.fillRect(sx,sy,TILE,TILE);
@@ -3171,7 +3508,7 @@ function startBattle(mapEnemies,isBoss=false){
 
   // 敵をスケール（オンライン時）
   const rawEnemies = mapEnemies.map((e,i)=>({
-    ...e, curHp: e.curHp!==undefined ? e.curHp : e.hp, maxHp: e.maxHp||e.hp, idx: i,
+    ...e, srcIdx: e.idx, curHp: e.curHp!==undefined ? e.curHp : e.hp, maxHp: e.maxHp||e.hp, idx: i,
   }));
   // ボス戦は人数スケーリングを makeBossMapEnemy/buildBossGroup 側で適用済みのため二重スケールしない
   G.battleEnemies = (ONLINE.isOnline && !isBoss) ? getScaledEnemyGroup(rawEnemies) : rawEnemies;
@@ -4149,10 +4486,42 @@ function battleVictory(){
     }
     G.clearedDungeons[G.mapIdx]=true;
   }
+  // 村の難易度スケーリングによる経験値・ゴールド倍率（第1村×1.0 〜 第9村×3.0）
+  const village=VILLAGES[Math.floor(G.mapIdx/3)];
+  if(village){totalExp=Math.floor(totalExp*village.expMult);totalGold=Math.floor(totalGold*village.goldMult);}
+  // 宿屋に泊まった翌日バフ：経験値+10%
+  const innBuffActive=G.story.innBuffBattles>0;
+  if(innBuffActive)totalExp=Math.floor(totalExp*1.1);
+
+  // サブクエスト：討伐進捗の更新
+  const vIdx=Math.floor(G.mapIdx/3);
+  const vs=G.story.villages[vIdx];
+  if(vs&&!vs.huntDone){
+    const hunt=VILLAGES[vIdx].huntQuest;
+    const before=vs.hunt;
+    G.battleEnemies.forEach(e=>{if(e.srcIdx===hunt.enemyIdx)vs.hunt++;});
+    if(vs.hunt>=hunt.count){vs.hunt=hunt.count;vs.huntDone=true;}
+    if(vs.hunt!==before){
+      const elder=G.npcsOnMap.find(n=>n.id==='elder');
+      if(elder)elder.dialog=getElderDialog(vIdx);
+    }
+  }
+
+  // 村のメインイベント（村ボス）撃破: 村のストーリーをクリアし、次の村への道・新ラインアップを解放
+  if(G.villageBossVillage!=null){
+    const bi=G.villageBossVillage;
+    G.story.villages[bi].mainCleared=true;
+    G.villageBossVillage=null;
+    const elder=G.npcsOnMap.find(n=>n.id==='elder');
+    if(elder)elder.dialog=getElderDialog(bi);
+    bonusMsg+=`\n🎊 ${VILLAGES[bi].name}に平和が戻った！東への道が開かれた！`;
+  }
+
   G.party.forEach(p=>{if(p.hp>0)p.gold=(p.gold||0)+Math.floor(totalGold/G.party.length);});
   setBMsg(`🏆 勝利！\n${totalExp}EXPと${totalGold}Gを手に入れた！${bonusMsg}`);
-  // Item drop
-  if(Math.random()<0.35){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});setTimeout(()=>showItemPop(item),700);}
+  // Item drop（宿屋バフ中はお宝発見率UP）
+  if(Math.random()<(innBuffActive?0.5:0.35)){const item=ITEMS_DROP[Math.floor(Math.random()*ITEMS_DROP.length)];G.party[0].items.push({...item});setTimeout(()=>showItemPop(item),700);}
+  if(innBuffActive)G.story.innBuffBattles--;
   setTimeout(()=>{G.party.forEach(p=>{if(p.hp>0){p.exp+=totalExp;checkLvl(p);}});processPendingLvl();},1500);
 }
 
@@ -4185,7 +4554,7 @@ function gameover(){
   setBMsg('😵 全滅してしまった…村に戻った');
   setTimeout(()=>{
     document.getElementById('battle-screen').classList.add('hidden');
-    setPlayerPos(12,9);generateMap(0);updatePartyHUD();
+    setPlayerPos(12,9);generateMap(Math.floor(G.mapIdx/3)*3);updatePartyHUD();
     addChat('全滅…村に戻った',null,true);
     G.inBattle=false;startLoop();
   },2000);
@@ -4201,7 +4570,7 @@ function endBattle(){
 
   document.getElementById('battle-screen').classList.add('hidden');
   updatePartyHUD();
-  if(G.mapEnemies.length<3) spawnMapEnemy();
+  if(MAPS_DEF[G.mapIdx].encounter>0 && G.mapEnemies.length<3) spawnMapEnemy();
   startLoop();
 }
 
@@ -4242,7 +4611,7 @@ function handleSearch(){
 
 let dialogNpc=null,dialogPage=0;
 function showDialog(id){
-  const npc=NPCS.find(n=>n.id===id);if(!npc)return;
+  const npc=G.npcsOnMap.find(n=>n.id===id);if(!npc)return;
   dialogNpc=npc;dialogPage=0;
   document.getElementById('dialog-nm').textContent=npc.icon+' '+npc.name;
   document.getElementById('dialog-tx').textContent=npc.dialog[0];
@@ -4253,9 +4622,15 @@ function advDialog(){
   dialogPage++;
   if(dialogPage>=dialogNpc.dialog.length){
     document.getElementById('dialog').classList.add('hidden');
-    if(dialogNpc.id==='inn'&&G.party[0].gold>=50){G.party[0].gold-=50;G.party.forEach(p=>{p.hp=p.maxHp;p.mp=p.maxMp;});addChat('宿屋に泊まった。HP・MP全快！',null,true);}
-    if(dialogNpc.id==='shop')openSmith();
-    dialogNpc=null;return;
+    const npc=dialogNpc;dialogNpc=null;
+    switch(npc.id){
+      case 'inn':handleInnStay();break;
+      case 'weaponshop':openVillageShop('weapon',npc.villageIdx);break;
+      case 'armorshop':openVillageShop('armor',npc.villageIdx);break;
+      case 'smith':openSmith();break;
+      case 'elder':handleElderEnd(npc.villageIdx);break;
+    }
+    return;
   }
   document.getElementById('dialog-tx').textContent=dialogNpc.dialog[dialogPage];
 }
@@ -4576,6 +4951,147 @@ function unlockEquip(id){
   addChat(`🔓 ${e.icon}${e.name}を解放した！`,null,true);
   showItemPop({icon:e.icon,name:e.name});
   renderSmith();
+}
+
+// ============================================================
+// VILLAGE SHOP (村の武器屋・防具屋)
+// ============================================================
+let villageShopType=null, villageShopVillageIdx=0, villageShopCharIdx=0;
+function openVillageShop(type,villageIdx){
+  villageShopType=type;villageShopVillageIdx=villageIdx;villageShopCharIdx=0;
+  renderVillageShop();
+  document.getElementById('village-shop-screen').classList.remove('hidden');
+}
+function closeVillageShop(){document.getElementById('village-shop-screen').classList.add('hidden');}
+function selVillageShopChar(i){villageShopCharIdx=i;renderVillageShop();}
+
+function renderVillageShop(){
+  const v=VILLAGES[villageShopVillageIdx];
+  const gold=G.party[0].gold;
+  const isWeapon=villageShopType==='weapon';
+  document.getElementById('village-shop-title').textContent=isWeapon?`⚔️ ${v.name} 武器屋`:`🛡️ ${v.name} 防具屋`;
+  document.getElementById('village-shop-gold').textContent=`💰 ${gold} G`;
+
+  const ids=[isWeapon?'ws'+v.idx:'as'+v.idx];
+  if(v.idx>=3)ids.push(isWeapon?v.specialWeaponId:v.specialArmorId);
+
+  document.getElementById('village-shop-chars').innerHTML=
+    G.party.map((ch,i)=>`<button class="eq-char-btn ${i===villageShopCharIdx?'cur':''}" onclick="selVillageShopChar(${i})">
+      <span class="eq-char-ico">${ch.icon}</span><span class="eq-char-nm">${ch.name}</span></button>`).join('');
+  const c=G.party[villageShopCharIdx];
+
+  // 特別装備の素材所持状況を表示
+  const matEl=document.getElementById('village-shop-materials');
+  if(v.idx>=3){
+    matEl.style.display='';
+    matEl.innerHTML=[v.materialDrop,v.rareMaterialDrop].map(mid=>{
+      const m=getMaterial(mid);const n=G.materials[mid]||0;
+      return `<span class="${n>0?'':'smith-mat-zero'}">${m.icon}${m.name}×${n}</span>`;
+    }).join('');
+  }else{
+    matEl.style.display='none';matEl.innerHTML='';
+  }
+
+  document.getElementById('village-shop-list').innerHTML=ids.map(id=>{
+    const e=getEquip(id);if(!e)return'';
+    const owned=c.inventory.includes(id);
+    const stat=[e.atk&&'攻+'+e.atk,e.def&&'守+'+e.def,e.int&&'魔+'+e.int,e.maxMp&&'MP+'+e.maxMp].filter(Boolean).join(' ');
+    let costHtml,canBuy;
+    if(e.reqMat){
+      const reqEntries=Object.entries(e.reqMat);
+      const matReqs=reqEntries.map(([mid,cnt])=>{
+        const have=G.materials[mid]||0;const md=getMaterial(mid);
+        return `<span class="${have>=cnt?'':'smith-lack'}">${md.icon}${md.name}×${cnt}(${have})</span>`;
+      }).join(' ');
+      const haveGold=gold>=(e.reqGold||0);
+      const haveAllMat=reqEntries.every(([mid,cnt])=>(G.materials[mid]||0)>=cnt);
+      canBuy=!owned&&haveGold&&haveAllMat;
+      costHtml=`<span class="${haveGold?'':'smith-lack'}">${e.reqGold}G</span> ${matReqs}`;
+    }else{
+      canBuy=!owned&&gold>=e.price;
+      costHtml=`<span class="${gold>=e.price?'':'smith-lack'}">${e.price}G</span>`;
+    }
+    return `<div class="smith-row">
+      <span class="eq-sico">${e.icon}</span>
+      <span class="smith-row-info">${e.name}<br><span style="font-size:8px;color:#88ddff;">${stat}</span></span>
+      <div class="smith-cost">${costHtml}</div>
+      ${owned?'<span class="eq-badge">所持済み</span>':`<button class="smith-btn ${canBuy?'':'disabled'}" ${canBuy?'':'disabled'} onclick="buyVillageEquip('${id}')">購入</button>`}
+    </div>`;
+  }).join('');
+}
+
+function buyVillageEquip(id){
+  const e=getEquip(id);
+  const c=G.party[villageShopCharIdx];
+  if(c.inventory.includes(id))return;
+  if(e.reqMat){
+    if(G.party[0].gold<(e.reqGold||0))return;
+    for(const[mid,cnt]of Object.entries(e.reqMat)){if((G.materials[mid]||0)<cnt)return;}
+    G.party[0].gold-=(e.reqGold||0);
+    for(const[mid,cnt]of Object.entries(e.reqMat)){G.materials[mid]-=cnt;}
+  }else{
+    if(G.party[0].gold<e.price)return;
+    G.party[0].gold-=e.price;
+  }
+  c.inventory.push(id);
+  addChat(`🛒 ${e.icon}${e.name}を購入した！`,null,true);
+  showItemPop({icon:e.icon,name:e.name});
+  renderVillageShop();
+}
+
+// ============================================================
+// INN / STORY EVENTS (宿屋・村長イベント)
+// ============================================================
+// 宿屋に泊まる：HP/MP全快＋セーブ。次の戦闘から経験値+10%・お宝発見率UPのバフ付与
+function handleInnStay(){
+  const cost=30+Math.floor(G.mapIdx/3)*20;
+  if(G.party[0].gold<cost){addChat(`💰 ゴールドが足りない…（必要:${cost}G）`,null,true);return;}
+  G.party[0].gold-=cost;
+  G.party.forEach(p=>{p.hp=p.maxHp;p.mp=p.maxMp;});
+  G.story.innBuffBattles=10;
+  addChat(`🏠 宿屋に泊まった。HP・MPが全快した！（${cost}G） ✨ しばらく経験値+10%・お宝発見率UP！`,null,true);
+  openSaveModal();
+}
+
+// 村長との会話終了時：納品クエストの判定と、討伐・納品が両方完了していれば村ボス戦を開始
+function handleElderEnd(i){
+  const v=VILLAGES[i],s=G.story.villages[i];
+  s.visited=true;
+  if(!s.collectDone){
+    const col=v.collectQuest;
+    const have=G.party[0].items.filter(it=>it.name===col.itemName).length;
+    if(have>=col.count){
+      let removed=0;
+      G.party[0].items=G.party[0].items.filter(it=>{
+        if(removed<col.count&&it.name===col.itemName){removed++;return false;}
+        return true;
+      });
+      s.collectDone=true;
+      addChat(`📦 ${col.itemName}を村長に渡した！`,null,true);
+    }
+  }
+  const readyForBoss=s.huntDone&&s.collectDone&&!s.mainCleared;
+  const elder=G.npcsOnMap.find(n=>n.id==='elder');
+  if(elder)elder.dialog=getElderDialog(i);
+  if(readyForBoss)startVillageBossFight(i);
+}
+
+// 村のメインイベント（村ボス）戦を開始（マルチプレイ人数でスケーリング）
+function startVillageBossFight(i){
+  const v=VILLAGES[i],t=v.mainBossStats;
+  const adv=getTotalAdventurers();
+  const hpMult=1+(adv-1)*0.5;
+  const atkMult=1+(adv-1)*0.25;
+  const hp=Math.floor(t.hp*hpMult);
+  const boss={
+    name:'👑 '+v.mainBossName, sprite:v.mainBossSprite, color:v.mainBossColor, idx:-1,
+    hp,maxHp:hp,curHp:hp,
+    atk:Math.floor(t.atk*atkMult),def:t.def,
+    exp:t.exp,gold:t.gold,
+    scale:1.4,isBoss:true,boss:true,
+  };
+  G.villageBossVillage=i;
+  startBattle([boss],true);
 }
 
 // ============================================================
