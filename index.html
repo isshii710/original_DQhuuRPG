@@ -12,85 +12,85 @@
   --gold:#FFD700;--gold2:#FFA500;--blue:#1a3a6a;--blue2:#0d2244;--blue3:#061528;
   --white:#ffffff;--red:#cc2200;--green:#00aa44;
   --win-bg:rgba(8,16,44,0.97);--win-bd:#3a5a99;--text:#ffffff;--text2:#ccddf0;
+  --vh:1vh;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none;}
-body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGothic16',serif;color:var(--white);}
+body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);font-family:'DotGothic16',serif;color:var(--white);}
 
-/* ========== CANVAS ========== */
+/* ========== フィールド画面（上半分） ========== */
+#field-area{position:fixed;top:0;left:0;right:0;height:calc(var(--vh) * 50);overflow:hidden;background:#000;}
 #game-canvas{display:block;width:100%;height:100%;image-rendering:pixelated;}
-#canvas-wrap{position:fixed;inset:0;background:#000;}
+#canvas-wrap{position:absolute;inset:0;background:#000;}
 
-/* ========== HUD ========== */
-#hud{position:fixed;inset:0;pointer-events:none;z-index:10;}
+#map-label{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  background:rgba(6,12,36,0.85);border:1px solid rgba(60,90,160,0.5);
+  border-radius:3px;padding:4px 14px;font-size:11px;letter-spacing:2px;color:var(--gold);
+  white-space:nowrap;pointer-events:none;z-index:5;
+}
 
-#party-hud{position:absolute;top:8px;left:8px;display:flex;flex-direction:column;gap:3px;}
+/* ========== 操作パネル（下半分・DS下画面風） ========== */
+#console-area{
+  position:fixed;bottom:0;left:0;right:0;height:calc(var(--vh) * 50);
+  background:linear-gradient(180deg,#0a1530,#04070f);
+  border-top:2px solid rgba(60,90,160,0.5);
+  display:flex;flex-direction:column;gap:6px;
+  padding:8px;z-index:20;box-sizing:border-box;
+}
+
+#console-top{display:flex;gap:8px;flex-shrink:0;}
+
+#party-hud{flex:1;min-width:0;display:grid;grid-template-columns:repeat(2,1fr);gap:3px;align-content:start;}
 .hud-card{
   background:rgba(8,16,60,0.95);border:1px solid rgba(60,90,180,0.7);
-  border-radius:3px;padding:4px 8px;display:flex;align-items:center;gap:6px;min-width:140px;
+  border-radius:3px;padding:3px 6px;display:flex;align-items:center;gap:4px;min-width:0;
 }
-.hud-icon{font-size:14px;width:18px;text-align:center;}
-.hud-bars{flex:1;}
-.hud-name{font-size:9px;color:var(--white);letter-spacing:1px;margin-bottom:2px;}
+.hud-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0;}
+.hud-bars{flex:1;min-width:0;}
+.hud-name{font-size:8px;color:var(--white);letter-spacing:1px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .bar-row{display:flex;align-items:center;gap:3px;margin-bottom:1px;}
 .bar-lbl{font-size:7px;width:12px;color:var(--white);}
 .bar-track{flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
 .bar-hp{height:100%;background:linear-gradient(90deg,#ee4444,#ff8844);border-radius:2px;transition:width .2s;}
 .bar-mp{height:100%;background:linear-gradient(90deg,#4488ee,#88aaff);border-radius:2px;transition:width .2s;}
-.hud-lv{font-size:8px;color:var(--gold);white-space:nowrap;}
+.hud-lv{font-size:8px;color:var(--gold);white-space:nowrap;flex-shrink:0;}
 
-#map-label{
-  position:absolute;top:8px;left:calc(50% + 35px);transform:translateX(-50%);
-  background:rgba(6,12,36,0.85);border:1px solid rgba(60,90,160,0.5);
-  border-radius:3px;padding:4px 14px;font-size:11px;letter-spacing:2px;color:var(--gold);
-  white-space:nowrap;
-}
-
-#chatbox{
-  position:absolute;bottom:130px;left:8px;right:8px;
-  display:flex;flex-direction:column;gap:2px;
-}
-.chat-line{
-  background:rgba(6,12,36,0.8);border:1px solid rgba(60,90,160,0.25);
-  border-radius:2px;padding:2px 8px;font-size:10px;
-  animation:cfade 6s forwards;
-}
-@keyframes cfade{0%{opacity:1}80%{opacity:1}100%{opacity:0}}
-.chat-sys{color:#88ccff;font-style:italic;}
-.chat-name{color:var(--gold);}
-
-/* ========== CONTROLS ========== */
-#controls{
-  position:fixed;bottom:0;left:0;right:0;height:120px;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 16px;z-index:20;pointer-events:none;
-}
-
-/* Joystick */
-#joy-wrap{width:110px;height:110px;pointer-events:all;position:relative;}
+/* ぷにこん（疑似十字キー） */
+#joy-wrap{width:90px;height:90px;position:relative;flex-shrink:0;}
 #joy-base{
   width:100%;height:100%;border-radius:50%;
   background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.18);
   position:relative;
 }
 #joy-knob{
-  position:absolute;width:42px;height:42px;border-radius:50%;
+  position:absolute;width:36px;height:36px;border-radius:50%;
   background:rgba(255,255,255,0.22);border:2px solid rgba(255,255,255,0.45);
   top:50%;left:50%;transform:translate(-50%,-50%);
   box-shadow:0 0 10px rgba(255,255,255,0.1);
 }
 
-/* Right buttons */
-#right-btns{display:flex;flex-direction:column;gap:6px;pointer-events:all;}
+/* ミニマップ */
+#minimap{width:90px;height:90px;flex-shrink:0;background:rgba(4,8,24,.7);border:1px solid rgba(60,90,160,.4);border-radius:3px;overflow:hidden;}
+#minimap canvas{width:100%;height:100%;}
+
+/* 会話・チャットログ表示エリア */
+#console-mid{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;touch-action:pan-y;-webkit-overflow-scrolling:touch;}
+
+/* 操作ボタン */
+#console-bottom{display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
 .act-row{display:flex;gap:6px;}
 .act-btn{
+  flex:1;
   background:rgba(20,40,100,0.85);border:1px solid rgba(60,90,160,0.5);
   border-radius:4px;color:var(--white);font-family:'DotGothic16',serif;
-  font-size:11px;letter-spacing:1px;padding:8px 10px;cursor:pointer;
-  transition:all .08s;white-space:nowrap;pointer-events:all;
+  font-size:11px;letter-spacing:1px;padding:8px 4px;cursor:pointer;
+  transition:all .08s;white-space:nowrap;
 }
 .act-btn:active{background:rgba(60,100,200,0.85);transform:scale(.95);}
 .btn-chat{background:rgba(10,50,30,0.85);border-color:rgba(40,150,80,0.5);}
 .btn-menu{background:rgba(50,20,80,0.85);border-color:rgba(130,60,200,0.5);}
+.btn-save{background:rgba(20,40,80,.85);border-color:rgba(60,90,160,.5);color:var(--gold);}
+
 
 /* ========== WIN SYSTEM ========== */
 .win{
@@ -329,13 +329,13 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .dc-hit{color:#ffe055;}.dc-crit{color:#ff6600;font-size:26px;}.dc-heal{color:#44ff88;}.dc-miss{color:#aaa;font-size:14px;}
 
 /* Spell select */
-#spell-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#spell-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #spell-screen.hidden{display:none;}
-#skill-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#skill-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:60;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #skill-screen.hidden{display:none;}
-#target-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#target-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #target-screen.hidden{display:none;}
-#ally-target-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
+#ally-target-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:61;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;}
 #ally-target-screen.hidden{display:none;}
 .tgt-btn{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:13px;padding:11px 14px;cursor:pointer;text-align:left;transition:background .06s;width:100%;display:flex;align-items:center;gap:10px;}
 .tgt-btn:active{background:rgba(50,90,200,.5);color:var(--gold);}
@@ -350,14 +350,14 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .sp-cancel{padding:10px;background:rgba(80,20,20,.9);color:var(--text2);cursor:pointer;font-family:'DotGothic16',serif;font-size:11px;text-align:center;border-top:1px solid rgba(255,100,100,.2);transition:background .1s;}
 
 /* Menu */
-#menu-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:flex-end;padding:0 12px;}
+#menu-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:flex-end;padding:0 12px;}
 #menu-screen.hidden{display:none;}
 .menu-box{width:min(240px,78vw);max-height:100%;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;}
 .mitem{background:var(--win-bg);border:none;color:var(--white);font-family:'DotGothic16',serif;font-size:13px;padding:11px 14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:9px;transition:background .06s;width:100%;letter-spacing:1px;}
 .mitem:active{background:rgba(50,90,200,.5);color:var(--gold);}
 
 /* Status */
-#status-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:65;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#status-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:65;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #status-screen.hidden{display:none;}
 .status-box{width:100%;max-width:420px;max-height:100%;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;}
 .stat-hd{padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--win-bd);}
@@ -369,7 +369,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .sg-val{font-size:17px;color:var(--white);}
 
 /* Equip screen */
-#equip-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#equip-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #equip-screen.hidden{display:none;}
 .eq-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:100%;touch-action:pan-y;-webkit-overflow-scrolling:touch;}
 .eq-slots{display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);}
@@ -390,7 +390,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .eq-char-btn.cur{background:rgba(50,90,200,.55);}
 .eq-char-ico{font-size:17px;display:block;}
 .eq-char-nm{font-size:7px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:1px;}
-#sp-screen,#job-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:66;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:12px;}
+#sp-screen,#job-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:12px;}
 #sp-screen.hidden,#job-screen.hidden{display:none;}
 .sp-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:100%;}
 .sp-chars{display:flex;gap:1px;background:rgba(60,90,160,.18);}
@@ -407,10 +407,16 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .sp-cat{font-size:8px;color:rgba(150,180,255,.7);letter-spacing:1px;}
 
 /* Smith (鍛冶屋) */
-#smith-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#smith-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #smith-screen.hidden{display:none;}
-#village-shop-screen{position:fixed;left:0;right:0;bottom:0;height:50vh;height:50dvh;z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#village-shop-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
 #village-shop-screen.hidden{display:none;}
+#quest-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:12px;}
+#quest-screen.hidden{display:none;}
+.quest-row{display:flex;flex-direction:column;gap:4px;padding:8px 12px;font-size:10px;color:var(--white);background:var(--win-bg);}
+.quest-row-hd{display:flex;justify-content:space-between;align-items:center;color:var(--gold);font-size:11px;letter-spacing:1px;}
+.quest-row-line{font-size:10px;color:rgba(255,255,255,.85);}
+.quest-route-btn{align-self:flex-end;margin-top:2px;}
 .smith-box{width:100%;max-width:440px;display:flex;flex-direction:column;max-height:100%;}
 .smith-materials{padding:7px 12px;display:flex;flex-wrap:wrap;gap:6px 14px;border-bottom:1px solid rgba(60,90,160,.2);font-size:10px;}
 .smith-mat-zero{opacity:.35;}
@@ -450,15 +456,14 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .chat-send-btn{background:linear-gradient(180deg,#4477ff,#1133cc);border:1px solid #6699ff;color:#fff;font-family:'DotGothic16',serif;font-size:12px;padding:7px 14px;border-radius:2px;cursor:pointer;}
 
 /* Dialog */
-#dialog{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:7px;}
 #dialog.hidden{display:none;}
-.dialog-inner{padding:12px 14px;min-height:64px;position:relative;background:var(--win-bg);color:var(--white);}
+.dialog-inner{padding:8px 10px;position:relative;background:var(--win-bg);color:var(--white);}
 .dialog-nm{font-size:9px;color:var(--gold);letter-spacing:2px;margin-bottom:3px;}
-.dialog-tx{font-size:13px;line-height:1.7;letter-spacing:1px;color:var(--white);}
-.dialog-next{text-align:right;font-size:10px;color:var(--white);margin-top:6px;}
+.dialog-tx{font-size:12px;line-height:1.6;letter-spacing:1px;color:var(--white);}
+.dialog-next{text-align:right;font-size:10px;color:var(--white);margin-top:4px;}
 
 /* Wave / boss banner */
-#wave-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:35;text-align:center;display:none;pointer-events:none;}
+#wave-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:35;text-align:center;display:none;pointer-events:none;}
 .wb-txt{font-size:clamp(22px,7vw,44px);font-weight:900;color:var(--gold);font-family:'Noto Serif JP',serif;letter-spacing:4px;text-shadow:0 0 24px rgba(255,215,0,.5);animation:wbp .5s ease-in-out infinite alternate;}
 @keyframes wbp{0%{opacity:.75}100%{opacity:1}}
 .wb-sub{font-size:11px;color:rgba(255,215,0,.5);letter-spacing:3px;margin-top:4px;}
@@ -474,10 +479,6 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .ld-bar{width:180px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
 .ld-fill{height:100%;background:linear-gradient(90deg,#4477ff,#44aaff);animation:ldfill 1.4s ease-in-out infinite;}
 @keyframes ldfill{0%{width:0}100%{width:100%}}
-
-/* ========== MINIMAP ========== */
-#minimap{position:absolute;top:8px;right:8px;width:88px;height:88px;background:rgba(4,8,24,.7);border:1px solid rgba(60,90,160,.4);border-radius:3px;overflow:hidden;}
-#minimap canvas{width:100%;height:100%;}
 
 /* ========== SAVE / ONLINE MODAL ========== */
 #save-modal,#online-modal,#join-modal,#fullmap-modal,#warp-modal{
@@ -535,9 +536,6 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 .oc-sys{color:#88ccff;font-style:italic;}
 .oc-msg{color:var(--white);}
 .oc-name{color:var(--gold);}
-#save-btn-hud{
-  position:absolute;bottom:130px;right:8px;z-index:15;pointer-events:all;
-}
 .hud-save-btn{
   background:rgba(20,40,80,.85);border:1px solid rgba(60,90,160,.5);
   border-radius:3px;color:var(--gold);font-family:'DotGothic16',serif;
@@ -565,29 +563,41 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 <div id="loading"><div class="ld-title">LOADING...</div><div class="ld-bar"><div class="ld-fill"></div></div></div>
 <div id="transition"></div>
 
-<!-- Canvas -->
-<div id="canvas-wrap"><canvas id="game-canvas"></canvas></div>
-
-<!-- HUD -->
-<div id="hud">
+<!-- ===== 上半分: フィールド画面 ===== -->
+<div id="field-area">
+  <div id="canvas-wrap"><canvas id="game-canvas"></canvas></div>
   <div id="online-status-bar" class="online-status-bar" style="display:none;"></div>
-  <div id="party-hud"></div>
   <div id="map-label">🏰 はじまりの村</div>
-  <div id="minimap"><canvas id="mm-canvas" width="88" height="88"></canvas></div>
-  <div id="chatbox"></div>
   <div id="online-players-badge" class="players-count-badge" style="display:none;">🌐 オンライン中</div>
-  <div id="save-btn-hud">
-    <button class="hud-save-btn" onclick="openSaveModal()">💾 セーブ</button>
-  </div>
+  <!-- Wave banner -->
+  <div id="wave-banner"><div class="wb-txt" id="wb-txt"></div><div class="wb-sub" id="wb-sub"></div></div>
 </div>
 
-<!-- Controls -->
-<div id="controls">
-  <div id="joy-wrap"><div id="joy-base"><div id="joy-knob"></div></div></div>
-  <div id="right-btns">
+<!-- ===== 下半分: 操作パネル（DS下画面風） ===== -->
+<div id="console-area">
+  <div id="console-top">
+    <div id="joy-wrap"><div id="joy-base"><div id="joy-knob"></div></div></div>
+    <div id="minimap"><canvas id="mm-canvas" width="88" height="88"></canvas></div>
+    <div id="party-hud"></div>
+  </div>
+  <div id="console-mid">
+    <!-- Dialog -->
+    <div id="dialog" class="hidden" onclick="advDialog()">
+      <div class="win dialog-inner">
+        <div class="dialog-nm" id="dialog-nm"></div>
+        <div class="dialog-tx" id="dialog-tx"></div>
+        <div class="dialog-next">▼ タップで次へ</div>
+      </div>
+    </div>
+    <div id="chatbox"></div>
+  </div>
+  <div id="console-bottom">
     <div class="act-row">
       <button class="act-btn" onclick="handleTalk()">💬 話す</button>
       <button class="act-btn btn-menu" onclick="openMenu()">📋 メニュー</button>
+      <div id="save-btn-hud" style="flex:1;display:flex;flex-direction:column;gap:4px;">
+        <button class="act-btn btn-save" onclick="openSaveModal()">💾 セーブ</button>
+      </div>
     </div>
     <div class="act-row">
       <button class="act-btn btn-chat" onclick="openChatInput()">✉ チャット</button>
@@ -595,18 +605,6 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
     </div>
   </div>
 </div>
-
-<!-- Dialog -->
-<div id="dialog" class="hidden">
-  <div class="win dialog-inner">
-    <div class="dialog-nm" id="dialog-nm"></div>
-    <div class="dialog-tx" id="dialog-tx"></div>
-    <div class="dialog-next">▼ タップで次へ</div>
-  </div>
-</div>
-
-<!-- Wave banner -->
-<div id="wave-banner"><div class="wb-txt" id="wb-txt"></div><div class="wb-sub" id="wb-sub"></div></div>
 
 <!-- ===== BATTLE ===== -->
 <div id="battle-screen" class="hidden">
@@ -708,6 +706,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
       <button class="mitem" onclick="closeMenu();openSkillTree()">✨ スキル習得</button>
       <button class="mitem" onclick="closeMenu();openJobScreen()">🔄 転職</button>
       <button class="mitem" onclick="closeMenu();openFullMap()">🗺️ 全体マップ</button>
+      <button class="mitem" onclick="closeMenu();openQuestLog()">📜 クエスト</button>
       <button class="mitem" onclick="closeMenu();openWarpModal()">🌀 帰還の書</button>
       <button class="mitem" id="menu-mount-btn" onclick="toggleMount()">🐴 馬に乗る</button>
       <button class="mitem" onclick="closeMenu();openSaveModal()">💾 セーブ / ロード</button>
@@ -771,6 +770,15 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
     <div class="eq-chars" id="village-shop-chars"></div>
     <div class="smith-list" id="village-shop-list"></div>
     <div class="win-close" onclick="closeVillageShop()">▶ とじる</div>
+  </div>
+</div>
+
+<!-- Quest Log (クエスト一覧) -->
+<div id="quest-screen" class="hidden">
+  <div class="win smith-box">
+    <div class="win-title">📜 クエスト一覧</div>
+    <div class="smith-list" id="quest-list" style="max-height:none;flex:1;"></div>
+    <div class="win-close" onclick="closeQuestLog()">▶ とじる</div>
   </div>
 </div>
 
@@ -916,8 +924,6 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
   <div class="title-menu">
     <button class="tmenu-btn" id="btn-continue" onclick="showContinue()" style="display:none;border-color:var(--gold);"><span class="tmenu-arrow">★</span>冒険を続ける</button>
     <button class="tmenu-btn" onclick="showLobby('solo')"><span class="tmenu-arrow">▶</span>ひとりで冒険</button>
-    <button class="tmenu-btn" onclick="showLobby('create')"><span class="tmenu-arrow">▶</span>仲間と冒険（ホスト）</button>
-    <button class="tmenu-btn" onclick="showLobby('join')"><span class="tmenu-arrow">▶</span>仲間に合流（ゲスト）</button>
   </div>
 </div>
 
@@ -943,6 +949,19 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'DotGo
 
 <script>
 'use strict';
+// ============================================================
+// 実視野ビューポート高さの補正（モバイルブラウザのアドレスバー等で
+// 100vh/100dvh が実際の表示領域とズレ、画面下部が見切れる問題への対策）
+// ============================================================
+function setRealVh(){
+  const h=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+  document.documentElement.style.setProperty('--vh',(h*0.01)+'px');
+}
+setRealVh();
+window.addEventListener('resize',setRealVh);
+window.addEventListener('orientationchange',setRealVh);
+if(window.visualViewport)window.visualViewport.addEventListener('resize',setRealVh);
+
 // ============================================================
 // CONSTANTS
 // ============================================================
@@ -1142,6 +1161,15 @@ const ITEMS_DROP = [
   {name:'解毒草',icon:'💊',type:'cure'},
   {name:'魔力の雫',icon:'💎',type:'mpitem',value:20},
 ];
+
+// 道具屋の販売アイテム一覧
+const ITEM_SHOP_CATALOG = [
+  {name:'癒し草',icon:'🌿',type:'heal',value:30,price:10},
+  {name:'星光草',icon:'🌙',type:'heal',value:80,price:50},
+  {name:'解毒草',icon:'💊',type:'cure',price:8},
+  {name:'魔力の雫',icon:'💎',type:'mpitem',value:20,price:15},
+];
+const ITEM_SHOP_DIALOG=['いらっしゃい！旅の薬草や道具を取り揃えていますよ。','必要な物があれば、いつでも声をかけてくださいね。'];
 
 // ============================================================
 // VILLAGES（全9村のストーリー・難易度スケーリング・施設データ）
@@ -1399,25 +1427,33 @@ function buildMapsDef(){
 }
 const MAPS_DEF = buildMapsDef();
 
-// 村の5つのNPC（村長・宿屋・武器屋・防具屋・鍛冶屋）を生成
+// 村の7つのNPC（村長・宿屋・武器屋・防具屋・鍛冶屋・道具屋・村人）を生成
 function getVillageNPCs(i){
   const v=VILLAGES[i];if(!v)return[];
   return [
-    {id:'elder',     name:'村長',  icon:'👴', chipImg:'Villager/pipo-charachip010.png', x:3,  y:3, dialog:getElderDialog(i), villageIdx:i},
-    {id:'inn',       name:'宿屋',  icon:'🏠', chipImg:'Villager/pipo-charachip001.png', x:12, y:4, dialog:v.innDialog, villageIdx:i},
-    {id:'weaponshop',name:'武器屋',icon:'⚔️', chipImg:'Soldier/pipo-charachip018.png',  x:12, y:9, dialog:v.weaponShopDialog, villageIdx:i},
-    {id:'armorshop', name:'防具屋',icon:'🛡️', chipImg:'Villager/pipo-charachip003.png', x:5,  y:9, dialog:v.armorShopDialog, villageIdx:i},
-    {id:'smith',     name:'鍛冶屋',icon:'🔨', chipImg:'Villager/pipo-charachip004.png', x:18, y:9, dialog:v.smithDialog, villageIdx:i},
+    {id:'elder',     name:'村長',  icon:'👴', chipImg:'Villager/pipo-charachip010.png', x:3,  y:3,  dialog:getElderDialog(i), villageIdx:i},
+    {id:'inn',       name:'宿屋',  icon:'🏠', chipImg:'Villager/pipo-charachip001.png', x:12, y:4,  dialog:v.innDialog, villageIdx:i},
+    {id:'weaponshop',name:'武器屋',icon:'⚔️', chipImg:'Soldier/pipo-charachip018.png',  x:12, y:9,  dialog:v.weaponShopDialog, villageIdx:i},
+    {id:'armorshop', name:'防具屋',icon:'🛡️', chipImg:'Villager/pipo-charachip003.png', x:5,  y:9,  dialog:v.armorShopDialog, villageIdx:i},
+    {id:'smith',     name:'鍛冶屋',icon:'🔨', chipImg:'Villager/pipo-charachip004.png', x:18, y:9,  dialog:v.smithDialog, villageIdx:i},
+    {id:'itemshop',  name:'道具屋',icon:'🧪', chipImg:'Villager/pipo-charachip002.png', x:8,  y:14, dialog:ITEM_SHOP_DIALOG, villageIdx:i},
+    {id:'villager',  name:'村人',  icon:'🧑', chipImg:'Villager/pipo-charachip006.png', x:14, y:14, dialog:getVillagerDialog(i), villageIdx:i},
   ];
 }
 
-// 村長の会話内容を進行状況に応じて切り替える
+// 村長の会話内容を進行状況に応じて切り替える（メインクエスト専用）
 function getElderDialog(i){
   const v=VILLAGES[i],s=G.story.villages[i];
   if(s.mainCleared)return v.unlockDialog;
   if(s.huntDone&&s.collectDone)return v.mainEventDialog;
-  const status=buildQuestStatusLines(i);
-  return s.visited?status:[...v.arrivalDialog,...status];
+  if(s.visited)return ['まずは村人たちの頼みを聞いて、力になってやってくれ。'];
+  return v.arrivalDialog;
+}
+// 村人の会話内容（サブクエスト：討伐・納品）を進行状況に応じて切り替える
+function getVillagerDialog(i){
+  const s=G.story.villages[i];
+  if(s.huntDone&&s.collectDone)return ['おかげで困りごとが片付いたよ。本当にありがとう！'];
+  return ['実は困っていることがあって…力を借りたいんだ。',...buildQuestStatusLines(i)];
 }
 // サブクエスト(討伐・納品)の進捗テキストを生成
 function buildQuestStatusLines(i){
@@ -1575,6 +1611,8 @@ const G = {
   // Map
   mapIdx:0, dungeonFloor:0, prevMapIdx:0,
   clearedDungeons:{}, chests:[], chestAnim:null, doors:[], doorAnim:null,
+  // クエストログで表示する道順（タイル座標の配列）
+  questRoute:null,
   // 強化・装備解放に使う素材（ダンジョンボスがドロップ）
   materials:{},
   // 現在のフロアでセーブポイントを使用済みか（フロア移動でリセット）
@@ -1627,8 +1665,9 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 function resizeCanvas(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const wrap=document.getElementById('canvas-wrap');
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
@@ -1639,7 +1678,7 @@ window.addEventListener('resize', resizeCanvas);
 window.addEventListener('load',()=>{
   // 画面の初期状態を強制リセット（CSS キャッシュ対策）
   ['lobby-screen','battle-screen','spell-screen','target-screen',
-   'ally-target-screen','menu-screen','status-screen','equip-screen','skill-screen','sp-screen','smith-screen','village-shop-screen',
+   'ally-target-screen','menu-screen','status-screen','equip-screen','skill-screen','sp-screen','smith-screen','village-shop-screen','quest-screen',
    'lvlup-screen','dialog','save-modal','online-modal','join-modal','fullmap-modal','warp-modal',
    'item-popup','chat-input'].forEach(id=>{
     const el=document.getElementById(id);
@@ -1857,6 +1896,9 @@ async function startGame(){
   for(let i=1;i<=4;i++){const c=makeChar(i);if(c)G.party.push(c);}
   if(!G.party.length)return;
   G.party.forEach(c=>recalcStats(c));
+
+  // デバッグ用「全クリ」モード: 自分の名前を「99999」にすると全要素を解放
+  if(G.party[0]&&G.party[0].name==='99999')applyDebugAllClear();
 
   // セーブデータがあれば自分のパーティ情報で上書き（継続プレイのため）
   // ※ 「冒険を続ける」ボタンからではなく普通に新規で始める場合は上書きしない
@@ -2721,8 +2763,18 @@ function buildVillageTiles(){
   [[11,2],[12,2],[13,2],[11,3],[13,3],[11,4],[13,4],[11,5],[13,5]].forEach(([x,y])=>g[y][x]=W);
   // 建物C: 倉庫（chest配置用, 入口 x:18,y:14）
   [[17,11],[18,11],[19,11],[20,11],[17,12],[20,12],[17,13],[20,13],[17,14],[19,14],[20,14]].forEach(([x,y])=>g[y][x]=W);
+  // 建物D: 武器屋（weaponshop NPC x:12,y:9, 入口 x:12,y:10）
+  [[11,8],[12,8],[13,8],[11,9],[13,9],[11,10],[13,10]].forEach(([x,y])=>g[y][x]=W);
+  // 建物E: 防具屋（armorshop NPC x:5,y:9, 入口 x:5,y:10）
+  [[4,8],[5,8],[6,8],[4,9],[6,9],[4,10],[6,10]].forEach(([x,y])=>g[y][x]=W);
+  // 建物F: 鍛冶屋（smith NPC x:18,y:9, 入口 x:18,y:10）
+  [[17,8],[18,8],[19,8],[17,9],[19,9],[17,10],[19,10]].forEach(([x,y])=>g[y][x]=W);
+  // 建物G: 道具屋（itemshop NPC x:8,y:14, 入口 x:8,y:15）
+  [[7,13],[8,13],[9,13],[7,14],[9,14],[7,15],[9,15]].forEach(([x,y])=>g[y][x]=W);
+  // 建物H: 村人の家（villager NPC x:14,y:14, 入口 x:14,y:15）
+  [[13,13],[14,13],[15,13],[13,14],[15,14],[13,15],[15,15]].forEach(([x,y])=>g[y][x]=W);
   // 木々の装飾
-  [[6,6],[16,6],[3,12],[8,12],[15,3]].forEach(([x,y])=>{if(g[y][x]===F)g[y][x]=Tr;});
+  [[6,6],[16,6],[3,12],[15,3]].forEach(([x,y])=>{if(g[y][x]===F)g[y][x]=Tr;});
   // 東の出口（フィールドへ）row9, col22
   g[9][MAP_W-2]=X;
   return g;
@@ -2753,20 +2805,20 @@ function generateMap(idx){
   const map=MAPS_DEF[idx];
   // 村・ダンジョンに入ると自動下馬（フィールドのみ騎乗可能）
   if(G.mounted&&map.type!=='field'){G.mounted=false;addChat('🐴 馬を降りた',null,true);}
-  G.tiles=[];G.npcsOnMap=[];G.chests=[];G.doors=[];G.doorAnim=null;G.mapEnemies=[];
+  G.tiles=[];G.npcsOnMap=[];G.chests=[];G.doors=[];G.doorAnim=null;G.mapEnemies=[];G.questRoute=null;
   const rng=n=>Math.floor(Math.random()*n);
 
   if(idx%3===0){
     // ─── 固定レイアウト: 村 ────────────────────────────────────
     G.tiles=buildVillageTiles();
     getVillageNPCs(idx/3).forEach(n=>{if(G.tiles[n.y]?.[n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
-    for(const[cx,cy] of [[19,13],[18,13],[7,13]]){
+    for(const[cx,cy] of [[19,13],[18,13],[12,12]]){
       if(G.tiles[cy]?.[cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
     }
     [[12,5],[3,5]].forEach(([dx,dy])=>{
       if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false});}
     });
-    setPlayerPos(12,9);
+    setPlayerPos(11,12);
 
   } else if(idx%3===1){
     // ─── 固定レイアウト: フィールド ──────────────────────────
@@ -3147,7 +3199,7 @@ const TILE_EMOJI={
 
 function updateCamera(){
   const leader=G.party[0];if(!leader)return;
-  const tw=canvas.width,th=canvas.height-120; // controls height
+  const tw=canvas.width,th=canvas.height;
   G.cam.x=leader.x-tw/2;
   G.cam.y=leader.y-th/2;
   const maxX=MAP_W*G.TILE-tw, maxY=MAP_H*G.TILE-th;
@@ -3163,7 +3215,7 @@ function render(){
   // Draw tiles
   const startX=Math.floor(G.cam.x/TILE), startY=Math.floor(G.cam.y/TILE);
   const endX=Math.min(MAP_W,startX+Math.ceil(canvas.width/TILE)+1);
-  const endY=Math.min(MAP_H,startY+Math.ceil((canvas.height-120)/TILE)+1);
+  const endY=Math.min(MAP_H,startY+Math.ceil(canvas.height/TILE)+1);
 
   for(let ty=startY;ty<endY;ty++){
     for(let tx=startX;tx<endX;tx++){
@@ -3239,7 +3291,7 @@ function render(){
   // Grid lines (subtle)
   ctx.strokeStyle='rgba(0,0,0,0.08)';ctx.lineWidth=0.5;
   for(let ty=startY;ty<=endY;ty++){ctx.beginPath();ctx.moveTo(0,ty*TILE-G.cam.y);ctx.lineTo(canvas.width,ty*TILE-G.cam.y);ctx.stroke();}
-  for(let tx=startX;tx<=endX;tx++){ctx.beginPath();ctx.moveTo(tx*TILE-G.cam.x,0);ctx.lineTo(tx*TILE-G.cam.x,canvas.height-120);ctx.stroke();}
+  for(let tx=startX;tx<=endX;tx++){ctx.beginPath();ctx.moveTo(tx*TILE-G.cam.x,0);ctx.lineTo(tx*TILE-G.cam.x,canvas.height);ctx.stroke();}
 
   // Map enemies
   G.mapEnemies.forEach(e=>{
@@ -3338,6 +3390,13 @@ function drawMinimap(){
   mmCtx.clearRect(0,0,88,88);
   mmCtx.fillStyle='rgba(0,20,0,0.6)';mmCtx.fillRect(0,0,88,88);
   const sx=88/MAP_W,sy=88/MAP_H;
+  if(G.questRoute){
+    mmCtx.fillStyle='#ffee44';
+    G.questRoute.forEach(p=>{
+      const px=(p.x+0.5)*sx,py=(p.y+0.5)*sy;
+      mmCtx.fillRect(px-1,py-1,2,2);
+    });
+  }
   G.mapEnemies.forEach(e=>{
     if(e.dead)return;
     const ex=e.x/G.TILE*sx,ey=e.y/G.TILE*sy;
@@ -4797,6 +4856,8 @@ function battleVictory(){
     if(vs.hunt!==before){
       const elder=G.npcsOnMap.find(n=>n.id==='elder');
       if(elder)elder.dialog=getElderDialog(vIdx);
+      const villager=G.npcsOnMap.find(n=>n.id==='villager');
+      if(villager)villager.dialog=getVillagerDialog(vIdx);
     }
   }
 
@@ -4846,6 +4907,31 @@ function learnUltimate(c,cls){
   if(!ult)return;
   c.learnedUltimates.push(cls);
   addChat(`🌟 ${c.name}は職業「${CLASSES[cls].name}」を極め、必殺技「${ult.name}」を習得した！`,null,true);
+}
+
+// ============================================================
+// デバッグ用「全クリ」モード（名前を「99999」にして冒険開始すると有効）
+// ============================================================
+function applyDebugAllClear(){
+  // 村: 全イベント・サブクエストをクリア済みに
+  G.story.villages.forEach(v=>{v.visited=true;v.huntDone=true;v.collectDone=true;v.mainCleared=true;});
+  // メタル図鑑をコンプリート
+  G.story.metalDex={metal:99,gold:99};
+  // 全ダンジョンのボスを討伐済みに
+  VILLAGES.forEach(v=>{G.clearedDungeons[v.idx*3+2]=true;});
+  // 強化・特別装備に必要な素材をカンスト
+  MATERIALS_CATALOG.forEach(m=>{G.materials[m.id]=99;});
+  // パーティ全員のレベル・ステータス・全職業レベル・必殺技を全開放
+  G.party.forEach(c=>{
+    c.lv=99;c.exp=0;c.expNext=999999;c.gold=999999;
+    c.maxHp=9999;c.hp=9999;c.baseMaxMp=999;c.mp=999;
+    c.baseAtk=999;c.baseDef=999;c.baseSpd=999;c.baseInt=999;
+    c.sp=99;
+    c.jobLevels={};c.jobExp={};
+    Object.keys(CLASSES).forEach(k=>{c.jobLevels[k]=99;c.jobExp[k]=0;});
+    c.learnedUltimates=Object.keys(ULTIMATE_SKILLS);
+    recalcStats(c);
+  });
 }
 
 function checkLvl(c){
@@ -4950,8 +5036,10 @@ function advDialog(){
       case 'inn':handleInnStay();break;
       case 'weaponshop':openVillageShop('weapon',npc.villageIdx);break;
       case 'armorshop':openVillageShop('armor',npc.villageIdx);break;
+      case 'itemshop':openVillageShop('item',npc.villageIdx);break;
       case 'smith':openSmith();break;
       case 'elder':handleElderEnd(npc.villageIdx);break;
+      case 'villager':handleVillagerEnd(npc.villageIdx);break;
     }
     return;
   }
@@ -5421,9 +5509,27 @@ function selVillageShopChar(i){villageShopCharIdx=i;renderVillageShop();}
 function renderVillageShop(){
   const v=VILLAGES[villageShopVillageIdx];
   const gold=G.party[0].gold;
+  document.getElementById('village-shop-gold').textContent=`💰 ${gold} G`;
+
+  if(villageShopType==='item'){
+    document.getElementById('village-shop-title').textContent=`🧪 ${v.name} 道具屋`;
+    document.getElementById('village-shop-chars').innerHTML='';
+    const matEl0=document.getElementById('village-shop-materials');
+    matEl0.style.display='none';matEl0.innerHTML='';
+    document.getElementById('village-shop-list').innerHTML=ITEM_SHOP_CATALOG.map((item,idx)=>{
+      const canBuy=gold>=item.price;
+      return `<div class="smith-row">
+        <span class="eq-sico">${item.icon}</span>
+        <span class="smith-row-info">${item.name}</span>
+        <div class="smith-cost"><span class="${canBuy?'':'smith-lack'}">${item.price}G</span></div>
+        <button class="smith-btn ${canBuy?'':'disabled'}" ${canBuy?'':'disabled'} onclick="buyShopItem(${idx})">購入</button>
+      </div>`;
+    }).join('');
+    return;
+  }
+
   const isWeapon=villageShopType==='weapon';
   document.getElementById('village-shop-title').textContent=isWeapon?`⚔️ ${v.name} 武器屋`:`🛡️ ${v.name} 防具屋`;
-  document.getElementById('village-shop-gold').textContent=`💰 ${gold} G`;
 
   const ids=[isWeapon?'ws'+v.idx:'as'+v.idx];
   if(v.idx>=3)ids.push(isWeapon?v.specialWeaponId:v.specialArmorId);
@@ -5492,6 +5598,95 @@ function buyVillageEquip(id){
   renderVillageShop();
 }
 
+// 道具屋でアイテムを購入
+function buyShopItem(idx){
+  const item=ITEM_SHOP_CATALOG[idx];
+  if(G.party[0].gold<item.price)return;
+  G.party[0].gold-=item.price;
+  G.party[0].items.push({name:item.name,icon:item.icon,type:item.type,value:item.value});
+  addChat(`🛒 ${item.icon}${item.name}を購入した！`,null,true);
+  showItemPop({icon:item.icon,name:item.name});
+  renderVillageShop();
+}
+
+// ============================================================
+// QUEST LOG (クエスト一覧)
+// ============================================================
+function openQuestLog(){
+  renderQuestLog();
+  document.getElementById('quest-screen').classList.remove('hidden');
+}
+function closeQuestLog(){document.getElementById('quest-screen').classList.add('hidden');}
+
+function renderQuestLog(){
+  const rows=[];
+  VILLAGES.forEach((v,i)=>{
+    const s=G.story.villages[i];
+    if(!s.visited)return;
+    let mainLine;
+    if(s.mainCleared)mainLine=`✅ メイン: ${v.mainBossName}を討伐済み`;
+    else if(s.huntDone&&s.collectDone)mainLine=`⭐ メイン: 村長に報告できる（${v.mainBossName}が出現）`;
+    else mainLine='📖 メイン: 村人の頼みを解決しよう';
+    const subLines=buildQuestStatusLines(i);
+    rows.push(`<div class="quest-row">
+      <div class="quest-row-hd"><span>${v.icon} ${v.name}</span></div>
+      <div class="quest-row-line">${mainLine}</div>
+      ${subLines.map(l=>`<div class="quest-row-line">${l}</div>`).join('')}
+      <button class="smith-btn quest-route-btn" onclick="showQuestRoute(${i})">🧭 村人への道順</button>
+    </div>`);
+  });
+  document.getElementById('quest-list').innerHTML=rows.length?rows.join(''):
+    '<div class="quest-row"><div class="quest-row-line">まだクエストがありません。村長や村人に話しかけてみよう。</div></div>';
+}
+
+// クエストを依頼した村人の場所までの道順をミニマップに表示
+function showQuestRoute(i){
+  const v=VILLAGES[i];
+  const townMapIdx=i*3;
+  if(G.mapIdx===townMapIdx){
+    const target=G.npcsOnMap.find(n=>n.id==='villager');
+    const leader=G.party[0];
+    const start={x:Math.floor(leader.x/G.TILE),y:Math.floor(leader.y/G.TILE)};
+    if(target){
+      const path=bfsPath(start,{x:target.x,y:target.y});
+      if(path){
+        G.questRoute=path;
+        addChat(`🧭 ${v.name}の村人への道順をミニマップに表示しました`,null,true);
+      }else{
+        addChat('🧭 道が見つかりませんでした…',null,true);
+      }
+    }
+  }else{
+    G.questRoute=null;
+    addChat(`🧭 まずは${v.name}へ向かいましょう`,null,true);
+  }
+  closeQuestLog();
+}
+
+// 簡易BFS探索：startからgoalまでの通行可能な経路（タイル座標の配列）を求める
+function bfsPath(start,goal){
+  if(start.x===goal.x&&start.y===goal.y)return[{x:start.x,y:start.y}];
+  const key=(x,y)=>x+','+y;
+  const visited=new Set([key(start.x,start.y)]);
+  const queue=[{x:start.x,y:start.y,path:[{x:start.x,y:start.y}]}];
+  const passable=(x,y)=>{
+    const t=G.tiles[y]?.[x];
+    return t!==undefined&&t!==T.WALL&&t!==T.TREE&&t!==T.CHEST&&t!==T.DOOR&&t!==T.NPC;
+  };
+  while(queue.length){
+    const cur=queue.shift();
+    for(const[dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]){
+      const nx=cur.x+dx,ny=cur.y+dy;
+      if(visited.has(key(nx,ny)))continue;
+      if(nx===goal.x&&ny===goal.y)return[...cur.path,{x:nx,y:ny}];
+      if(!passable(nx,ny))continue;
+      visited.add(key(nx,ny));
+      queue.push({x:nx,y:ny,path:[...cur.path,{x:nx,y:ny}]});
+    }
+  }
+  return null;
+}
+
 // ============================================================
 // INN / STORY EVENTS (宿屋・村長イベント)
 // ============================================================
@@ -5506,10 +5701,19 @@ function handleInnStay(){
   openSaveModal();
 }
 
-// 村長との会話終了時：納品クエストの判定と、討伐・納品が両方完了していれば村ボス戦を開始
+// 村長との会話終了時：討伐・納品（村人のサブクエスト）が両方完了していれば村ボス戦を開始
 function handleElderEnd(i){
-  const v=VILLAGES[i],s=G.story.villages[i];
+  const s=G.story.villages[i];
   s.visited=true;
+  const readyForBoss=s.huntDone&&s.collectDone&&!s.mainCleared;
+  const elder=G.npcsOnMap.find(n=>n.id==='elder');
+  if(elder)elder.dialog=getElderDialog(i);
+  if(readyForBoss)startVillageBossFight(i);
+}
+
+// 村人との会話終了時：納品クエストの判定（サブクエスト）
+function handleVillagerEnd(i){
+  const v=VILLAGES[i],s=G.story.villages[i];
   if(!s.collectDone){
     const col=v.collectQuest;
     const have=G.party[0].items.filter(it=>it.name===col.itemName).length;
@@ -5520,13 +5724,13 @@ function handleElderEnd(i){
         return true;
       });
       s.collectDone=true;
-      addChat(`📦 ${col.itemName}を村長に渡した！`,null,true);
+      addChat(`📦 ${col.itemName}を村人に渡した！`,null,true);
     }
   }
-  const readyForBoss=s.huntDone&&s.collectDone&&!s.mainCleared;
+  const villager=G.npcsOnMap.find(n=>n.id==='villager');
+  if(villager)villager.dialog=getVillagerDialog(i);
   const elder=G.npcsOnMap.find(n=>n.id==='elder');
   if(elder)elder.dialog=getElderDialog(i);
-  if(readyForBoss)startVillageBossFight(i);
 }
 
 // 村のメインイベント（村ボス）戦を開始（マルチプレイ人数でスケーリング）
