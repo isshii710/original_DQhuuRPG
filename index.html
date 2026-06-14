@@ -1514,14 +1514,22 @@ const MAPS_DEF = buildMapsDef();
 // 村の7つのNPC（村長・宿屋・武器屋・防具屋・鍛冶屋・道具屋・村人）を生成
 function getVillageNPCs(i){
   const v=VILLAGES[i];if(!v)return[];
+  // 最初の村は専用レイアウト（広場・南口デザイン）のためNPCの座標が異なる
+  const pos=i===0?{
+    elder:{x:4, y:3}, inn:{x:12,y:3}, weaponshop:{x:20,y:7}, armorshop:{x:3,y:7},
+    smith:{x:3, y:11},itemshop:{x:19,y:3},villager:{x:10,y:14},
+  }:{
+    elder:{x:3, y:3}, inn:{x:12,y:4}, weaponshop:{x:12,y:9}, armorshop:{x:5,y:9},
+    smith:{x:18,y:9},itemshop:{x:8, y:14},villager:{x:14,y:14},
+  };
   return [
-    {id:'elder',     name:'村長',  icon:'👴', chipImg:'Villager/pipo-charachip010.png', x:3,  y:3,  dialog:getElderDialog(i), villageIdx:i},
-    {id:'inn',       name:'宿屋',  icon:'🏠', chipImg:'Villager/pipo-charachip001.png', x:12, y:4,  dialog:v.innDialog, villageIdx:i},
-    {id:'weaponshop',name:'武器屋',icon:'⚔️', chipImg:'Soldier/pipo-charachip018.png',  x:12, y:9,  dialog:v.weaponShopDialog, villageIdx:i},
-    {id:'armorshop', name:'防具屋',icon:'🛡️', chipImg:'Villager/pipo-charachip003.png', x:5,  y:9,  dialog:v.armorShopDialog, villageIdx:i},
-    {id:'smith',     name:'鍛冶屋',icon:'🔨', chipImg:'Villager/pipo-charachip004.png', x:18, y:9,  dialog:v.smithDialog, villageIdx:i},
-    {id:'itemshop',  name:'道具屋',icon:'🧪', chipImg:'Villager/pipo-charachip002.png', x:8,  y:14, dialog:ITEM_SHOP_DIALOG, villageIdx:i},
-    {id:'villager',  name:'村人',  icon:'🧑', chipImg:'Villager/pipo-charachip006.png', x:14, y:14, dialog:getVillagerDialog(i), villageIdx:i},
+    {id:'elder',     name:'村長',  icon:'👴', chipImg:'Villager/pipo-charachip010.png', ...pos.elder,      dialog:getElderDialog(i), villageIdx:i},
+    {id:'inn',       name:'宿屋',  icon:'🏠', chipImg:'Villager/pipo-charachip001.png', ...pos.inn,        dialog:v.innDialog, villageIdx:i},
+    {id:'weaponshop',name:'武器屋',icon:'⚔️', chipImg:'Soldier/pipo-charachip018.png',  ...pos.weaponshop, dialog:v.weaponShopDialog, villageIdx:i},
+    {id:'armorshop', name:'防具屋',icon:'🛡️', chipImg:'Villager/pipo-charachip003.png', ...pos.armorshop,  dialog:v.armorShopDialog, villageIdx:i},
+    {id:'smith',     name:'鍛冶屋',icon:'🔨', chipImg:'Villager/pipo-charachip004.png', ...pos.smith,      dialog:v.smithDialog, villageIdx:i},
+    {id:'itemshop',  name:'道具屋',icon:'🧪', chipImg:'Villager/pipo-charachip002.png', ...pos.itemshop,   dialog:ITEM_SHOP_DIALOG, villageIdx:i},
+    {id:'villager',  name:'村人',  icon:'🧑', chipImg:'Villager/pipo-charachip006.png', ...pos.villager,   dialog:getVillagerDialog(i), villageIdx:i},
   ];
 }
 
@@ -2835,7 +2843,8 @@ function initGame(){
 }
 
 // ─── 固定マップレイアウトビルダー ────────────────────────────
-function buildVillageTiles(){
+function buildVillageTiles(villageIdx){
+  if(villageIdx===0)return buildVillageTilesFirst();
   const F=T.FLOOR,W=T.WALL,Tr=T.TREE,X=T.EXIT;
   const g=[];
   for(let y=0;y<MAP_H;y++){g[y]=[];for(let x=0;x<MAP_W;x++)g[y][x]=F;}
@@ -2861,6 +2870,36 @@ function buildVillageTiles(){
   [[6,6],[16,6],[3,12],[15,3]].forEach(([x,y])=>{if(g[y][x]===F)g[y][x]=Tr;});
   // 東の出口（フィールドへ）row9, col22
   g[9][MAP_W-2]=X;
+  return g;
+}
+
+// 最初の村専用レイアウト: 中央広場を囲むように建物を配置し、南側にフィールドへの出口を設ける
+function buildVillageTilesFirst(){
+  const F=T.FLOOR,W=T.WALL,Tr=T.TREE,X=T.EXIT;
+  const g=[];
+  for(let y=0;y<MAP_H;y++){g[y]=[];for(let x=0;x<MAP_W;x++)g[y][x]=F;}
+  for(let x=0;x<MAP_W;x++){g[0][x]=W;g[MAP_H-1][x]=W;}
+  for(let y=0;y<MAP_H;y++){g[y][0]=W;g[y][MAP_W-1]=W;}
+  // 建物A: 村長の家（elder NPC x:4,y:3, 扉 x:4,y:4）
+  [[3,2],[4,2],[5,2],[3,3],[5,3],[3,4],[5,4]].forEach(([x,y])=>g[y][x]=W);
+  // 建物B: 宿屋（inn NPC x:12,y:3, 扉 x:12,y:4）
+  [[11,2],[12,2],[13,2],[11,3],[13,3],[11,4],[13,4]].forEach(([x,y])=>g[y][x]=W);
+  // 建物G: 道具屋（itemshop NPC x:19,y:3, 扉 x:19,y:4）
+  [[18,2],[19,2],[20,2],[18,3],[20,3],[18,4],[20,4]].forEach(([x,y])=>g[y][x]=W);
+  // 建物E: 防具屋（armorshop NPC x:3,y:7, 扉 x:3,y:8）
+  [[2,6],[3,6],[4,6],[2,7],[4,7],[2,8],[4,8]].forEach(([x,y])=>g[y][x]=W);
+  // 建物D: 武器屋（weaponshop NPC x:20,y:7, 扉 x:20,y:8）
+  [[19,6],[20,6],[21,6],[19,7],[21,7],[19,8],[21,8]].forEach(([x,y])=>g[y][x]=W);
+  // 建物F: 鍛冶屋（smith NPC x:3,y:11, 扉 x:3,y:12）
+  [[2,10],[3,10],[4,10],[2,11],[4,11],[2,12],[4,12]].forEach(([x,y])=>g[y][x]=W);
+  // 建物C: 倉庫（chest配置, 扉 x:20,y:12）
+  [[19,10],[20,10],[21,10],[19,11],[21,11],[19,12],[21,12]].forEach(([x,y])=>g[y][x]=W);
+  // 建物H: 村人の家（villager NPC x:10,y:14, 扉 x:10,y:15）
+  [[9,13],[10,13],[11,13],[9,14],[11,14],[9,15],[11,15]].forEach(([x,y])=>g[y][x]=W);
+  // 木々の装飾
+  [[6,2],[16,2],[2,14],[21,14]].forEach(([x,y])=>{if(g[y][x]===F)g[y][x]=Tr;});
+  // 南の出口（フィールドへ・敵のいるエリアへの道）
+  g[MAP_H-1][12]=X;
   return g;
 }
 
@@ -2894,15 +2933,25 @@ function generateMap(idx){
 
   if(idx%3===0){
     // ─── 固定レイアウト: 村 ────────────────────────────────────
-    G.tiles=buildVillageTiles();
-    getVillageNPCs(idx/3).forEach(n=>{if(G.tiles[n.y]?.[n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
-    for(const[cx,cy] of [[19,14],[18,13],[12,12]]){
-      if(G.tiles[cy]?.[cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
+    const villageIdx=idx/3;
+    G.tiles=buildVillageTiles(villageIdx);
+    getVillageNPCs(villageIdx).forEach(n=>{if(G.tiles[n.y]?.[n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
+    if(villageIdx===0){
+      const cx=20,cy=11;
+      if(G.tiles[cy]?.[cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});}
+      [[4,4,'elder'],[12,4,'inn'],[19,4,'itemshop'],[3,8,'armorshop'],[20,8,'weaponshop'],[3,12,'smith'],[20,12,null],[10,15,'villager']].forEach(([dx,dy,npcId])=>{
+        if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false,npcId});}
+      });
+      setPlayerPos(11,12);
+    }else{
+      for(const[cx,cy] of [[19,14],[18,13],[12,12]]){
+        if(G.tiles[cy]?.[cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
+      }
+      [[12,5,'inn'],[3,5,'elder'],[12,10,'weaponshop'],[5,10,'armorshop'],[18,10,'smith'],[8,15,'itemshop'],[14,15,'villager'],[18,15]].forEach(([dx,dy,npcId])=>{
+        if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false,npcId});}
+      });
+      setPlayerPos(11,12);
     }
-    [[12,5,'inn'],[3,5,'elder'],[12,10,'weaponshop'],[5,10,'armorshop'],[18,10,'smith'],[8,15,'itemshop'],[14,15,'villager'],[18,15]].forEach(([dx,dy,npcId])=>{
-      if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false,npcId});}
-    });
-    setPlayerPos(11,12);
 
   } else if(idx%3===1){
     // ─── 固定レイアウト: フィールド ──────────────────────────
@@ -3387,10 +3436,14 @@ function render(){
 
   // 村の主要施設(宿屋・武器屋・防具屋・道具屋)に看板を表示
   if(!G.inHouse&&map.type==='town'){
-    VILLAGE_SIGNS.forEach(sign=>{
+    getVillageSigns(G.mapIdx).forEach(sign=>{
       if(sign.x>=startX-1&&sign.x<=endX&&sign.y>=startY-1&&sign.y<=endY)drawBuildingSign(sign);
     });
+    if(G.mapIdx===0)drawPlazaFountain();
   }
+
+  // 店内（武器屋・防具屋・鍛冶屋・道具屋）のテーマ装飾を表示
+  if(G.inHouse&&G.houseTheme&&G.houseRoom)drawShopInterior(G.houseTheme,G.houseRoom);
 
   // Map enemies
   G.mapEnemies.forEach(e=>{
@@ -3470,12 +3523,23 @@ function drawDoorTile(sx,sy,size,frame){
 }
 
 // 村の主要施設の看板（出入口の真上のタイル座標・アイコン・施設名）
-const VILLAGE_SIGNS=[
+const VILLAGE_SIGNS_COMMON=[
   {x:12,y:2, icon:'🏠',name:'宿屋'},
   {x:12,y:8, icon:'⚔️',name:'武器屋'},
   {x:5, y:8, icon:'🛡️',name:'防具屋'},
   {x:8, y:13,icon:'🧪',name:'道具屋'},
 ];
+// 最初の村専用レイアウトの看板配置
+const VILLAGE_SIGNS_FIRST=[
+  {x:12,y:2, icon:'🏠',name:'宿屋'},
+  {x:20,y:6, icon:'⚔️',name:'武器屋'},
+  {x:3, y:6, icon:'🛡️',name:'防具屋'},
+  {x:19,y:2, icon:'🧪',name:'道具屋'},
+];
+// 村のマップ番号に応じた看板配置を返す
+function getVillageSigns(mapIdx){
+  return mapIdx===0?VILLAGE_SIGNS_FIRST:VILLAGE_SIGNS_COMMON;
+}
 // 施設の看板を建物の上に描画
 function drawBuildingSign(sign){
   const TILE=G.TILE;
@@ -3488,6 +3552,41 @@ function drawBuildingSign(sign){
   ctx.font=`${TILE*0.32}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillStyle='#fff';
   ctx.fillText(`${sign.icon} ${sign.name}`,cx,by+h/2);
+}
+
+// 最初の村の広場に設置する噴水（装飾のみ・歩行可能）
+function drawPlazaFountain(){
+  const TILE=G.TILE;
+  const fx=12,fy=8;
+  const sx=fx*TILE-G.cam.x,sy=fy*TILE-G.cam.y;
+  const glow=0.3+0.2*Math.sin(performance.now()/400);
+  ctx.fillStyle=`rgba(80,180,255,${glow})`;ctx.beginPath();ctx.arc(sx+TILE/2,sy+TILE/2,TILE*0.45,0,Math.PI*2);ctx.fill();
+  drawTileEmoji('⛲',sx,sy,TILE);
+}
+
+// 店内テーマ（武器屋・防具屋・鍛冶屋・道具屋ごとの内装アイコン）
+const SHOP_THEMES={
+  weaponshop:{label:'武器屋',icon:'⚔️', shelfIcons:['⚔️','🏹'], counterIcon:'🛡️'},
+  armorshop: {label:'防具屋',icon:'🛡️', shelfIcons:['🪖','👕'], counterIcon:'🧰'},
+  smith:     {label:'鍛冶屋',icon:'🔨', shelfIcons:['⚒️','⛏️'], counterIcon:'🔥'},
+  itemshop:  {label:'道具屋',icon:'🧪', shelfIcons:['🌿','💊'], counterIcon:'📦'},
+};
+// 店内の内装（商品棚・カウンター・看板）を描画
+function drawShopInterior(theme,room){
+  const TILE=G.TILE;
+  const{ox,oy,w,h}=room;
+  const cx=ox+Math.floor(w/2);
+  // 商品棚（奥の壁にアイコンを表示）
+  [ox+1,ox+w-2].forEach((tx,i)=>{
+    const sx=tx*TILE-G.cam.x, sy=(oy-1)*TILE-G.cam.y;
+    drawTileEmoji(theme.shelfIcons[i%theme.shelfIcons.length],sx,sy,TILE);
+  });
+  // 店名サイン
+  drawBuildingSign({x:cx,y:oy,icon:theme.icon,name:theme.label});
+  // カウンター（NPCの手前に設置）
+  const ccx=cx*TILE-G.cam.x, ccy=(oy+2)*TILE-G.cam.y;
+  ctx.fillStyle='rgba(120,80,40,0.85)';ctx.fillRect(ccx+2,ccy+TILE*0.35,TILE-4,TILE*0.45);
+  drawTileEmoji(theme.counterIcon,ccx,ccy,TILE);
 }
 
 // NPCの上に表示するクエストマーカー（メインクエスト=緑！/ サブクエスト=青！）の種別を判定
@@ -5251,6 +5350,7 @@ function enterHouse(door){
     if(npc){const nx=cx,ny=room.oy+1;G.tiles[ny][nx]=T.NPC;G.npcsOnMap=[{...npc,x:nx,y:ny}];}
     else G.npcsOnMap=[];
     G.doors=[];G.chests=[];G.mapEnemies=[];G.inHouse=true;
+    G.houseTheme=SHOP_THEMES[door.npcId]||null;G.houseRoom=room;
     setPlayerPos(cx,exitY-1);
     addChat('🚪 '+(npc?npc.name+'の家':'家')+'に入った',null,true);
   });
@@ -5260,7 +5360,7 @@ function exitHouse(){
   fadeIn(()=>{
     const ret=G.houseReturn;
     G.tiles=ret.tiles;G.npcsOnMap=ret.npcsOnMap;G.doors=ret.doors;G.chests=ret.chests;G.mapEnemies=ret.mapEnemies;
-    G.inHouse=false;G.houseReturn=null;
+    G.inHouse=false;G.houseReturn=null;G.houseTheme=null;G.houseRoom=null;
     setPlayerPos(ret.x,ret.y);
     addChat('外に出た',null,true);
   });
