@@ -439,6 +439,7 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 .shop-row-bottom{display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap;}
 .shop-pagenav{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;font-size:9px;color:var(--white);}
 .shop-pagenav:empty{display:none;}
+.eq-list.shop-grid .eqitem{flex-direction:column;align-items:flex-start;gap:4px;padding:7px 9px;}
 
 /* Item popup */
 #item-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:70;padding:18px 28px;text-align:center;animation:ipop 2.4s forwards;}
@@ -762,7 +763,8 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
     <div class="eq-slots" id="eq-slots"></div>
     <div class="eq-stats" id="eq-stats"></div>
     <div style="padding:6px 12px;font-size:9px;color:var(--gold);letter-spacing:2px;" id="eq-list-lbl"></div>
-    <div class="eq-list" id="eq-list"></div>
+    <div class="eq-list shop-grid" id="eq-list"></div>
+    <div class="shop-pagenav" id="eq-list-pagenav"></div>
     <div class="win-close" onclick="closeEquip()">▶ とじる</div>
   </div>
 </div>
@@ -5522,7 +5524,7 @@ function menuItem(){closeMenu();const items=G.party[0].items;addChat(items.lengt
 
 let eqSlot='weapon';
 let eqCharIdx=0;
-function menuEquip(){closeMenu();eqCharIdx=0;eqSlot='weapon';renderEquip();document.getElementById('equip-screen').classList.remove('hidden');}
+function menuEquip(){closeMenu();eqCharIdx=0;eqSlot='weapon';shopPages['eq-list']=0;renderEquip();document.getElementById('equip-screen').classList.remove('hidden');}
 function closeEquip(){document.getElementById('equip-screen').classList.add('hidden');}
 const SLOT_LBL={weapon:'ぶき',armor:'よろい',accessory:'そうしょく'};
 function renderEquip(){
@@ -5542,18 +5544,20 @@ function renderEquip(){
   document.getElementById('eq-list-lbl').textContent=SLOT_LBL[eqSlot]+'を選ぶ';
   const owned=c.inventory.map(getEquip).filter(e=>e&&e.slot===eqSlot);
   const curId=c.equip[eqSlot];
-  document.getElementById('eq-list').innerHTML=
-    `<button class="eqitem" onclick="equipItm(null)"><span class="eq-sico">➖</span><span class="eq-snm">はずす</span></button>`+
-    owned.map(e=>{
+  const rows=[`<button class="eqitem" onclick="equipItm(null)">
+      <div class="shop-row-top"><span class="eq-sico">➖</span><span class="shop-row-name">はずす</span></div>
+    </button>`,
+    ...owned.map(e=>{
       const cur=curId?getEquip(curId):null;
       const da=(e.atk||0)-(cur?.atk||0),dd=(e.def||0)-(cur?.def||0);
       const delta=[da&&`<span class="${da>0?'dplus':'dminus'}">攻${da>0?'+':''}${da}</span>`,dd&&`<span class="${dd>0?'dplus':'dminus'}">守${dd>0?'+':''}${dd}</span>`].filter(Boolean).join(' ');
       return`<button class="eqitem ${e.id===curId?'equipped':''}" onclick="equipItm('${e.id}')">
-        <span class="eq-sico">${e.icon}</span><span class="eq-snm">${e.name}</span>
-        <span class="eq-delta">${delta}</span>${e.id===curId?'<span class="eq-badge">装備中</span>':''}</button>`;}).join('');
+        <div class="shop-row-top"><span class="eq-sico">${e.icon}</span><span class="shop-row-name">${e.name}</span></div>
+        <div class="shop-row-bottom"><span class="eq-delta">${delta}</span>${e.id===curId?'<span class="eq-badge">装備中</span>':''}</div></button>`;})];
+  renderShopPage('eq-list','eq-list-pagenav',rows,renderEquip);
 }
-function selEqSlot(s){eqSlot=s;renderEquip();}
-function selEqChar(i){eqCharIdx=i;renderEquip();}
+function selEqSlot(s){eqSlot=s;shopPages['eq-list']=0;renderEquip();}
+function selEqChar(i){eqCharIdx=i;shopPages['eq-list']=0;renderEquip();}
 function equipItm(id){
   const c=G.party[eqCharIdx];c.equip[eqSlot]=id;recalcStats(c);
   addChat(`${c.name}が`+(id?getEquip(id).icon+getEquip(id).name+'を装備！':'はずした'),null,true);
