@@ -4051,12 +4051,10 @@ function runPlayerAttackPositioning(actor, pIdx, rangeType, cb){
   rafId=requestAnimationFrame(tick);
 }
 
-// 敵の攻撃: 攻撃方向に赤いレーンを表示し、狙われた味方は左ぷにコンで回避する
+// 敵の攻撃: 攻撃方向に赤いレーンを表示し、味方全員が指でスライドして回避できる
 // cb(hitAllies, angle) を呼ぶ
 function runEnemyDangerPhase(enemy, target, rangeType, cb){
   const bg=document.getElementById('battle-bg');
-  const tIdx=G.party.indexOf(target);
-  const allyEl=document.getElementById('bally-'+tIdx);
   const rangeLen=RANGE_LEN_PX[rangeType]||RANGE_LEN_PX.mid;
 
   let angle=Math.atan2(target.ay-enemy.ay, target.ax-enemy.ax);
@@ -4068,52 +4066,57 @@ function runEnemyDangerPhase(enemy, target, rangeType, cb){
   bg.appendChild(lane);
   _layoutLaneZone(lane, enemy.ax, enemy.ay, angle, rangeLen, LANE_WIDTH_PX);
 
-  _showPhaseHint(`⚠ ${target.name}が狙われている！キャラを指でスライドして回避！`);
-  if(allyEl){allyEl.style.transition='none';allyEl.style.zIndex=30;allyEl.style.touchAction='none';allyEl.classList.add('draggable');}
+  _showPhaseHint(`⚠ ${target.name}が狙われている！味方を指でスライドして回避！`);
+
+  // ぷにコンの代わりに、生存している味方全員を指で直接スライドして回避できる
+  const draggables=[];
+  G.party.forEach((p,idx)=>{
+    if(p.hp<=0)return;
+    const el=document.getElementById('bally-'+idx);
+    if(!el)return;
+    el.style.transition='none';el.style.zIndex=30;el.style.touchAction='none';el.classList.add('draggable');
+    let dragging=false;
+    const onDown=(ev)=>{
+      dragging=true;
+      el.classList.add('dragging');
+      el.setPointerCapture?.(ev.pointerId);
+      ev.preventDefault();
+    };
+    const onMove=(ev)=>{
+      if(!dragging)return;
+      const r=_bgRect();
+      p.ax=Math.max(BATTLE_AREA.minX,Math.min(BATTLE_AREA.maxX, ((ev.clientX-r.left)/r.width)*100));
+      p.ay=Math.max(BATTLE_AREA.minY,Math.min(BATTLE_AREA.maxY, ((ev.clientY-r.top)/r.height)*100));
+      el.style.left=p.ax+'%';el.style.top=p.ay+'%';
+      ev.preventDefault();
+    };
+    const onUp=(ev)=>{
+      dragging=false;
+      el.classList.remove('dragging');
+      el.releasePointerCapture?.(ev.pointerId);
+    };
+    el.addEventListener('pointerdown',onDown);
+    el.addEventListener('pointermove',onMove);
+    el.addEventListener('pointerup',onUp);
+    el.addEventListener('pointercancel',onUp);
+    draggables.push({el,onDown,onMove,onUp});
+  });
 
   let remain=DODGE_PHASE_MS;
   timerEl.textContent=Math.ceil(remain/1000);
 
-  // ぷにコンの代わりに、自分のキャラを指で直接スライドして回避する
-  let dragging=false;
-  const onDown=(ev)=>{
-    dragging=true;
-    allyEl.classList.add('dragging');
-    allyEl.setPointerCapture?.(ev.pointerId);
-    ev.preventDefault();
-  };
-  const onMove=(ev)=>{
-    if(!dragging)return;
-    const r=_bgRect();
-    target.ax=Math.max(BATTLE_AREA.minX,Math.min(BATTLE_AREA.maxX, ((ev.clientX-r.left)/r.width)*100));
-    target.ay=Math.max(BATTLE_AREA.minY,Math.min(BATTLE_AREA.maxY, ((ev.clientY-r.top)/r.height)*100));
-    allyEl.style.left=target.ax+'%';allyEl.style.top=target.ay+'%';
-    ev.preventDefault();
-  };
-  const onUp=(ev)=>{
-    dragging=false;
-    allyEl.classList.remove('dragging');
-    allyEl.releasePointerCapture?.(ev.pointerId);
-  };
-  if(allyEl){
-    allyEl.addEventListener('pointerdown',onDown);
-    allyEl.addEventListener('pointermove',onMove);
-    allyEl.addEventListener('pointerup',onUp);
-    allyEl.addEventListener('pointercancel',onUp);
-  }
-
   let rafId, last=performance.now();
   const finish=()=>{
     cancelAnimationFrame(rafId);
-    if(allyEl){
-      allyEl.removeEventListener('pointerdown',onDown);
-      allyEl.removeEventListener('pointermove',onMove);
-      allyEl.removeEventListener('pointerup',onUp);
-      allyEl.removeEventListener('pointercancel',onUp);
-      allyEl.style.touchAction='';allyEl.classList.remove('draggable','dragging');
-    }
+    draggables.forEach(({el,onDown,onMove,onUp})=>{
+      el.removeEventListener('pointerdown',onDown);
+      el.removeEventListener('pointermove',onMove);
+      el.removeEventListener('pointerup',onUp);
+      el.removeEventListener('pointercancel',onUp);
+      el.style.touchAction='';el.classList.remove('draggable','dragging');
+      el.style.zIndex='';el.style.transition='';
+    });
     _hidePhaseHint();
-    if(allyEl){allyEl.style.zIndex='';allyEl.style.transition='';}
     const r=_bgRect();
     const originPx={x:r.left+r.width*enemy.ax/100, y:r.top+r.height*enemy.ay/100};
     const hit=_unitsInLane(G.party.filter(p=>p.hp>0), p=>[p.ax,p.ay], originPx, angle, rangeLen, LANE_WIDTH_PX);
