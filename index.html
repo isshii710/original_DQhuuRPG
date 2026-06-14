@@ -439,6 +439,8 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 
 /* 購入リストのページ送り表示（2列×3行=6件/ページ） */
 .shop-grid{display:grid;grid-template-rows:repeat(3,1fr);grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;background:rgba(60,90,160,.12);max-height:none;overflow:visible;}
+/* そうび一覧は2列×2行=4件/ページ（画面下に見切れないようにする） */
+.eq-list.shop-grid{grid-template-rows:repeat(2,1fr);}
 .shop-row{display:flex;flex-direction:column;gap:4px;padding:7px 9px;font-size:10px;color:var(--white);background:var(--win-bg);min-height:0;}
 .shop-row-top{display:flex;align-items:center;gap:6px;}
 .shop-row-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -5794,7 +5796,7 @@ function renderEquip(){
       return`<div class="shop-row ${e.id===curId?'equipped':''}">
         <div class="shop-row-top"><span class="eq-sico">${e.icon}</span><span class="shop-row-name">${e.name}</span></div>
         <div class="shop-row-bottom"><span class="eq-delta">${delta}</span>${e.id===curId?'<span class="eq-badge">装備中</span>':`<button class="smith-btn" onclick="equipItm('${e.id}')">装備</button>`}</div></div>`;})];
-  renderShopPage('eq-list','eq-list-pagenav',rows,renderEquip);
+  renderShopPage('eq-list','eq-list-pagenav',rows,renderEquip,4);
 }
 function selEqSlot(s){eqSlot=s;eqView='list';shopPages['eq-list']=0;renderEquip();}
 function selEqChar(i){eqCharIdx=i;shopPages['eq-list']=0;renderEquip();}
@@ -5811,15 +5813,15 @@ function equipItm(id){
 const SHOP_PAGE_SIZE=6;
 const shopPages={};
 const shopRerenders={};
-function renderShopPage(containerId,navId,rowsHtml,rerenderFn){
+function renderShopPage(containerId,navId,rowsHtml,rerenderFn,pageSize=SHOP_PAGE_SIZE){
   shopRerenders[containerId]=rerenderFn;
-  const totalPages=Math.max(1,Math.ceil(rowsHtml.length/SHOP_PAGE_SIZE));
+  const totalPages=Math.max(1,Math.ceil(rowsHtml.length/pageSize));
   let page=shopPages[containerId]||0;
   if(page>=totalPages)page=totalPages-1;
   if(page<0)page=0;
   shopPages[containerId]=page;
-  const start=page*SHOP_PAGE_SIZE;
-  document.getElementById(containerId).innerHTML=rowsHtml.slice(start,start+SHOP_PAGE_SIZE).join('');
+  const start=page*pageSize;
+  document.getElementById(containerId).innerHTML=rowsHtml.slice(start,start+pageSize).join('');
   const navEl=document.getElementById(navId);
   if(!navEl)return;
   if(totalPages<=1){navEl.innerHTML='';return;}
