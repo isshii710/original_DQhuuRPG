@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>蒼路の剣士 - アクションRPGプロトタイプ</title>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Serif+JP:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#FFD700;--blue:#1a3a6a;--blue2:#0d2244;
+  --win-bg:rgba(8,16,44,0.97);--win-bd:#3a5a99;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'DotGothic16',sans-serif;color:#fff;}
+
+#game-canvas{display:block;position:fixed;top:0;left:0;background:#1a2a1a;}
+
+/* ===== HUD ===== */
+#hud{position:fixed;top:0;left:0;right:0;padding:10px;pointer-events:none;z-index:10;}
+#status-panel{
+  display:inline-block;background:rgba(8,16,44,0.85);border:1px solid var(--win-bd);
+  border-radius:4px;padding:6px 10px;min-width:170px;
+}
+#status-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px;letter-spacing:1px;}
+#status-top .name{color:var(--gold);}
+.bar-row{display:flex;align-items:center;gap:4px;margin-bottom:2px;}
+.bar-lbl{font-size:9px;width:24px;color:#fff;}
+.bar-track{flex:1;height:6px;background:rgba(255,255,255,0.12);border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width .15s;}
+.bar-fill.hp{background:linear-gradient(90deg,#ee4444,#ff8844);}
+.bar-fill.exp{background:linear-gradient(90deg,#44aaff,#88ddff);}
+#hp-text{font-size:9px;width:48px;text-align:right;color:#ccddf0;}
+
+/* ===== Toast ===== */
+#toast-area{position:fixed;top:70px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:4px;align-items:center;pointer-events:none;z-index:50;}
+.toast{background:rgba(10,15,30,0.85);border:1px solid rgba(255,215,0,0.5);color:var(--gold);padding:4px 14px;border-radius:4px;font-size:13px;letter-spacing:1px;animation:toast-fade 1.6s ease forwards;white-space:nowrap;}
+@keyframes toast-fade{0%{opacity:0;transform:translateY(-6px);}15%{opacity:1;transform:translateY(0);}80%{opacity:1;}100%{opacity:0;}}
+
+/* ===== Controls ===== */
+#joy-wrap{position:fixed;bottom:28px;left:28px;width:110px;height:110px;z-index:20;}
+#joy-base{width:100%;height:100%;border-radius:50%;background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.18);position:relative;}
+#joy-knob{position:absolute;width:40px;height:40px;left:50%;top:50%;margin-left:-20px;margin-top:-20px;border-radius:50%;background:rgba(255,255,255,0.22);border:2px solid rgba(255,255,255,0.45);}
+
+#attack-btn{
+  position:fixed;bottom:38px;right:32px;width:88px;height:88px;border-radius:50%;z-index:20;
+  background:rgba(120,20,20,0.75);border:2px solid rgba(255,160,100,0.6);color:#fff;
+  font-size:30px;display:flex;align-items:center;justify-content:center;
+}
+#attack-btn:active{background:rgba(200,60,40,0.85);}
+
+/* ===== Screens ===== */
+.screen{
+  position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(2,4,14,0.92);z-index:100;text-align:center;gap:18px;padding:20px;
+}
+.screen h1{font-family:'Noto Serif JP',serif;font-size:26px;color:var(--gold);letter-spacing:3px;}
+.screen p{font-size:13px;color:#ccddf0;line-height:1.8;}
+.screen button{
+  background:var(--win-bg);border:2px solid var(--win-bd);color:var(--gold);
+  font-family:'DotGothic16',sans-serif;font-size:16px;letter-spacing:2px;
+  padding:10px 36px;border-radius:4px;
+}
+.screen button:active{background:rgba(60,100,200,0.5);}
+.hidden{display:none !important;}
+</style>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+
+<div id="hud">
+  <div id="status-panel">
+    <div id="status-top"><span class="name">勇者</span><span id="lv-val">Lv.1</span></div>
+    <div class="bar-row"><span class="bar-lbl">HP</span><div class="bar-track"><div id="hp-bar" class="bar-fill hp"></div></div><span id="hp-text">30/30</span></div>
+    <div class="bar-row"><span class="bar-lbl">EXP</span><div class="bar-track"><div id="exp-bar" class="bar-fill exp"></div></div></div>
+  </div>
+</div>
+
+<div id="toast-area"></div>
+
+<div id="joy-wrap"><div id="joy-base"><div id="joy-knob"></div></div></div>
+<button id="attack-btn">⚔</button>
+
+<div id="title-screen" class="screen">
+  <h1>蒼路の剣士</h1>
+  <p>左下のスティックで移動<br>右下のボタンで攻撃<br>フィールドのスライムを討伐しよう</p>
+  <button id="start-btn">はじめる</button>
+</div>
+
+<div id="gameover-screen" class="screen hidden">
+  <h1>やられてしまった…</h1>
+  <button id="retry-btn">もう一度挑む</button>
+</div>
+
+<script>
+// ===================== Canvas Setup =====================
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+let viewW = window.innerWidth, viewH = window.innerHeight;
+
+function resize(){
+  const dpr = window.devicePixelRatio || 1;
+  viewW = window.innerWidth;
+  viewH = window.innerHeight;
+  canvas.width = viewW * dpr;
+  canvas.height = viewH * dpr;
+  canvas.style.width = viewW + 'px';
+  canvas.style.height = viewH + 'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ===================== Map =====================
+const TILE = 48;
+const MAP_W = 26, MAP_H = 26;
+const WORLD_W = MAP_W*TILE, WORLD_H = MAP_H*TILE;
+
+const map = [];
+for(let y=0;y<MAP_H;y++){
+  const row = [];
+  for(let x=0;x<MAP_W;x++){
+    row.push((x===0||y===0||x===MAP_W-1||y===MAP_H-1) ? 1 : 0);
+  }
+  map.push(row);
+}
+const obstacles = [
+  [5,5],[5,6],[6,6],
+  [20,20],[20,19],[19,20],
+  [10,4],[10,5],
+  [16,21],[17,21],
+  [21,11],[22,11],
+  [9,16],[10,16],
+  [4,21],[5,21]
+];
+obstacles.forEach(([x,y])=>{ map[y][x]=1; });
+
+function isWall(px,py){
+  const tx = Math.floor(px/TILE), ty = Math.floor(py/TILE);
+  if(tx<0||ty<0||tx>=MAP_W||ty>=MAP_H) return true;
+  return map[ty][tx]===1;
+}
+
+// ===================== Entities =====================
+const player = {
+  x: 13*TILE+TILE/2, y: 13*TILE+TILE/2,
+  r: 16, speed: 150,
+  hp: 30, maxHp: 30, atk: 6,
+  level: 1, exp: 0, expToNext: 10,
+  facing: {x:0,y:1},
+  attacking: false, attackTimer: 0, attackCooldown: 0,
+  invuln: 0,
+};
+
+const enemySpawns = [[7,7],[19,7],[7,19],[19,19],[13,8],[8,13],[18,13]];
+let enemies = [];
+function makeEnemies(){
+  enemies = enemySpawns.map(([tx,ty])=>({
+    sx: tx*TILE+TILE/2, sy: ty*TILE+TILE/2,
+    x: tx*TILE+TILE/2, y: ty*TILE+TILE/2,
+    r: 14, hp: 12, maxHp: 12, atk: 3, exp: 6,
+    speed: 60, dir: {x:0,y:0}, wanderTimer: 0,
+    hitCooldown: 0, alive: true,
+  }));
+}
+makeEnemies();
+
+const ATTACK_RANGE = 56;
+const ATTACK_ARC = Math.PI/1.8;
+const ATTACK_COOLDOWN = 0.45;
+const ATTACK_DURATION = 0.15;
+const AGGRO_RANGE = 220;
+
+let floatingTexts = [];
+function spawnFloatText(x,y,text,color){
+  floatingTexts.push({x,y,text,color,life:0.8,maxLife:0.8});
+}
+
+// ===================== Input =====================
+let joyVec = {x:0,y:0};
+let joyPointerId = null;
+const joyWrap = document.getElementById('joy-wrap');
+const joyBase = document.getElementById('joy-base');
+const joyKnob = document.getElementById('joy-knob');
+
+function updateJoy(e){
+  const rect = joyBase.getBoundingClientRect();
+  const cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+  let dx = e.clientX-cx, dy = e.clientY-cy;
+  const dist = Math.hypot(dx,dy);
+  const max = rect.width/2;
+  if(dist>max){ dx = dx/dist*max; dy = dy/dist*max; }
+  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+  joyVec.x = dx/max; joyVec.y = dy/max;
+}
+function endJoy(e){
+  if(e.pointerId !== joyPointerId) return;
+  joyPointerId = null;
+  joyVec.x = 0; joyVec.y = 0;
+  joyKnob.style.transform = 'translate(0,0)';
+}
+joyWrap.addEventListener('pointerdown', e=>{
+  joyPointerId = e.pointerId;
+  joyWrap.setPointerCapture(e.pointerId);
+  updateJoy(e);
+});
+joyWrap.addEventListener('pointermove', e=>{
+  if(e.pointerId === joyPointerId) updateJoy(e);
+});
+joyWrap.addEventListener('pointerup', endJoy);
+joyWrap.addEventListener('pointercancel', endJoy);
+
+const attackBtn = document.getElementById('attack-btn');
+attackBtn.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  tryAttack();
+});
+
+// ===================== Collision =====================
+function moveWithCollision(e, dx, dy){
+  if(dx !== 0){
+    e.x += dx;
+    const edgeX = e.x + (dx>0 ? e.r : -e.r);
+    if(isWall(edgeX, e.y-e.r*0.6) || isWall(edgeX, e.y+e.r*0.6)){
+      e.x -= dx;
+    }
+  }
+  if(dy !== 0){
+    e.y += dy;
+    const edgeY = e.y + (dy>0 ? e.r : -e.r);
+    if(isWall(e.x-e.r*0.6, edgeY) || isWall(e.x+e.r*0.6, edgeY)){
+      e.y -= dy;
+    }
+  }
+}
+
+// ===================== Combat =====================
+function tryAttack(){
+  if(gameState !== 'playing') return;
+  if(player.attackCooldown > 0) return;
+  player.attacking = true;
+  player.attackTimer = ATTACK_DURATION;
+  player.attackCooldown = ATTACK_COOLDOWN;
+
+  const facingAng = Math.atan2(player.facing.y, player.facing.x);
+  for(const en of enemies){
+    if(!en.alive) continue;
+    const dx = en.x-player.x, dy = en.y-player.y;
+    const dist = Math.hypot(dx,dy);
+    if(dist > ATTACK_RANGE+en.r) continue;
+    const ang = Math.atan2(dy,dx);
+    let diff = Math.abs(ang-facingAng);
+    if(diff > Math.PI) diff = 2*Math.PI-diff;
+    if(diff <= ATTACK_ARC/2){
+      damageEnemy(en, player.atk + Math.floor(Math.random()*3));
+    }
+  }
+}
+
+function damageEnemy(en, dmg){
+  en.hp -= dmg;
+  spawnFloatText(en.x, en.y-20, '-'+dmg, '#ffffaa');
+  if(en.hp <= 0 && en.alive){
+    en.alive = false;
+    en.hp = 0;
+    grantExp(en.exp);
+    showToast('スライムを たおした！');
+  }
+}
+
+function grantExp(amount){
+  player.exp += amount;
+  while(player.exp >= player.expToNext){
+    player.exp -= player.expToNext;
+    player.level += 1;
+    player.maxHp += 5;
+    player.atk += 1;
+    player.hp = player.maxHp;
+    player.expToNext = player.level*10;
+    showToast(`レベルアップ！ Lv.${player.level}`);
+  }
+}
+
+// ===================== Toast =====================
+const toastArea = document.getElementById('toast-area');
+function showToast(text){
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = text;
+  toastArea.appendChild(el);
+  setTimeout(()=>el.remove(), 1600);
+}
+
+// ===================== Update =====================
+let gameState = 'title';
+
+function update(dt){
+  // player movement
+  const mag = Math.min(1, Math.hypot(joyVec.x, joyVec.y));
+  if(mag > 0.15){
+    const nx = joyVec.x/Math.hypot(joyVec.x,joyVec.y);
+    const ny = joyVec.y/Math.hypot(joyVec.x,joyVec.y);
+    player.facing = {x:nx,y:ny};
+    const sp = player.speed*mag*dt;
+    moveWithCollision(player, nx*sp, ny*sp);
+  }
+
+  // attack timers
+  if(player.attackTimer > 0) player.attackTimer -= dt;
+  else player.attacking = false;
+  if(player.attackCooldown > 0) player.attackCooldown -= dt;
+  if(player.invuln > 0) player.invuln -= dt;
+
+  // enemies
+  for(const en of enemies){
+    if(!en.alive) continue;
+    const dx = player.x-en.x, dy = player.y-en.y;
+    const dist = Math.hypot(dx,dy);
+    if(dist < AGGRO_RANGE && dist > 0.01){
+      moveWithCollision(en, dx/dist*en.speed*dt, dy/dist*en.speed*dt);
+    } else {
+      en.wanderTimer -= dt;
+      if(en.wanderTimer <= 0){
+        const ang = Math.random()*Math.PI*2;
+        en.dir = {x:Math.cos(ang), y:Math.sin(ang)};
+        en.wanderTimer = 1+Math.random()*2;
+      }
+      moveWithCollision(en, en.dir.x*en.speed*0.4*dt, en.dir.y*en.speed*0.4*dt);
+    }
+
+    if(en.hitCooldown > 0) en.hitCooldown -= dt;
+    const pd = Math.hypot(player.x-en.x, player.y-en.y);
+    if(pd < player.r+en.r && en.hitCooldown<=0 && player.invuln<=0){
+      player.hp -= en.atk;
+      player.invuln = 0.6;
+      en.hitCooldown = 0.8;
+      spawnFloatText(player.x, player.y-24, '-'+en.atk, '#ff6666');
+      if(player.hp <= 0){
+        player.hp = 0;
+        gameState = 'gameover';
+        document.getElementById('gameover-screen').classList.remove('hidden');
+      }
+    }
+  }
+
+  // floating texts
+  for(const ft of floatingTexts){
+    ft.y -= 24*dt;
+    ft.life -= dt;
+  }
+  floatingTexts = floatingTexts.filter(ft=>ft.life>0);
+
+  updateHUD();
+}
+
+// ===================== HUD =====================
+const hpBar = document.getElementById('hp-bar');
+const hpText = document.getElementById('hp-text');
+const expBar = document.getElementById('exp-bar');
+const lvVal = document.getElementById('lv-val');
+function updateHUD(){
+  hpBar.style.width = Math.max(0,(player.hp/player.maxHp*100))+'%';
+  hpText.textContent = `${Math.max(0,player.hp)}/${player.maxHp}`;
+  expBar.style.width = (player.exp/player.expToNext*100)+'%';
+  lvVal.textContent = 'Lv.'+player.level;
+}
+
+// ===================== Render =====================
+function camPos(){
+  const camX = Math.max(0, Math.min(player.x - viewW/2, WORLD_W - viewW));
+  const camY = Math.max(0, Math.min(player.y - viewH/2, WORLD_H - viewH));
+  return {camX, camY};
+}
+
+function render(){
+  ctx.clearRect(0,0,viewW,viewH);
+  const {camX, camY} = camPos();
+
+  // tiles
+  const startCol = Math.max(0, Math.floor(camX/TILE));
+  const endCol = Math.min(MAP_W-1, Math.ceil((camX+viewW)/TILE));
+  const startRow = Math.max(0, Math.floor(camY/TILE));
+  const endRow = Math.min(MAP_H-1, Math.ceil((camY+viewH)/TILE));
+
+  for(let y=startRow;y<=endRow;y++){
+    for(let x=startCol;x<=endCol;x++){
+      const sx = x*TILE-camX, sy = y*TILE-camY;
+      if(map[y][x]===0){
+        ctx.fillStyle = (x+y)%2===0 ? '#3c5a34' : '#365230';
+        ctx.fillRect(sx,sy,TILE,TILE);
+      } else {
+        ctx.fillStyle = '#3a2d20';
+        ctx.fillRect(sx,sy,TILE,TILE);
+      }
+    }
+  }
+  // wall blocks (2.5D height)
+  for(let y=startRow;y<=endRow;y++){
+    for(let x=startCol;x<=endCol;x++){
+      if(map[y][x]!==1) continue;
+      const sx = x*TILE-camX, sy = y*TILE-camY;
+      ctx.fillStyle = '#4a3826';
+      ctx.fillRect(sx, sy-14, TILE, TILE+14);
+      ctx.fillStyle = '#6b5a40';
+      ctx.fillRect(sx, sy-14, TILE, 14);
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.strokeRect(sx+0.5, sy-13.5, TILE-1, TILE+13);
+    }
+  }
+
+  // enemies
+  for(const en of enemies){
+    if(!en.alive) continue;
+    const sx = en.x-camX, sy = en.y-camY;
+    ctx.beginPath();
+    ctx.fillStyle = '#5fcf6f';
+    ctx.strokeStyle = '#2d7a3a';
+    ctx.lineWidth = 2;
+    ctx.arc(sx, sy, en.r, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#234d2a';
+    ctx.beginPath(); ctx.arc(sx-4, sy-2, 1.6, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx+4, sy-2, 1.6, 0, Math.PI*2); ctx.fill();
+    drawHpBar(sx, sy-en.r-10, 28, en.hp, en.maxHp);
+  }
+
+  // attack swing
+  if(player.attacking){
+    const psx = player.x-camX, psy = player.y-camY;
+    const facingAng = Math.atan2(player.facing.y, player.facing.x);
+    const alpha = Math.max(0, player.attackTimer/ATTACK_DURATION)*0.45;
+    ctx.fillStyle = `rgba(255,255,220,${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(psx,psy);
+    ctx.arc(psx, psy, ATTACK_RANGE, facingAng-ATTACK_ARC/2, facingAng+ATTACK_ARC/2);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // player
+  {
+    const sx = player.x-camX, sy = player.y-camY;
+    ctx.beginPath();
+    ctx.fillStyle = player.invuln>0 ? '#ffb3b3' : '#e8d9b0';
+    ctx.strokeStyle = '#1a3a6a';
+    ctx.lineWidth = 3;
+    ctx.arc(sx, sy, player.r, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    // facing indicator
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.arc(sx+player.facing.x*player.r*0.9, sy+player.facing.y*player.r*0.9, 4, 0, Math.PI*2);
+    ctx.fill();
+    drawHpBar(sx, sy-player.r-12, 32, player.hp, player.maxHp);
+  }
+
+  // floating texts
+  for(const ft of floatingTexts){
+    const sx = ft.x-camX, sy = ft.y-camY;
+    ctx.globalAlpha = Math.max(0, ft.life/ft.maxLife);
+    ctx.fillStyle = ft.color;
+    ctx.font = 'bold 14px DotGothic16, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(ft.text, sx, sy);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawHpBar(cx, cy, w, hp, maxHp){
+  const h = 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(cx-w/2, cy, w, h);
+  const ratio = Math.max(0, hp/maxHp);
+  ctx.fillStyle = ratio>0.5 ? '#5fd95f' : (ratio>0.25 ? '#ffcc44' : '#ff5555');
+  ctx.fillRect(cx-w/2, cy, w*ratio, h);
+}
+
+// ===================== Main Loop =====================
+let lastTime = 0;
+function loop(ts){
+  if(!lastTime) lastTime = ts;
+  const dt = Math.min((ts-lastTime)/1000, 0.05);
+  lastTime = ts;
+  if(gameState === 'playing') update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ===================== Screens =====================
+document.getElementById('start-btn').addEventListener('click', ()=>{
+  gameState = 'playing';
+  document.getElementById('title-screen').classList.add('hidden');
+});
+document.getElementById('retry-btn').addEventListener('click', ()=>{
+  player.x = 13*TILE+TILE/2; player.y = 13*TILE+TILE/2;
+  player.hp = player.maxHp;
+  player.invuln = 0;
+  player.attacking = false; player.attackCooldown = 0;
+  makeEnemies();
+  floatingTexts = [];
+  gameState = 'playing';
+  document.getElementById('gameover-screen').classList.add('hidden');
+});
+</script>
+</body>
+</html>
