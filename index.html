@@ -739,6 +739,7 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
       <button class="mitem" onclick="closeMenu();openFullMap()">🗺️ 全体マップ</button>
       <button class="mitem" onclick="closeMenu();openQuestLog()">📜 クエスト</button>
       <button class="mitem" onclick="closeMenu();openWarpModal()">🌀 帰還の書</button>
+      <button class="mitem" id="menu-exit-dungeon-btn" onclick="exitDungeonToEntrance()" style="display:none;">🚪 入り口に戻る</button>
       <button class="mitem" id="menu-mount-btn" onclick="toggleMount()">🐴 馬に乗る</button>
       <button class="mitem" onclick="closeMenu();openSaveModal()">💾 セーブ/ロード</button>
       <button class="mitem" id="menu-recruit-btn" onclick="closeMenu();menuRecruit()">🤝 仲間募集</button>
@@ -5520,6 +5521,20 @@ function ascendFloor(){
   if(G.dungeonFloor<=0){changeMap(G.prevMapIdx);return;}
   G.dungeonFloor--;fadeIn(()=>{generateMap(G.mapIdx);addChat('🔼 地下'+(G.dungeonFloor+1)+'階に戻った',null,true);});
 }
+// ダンジョンの入り口まで一気に戻る（メニューから使用）
+function exitDungeonToEntrance(){
+  closeMenu();
+  if(G.inBattle){ addChat('🚪 戦闘中は入り口に戻れない',null,true); return; }
+  const map=MAPS_DEF[G.mapIdx];
+  if(map.type!=='dungeon') return;
+  const entranceIdx=G.prevMapIdx;
+  fadeIn(()=>{
+    G.prevMapIdx=G.mapIdx;
+    G.dungeonFloor=0;
+    generateMap(entranceIdx);
+    addChat('🚪 ダンジョンの入り口まで戻った',null,true);
+  });
+}
 function fadeIn(cb){
   G.transitioning=true;
   const t=document.getElementById('transition');t.classList.add('in');
@@ -5567,6 +5582,7 @@ function openMenu(){
   document.getElementById('menu-join-btn').style.display=online?'none':'';
   document.getElementById('menu-online-btn').style.display=online?'':'none';
   document.getElementById('menu-mount-btn').textContent=G.mounted?'🐴 馬を降りる':'🐴 馬に乗る';
+  document.getElementById('menu-exit-dungeon-btn').style.display=(MAPS_DEF[G.mapIdx].type==='dungeon')?'':'none';
 }
 function closeMenu(){document.getElementById('menu-screen').classList.add('hidden');}
 function toggleMount(){
