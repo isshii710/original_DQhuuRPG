@@ -2915,8 +2915,9 @@ function buildFieldTiles(){
   [[3,2],[13,3],[20,4],[8,7],[16,8],[4,12],[12,13],[7,15],[17,7],[20,11]].forEach(([x,y])=>{if(g[y][x]===F)g[y][x]=Tr;});
   // 西の入口（村への帰還）row9, col1
   g[9][1]=En;
-  // 北東の出口（ダンジョンへ）row1, col22
+  // 北東の出口（ダンジョンへ）row1, col22。隣に壁を置き、砦の門のように見せる
   g[1][MAP_W-2]=X;
+  g[1][MAP_W-3]=W;
   // 東の道（次の村へ）：村のメインイベントをクリアすると開放される（row9, col22）
   const villageIdx=Math.floor(G.mapIdx/3);
   if(villageIdx<8&&G.story.villages[villageIdx]?.mainCleared)g[9][MAP_W-2]=XN;
@@ -3389,8 +3390,14 @@ function render(){
         const qm=getQuestMarker(npc);
         if(qm)drawQuestMarker(sx,sy,qm);
       }else if(t===T.EXIT){
-        ctx.fillStyle='rgba(180,180,30,0.5)';ctx.fillRect(sx,sy,TILE,TILE);
-        drawTileEmoji('🚪',sx,sy,TILE);
+        if(map.type==='field'){
+          // フィールド→ダンジョンの出口は砦の門として表示
+          ctx.fillStyle='rgba(90,70,50,0.7)';ctx.fillRect(sx,sy,TILE,TILE);
+          drawTileEmoji('🏯',sx,sy,TILE);
+        }else{
+          ctx.fillStyle='rgba(180,180,30,0.5)';ctx.fillRect(sx,sy,TILE,TILE);
+          drawTileEmoji('🚪',sx,sy,TILE);
+        }
       }else if(t===T.STAIR_D){
         ctx.fillStyle='rgba(80,60,20,0.6)';ctx.fillRect(sx,sy,TILE,TILE);
         drawTileEmoji('🔽',sx,sy,TILE);
@@ -3440,6 +3447,12 @@ function render(){
       if(sign.x>=startX-1&&sign.x<=endX&&sign.y>=startY-1&&sign.y<=endY)drawBuildingSign(sign);
     });
     if(G.mapIdx===0)drawPlazaFountain();
+  }
+
+  // フィールドのダンジョン入口（砦）に看板を表示
+  if(!G.inHouse&&map.type==='field'){
+    const dsign={x:MAP_W-2,y:1,icon:'⚔️',name:'ダンジョン'};
+    if(dsign.x>=startX-1&&dsign.x<=endX&&dsign.y>=startY-1&&dsign.y<=endY)drawBuildingSign(dsign);
   }
 
   // 店内（武器屋・防具屋・鍛冶屋・道具屋）のテーマ装飾を表示
