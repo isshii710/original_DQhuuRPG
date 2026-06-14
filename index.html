@@ -205,6 +205,10 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 /* Ally battle */
 .battle-ally{display:flex;flex-direction:column;align-items:center;gap:2px;position:absolute;transform:translate(-50%,-50%);transition:left .2s ease,top .2s ease;pointer-events:auto;}
 .battle-ally.dead{opacity:.25;}
+.battle-ally.draggable{cursor:grab;}
+.battle-ally.draggable .ally-spr{filter:drop-shadow(0 0 10px rgba(255,255,255,.85));}
+.battle-ally.dragging{cursor:grabbing;}
+.battle-ally.dragging .ally-spr{filter:drop-shadow(0 0 14px rgba(255,230,80,.95));transform:scale(1.15);}
 .ally-spr{font-size:28px;display:block;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
 .ally-name-tag{font-size:8px;color:var(--white);letter-spacing:1px;white-space:nowrap;}
 
@@ -3833,8 +3837,18 @@ const DODGE_PHASE_MS = 2800;  // 敵の攻撃: 回避タイム
 const STICK_RADIUS_PX = 24;
 const STICK_DEADZONE = 0.18;
 
-// すばやさが高いほど移動速度(%/秒)が速くなる
-function unitMoveSpeedPctPerSec(u){ return 16 + (u.spd||10) * 1.8; }
+// すばやさが高いほど移動速度(%/秒)が速くなるが、上限に近づくほど伸びが緩やかになる
+// （すばやさカンスト時に移動が速すぎて操作できなくなるのを防ぐ）
+function unitMoveSpeedPctPerSec(u){
+  const spd=u.spd||10;
+  return 16 + 64*(1-Math.exp(-spd*0.035));
+}
+
+// ランダムな単位方向ベクトルを返す（敵の回避移動などに使用）
+function _randomDodgeDir(){
+  const a=Math.random()*Math.PI*2;
+  return {x:Math.cos(a), y:Math.sin(a)};
+}
 
 // 戦闘開始時に各キャラの初期位置(%)を割り振る（以降は次に動かすまでその場に留まる）
 function initBattlePositions(){
@@ -3954,6 +3968,18 @@ function runPlayerAttackPositioning(actor, pIdx, rangeType, cb){
   _showPhaseHint(`${actor.name}の番！左で移動・右で攻撃方向`);
   if(allyEl){allyEl.style.transition='none';allyEl.style.zIndex=30;}
 
+  // 敵もランダムに動いて攻撃を避けようとする
+  const enemyDodgeMaxY=BATTLE_AREA.minY+(BATTLE_AREA.maxY-BATTLE_AREA.minY)*0.6;
+  const dodgeEnemies=[];
+  G.battleEnemies.filter(e=>e.curHp>0).forEach(e=>{
+    const el=document.getElementById('ben-'+e.idx);
+    if(!el)return;
+    el.style.transition='none';
+    e._dodgeDir=_randomDodgeDir();
+    e._dodgeTimer=0.3+Math.random()*0.6;
+    dodgeEnemies.push({e,el});
+  });
+
   let angle=-Math.PI/2; // デフォルトは敵側(上方向)
   let remain=ATTACK_PHASE_MS;
   timerEl.textContent=Math.ceil(remain/1000);
@@ -3966,6 +3992,7 @@ function runPlayerAttackPositioning(actor, pIdx, rangeType, cb){
     moveJoy.remove();aimJoy.remove();
     _hidePhaseHint();
     if(allyEl){allyEl.style.zIndex='';allyEl.style.transition='';}
+    dodgeEnemies.forEach(({el})=>{el.style.transition='';});
     const r=_bgRect();
     const originPx={x:r.left+r.width*actor.ax/100, y:r.top+r.height*actor.ay/100};
     const hit=_unitsInLane(G.battleEnemies.filter(e=>e.curHp>0), e=>[e.ax,e.ay], originPx, angle, rangeLen, LANE_WIDTH_PX);
@@ -3985,6 +4012,22 @@ function runPlayerAttackPositioning(actor, pIdx, rangeType, cb){
     if(av.mag>0)angle=Math.atan2(av.y,av.x);
     _layoutLaneZone(lane, actor.ax, actor.ay, angle, rangeLen, LANE_WIDTH_PX);
 
+    // 敵のランダム回避移動
+    dodgeEnemies.forEach(({e,el})=>{
+      e._dodgeTimer-=dt;
+      if(e._dodgeTimer<=0){
+        e._dodgeDir=_randomDodgeDir();
+        e._dodgeTimer=0.3+Math.random()*0.6;
+      }
+      const espd=unitMoveSpeedPctPerSec(e)*0.5;
+      let nx=e.ax+e._dodgeDir.x*espd*dt;
+      let ny=e.ay+e._dodgeDir.y*espd*dt;
+      if(nx<BATTLE_AREA.minX||nx>BATTLE_AREA.maxX){e._dodgeDir.x*=-1;nx=Math.max(BATTLE_AREA.minX,Math.min(BATTLE_AREA.maxX,nx));}
+      if(ny<BATTLE_AREA.minY||ny>enemyDodgeMaxY){e._dodgeDir.y*=-1;ny=Math.max(BATTLE_AREA.minY,Math.min(enemyDodgeMaxY,ny));}
+      e.ax=nx;e.ay=ny;
+      el.style.left=e.ax+'%';el.style.top=e.ay+'%';
+    });
+
     remain-=dt*1000;
     timerEl.textContent=Math.max(0,Math.ceil(remain/1000));
     if(remain<=0){finish();return;}
@@ -4001,8 +4044,7 @@ function runEnemyDangerPhase(enemy, target, rangeType, cb){
   const allyEl=document.getElementById('bally-'+tIdx);
   const rangeLen=RANGE_LEN_PX[rangeType]||RANGE_LEN_PX.mid;
 
-  const startAx=target.ax, startAy=target.ay;
-  const angle=Math.atan2(startAy-enemy.ay, startAx-enemy.ax);
+  let angle=Math.atan2(target.ay-enemy.ay, target.ax-enemy.ax);
 
   const lane=document.createElement('div');
   lane.className='battle-zone lane danger';
@@ -4011,18 +4053,50 @@ function runEnemyDangerPhase(enemy, target, rangeType, cb){
   bg.appendChild(lane);
   _layoutLaneZone(lane, enemy.ax, enemy.ay, angle, rangeLen, LANE_WIDTH_PX);
 
-  const moveJoy=_createJoystick('bjoy-move','回避');
-  bg.appendChild(moveJoy);
-  _showPhaseHint(`⚠ ${target.name}が狙われている！左で回避！`);
-  if(allyEl){allyEl.style.transition='none';allyEl.style.zIndex=30;}
+  _showPhaseHint(`⚠ ${target.name}が狙われている！キャラを指でスライドして回避！`);
+  if(allyEl){allyEl.style.transition='none';allyEl.style.zIndex=30;allyEl.style.touchAction='none';allyEl.classList.add('draggable');}
 
   let remain=DODGE_PHASE_MS;
   timerEl.textContent=Math.ceil(remain/1000);
 
+  // ぷにコンの代わりに、自分のキャラを指で直接スライドして回避する
+  let dragging=false;
+  const onDown=(ev)=>{
+    dragging=true;
+    allyEl.classList.add('dragging');
+    allyEl.setPointerCapture?.(ev.pointerId);
+    ev.preventDefault();
+  };
+  const onMove=(ev)=>{
+    if(!dragging)return;
+    const r=_bgRect();
+    target.ax=Math.max(BATTLE_AREA.minX,Math.min(BATTLE_AREA.maxX, ((ev.clientX-r.left)/r.width)*100));
+    target.ay=Math.max(BATTLE_AREA.minY,Math.min(BATTLE_AREA.maxY, ((ev.clientY-r.top)/r.height)*100));
+    allyEl.style.left=target.ax+'%';allyEl.style.top=target.ay+'%';
+    ev.preventDefault();
+  };
+  const onUp=(ev)=>{
+    dragging=false;
+    allyEl.classList.remove('dragging');
+    allyEl.releasePointerCapture?.(ev.pointerId);
+  };
+  if(allyEl){
+    allyEl.addEventListener('pointerdown',onDown);
+    allyEl.addEventListener('pointermove',onMove);
+    allyEl.addEventListener('pointerup',onUp);
+    allyEl.addEventListener('pointercancel',onUp);
+  }
+
   let rafId, last=performance.now();
   const finish=()=>{
     cancelAnimationFrame(rafId);
-    moveJoy._cleanup();moveJoy.remove();
+    if(allyEl){
+      allyEl.removeEventListener('pointerdown',onDown);
+      allyEl.removeEventListener('pointermove',onMove);
+      allyEl.removeEventListener('pointerup',onUp);
+      allyEl.removeEventListener('pointercancel',onUp);
+      allyEl.style.touchAction='';allyEl.classList.remove('draggable','dragging');
+    }
     _hidePhaseHint();
     if(allyEl){allyEl.style.zIndex='';allyEl.style.transition='';}
     const r=_bgRect();
@@ -4033,13 +4107,10 @@ function runEnemyDangerPhase(enemy, target, rangeType, cb){
   };
   const tick=(now)=>{
     const dt=(now-last)/1000; last=now;
-    const mv=moveJoy.getVec();
-    if(mv.mag>0){
-      const spd=unitMoveSpeedPctPerSec(target);
-      target.ax=Math.max(BATTLE_AREA.minX,Math.min(BATTLE_AREA.maxX, target.ax+mv.x*spd*mv.mag*dt));
-      target.ay=Math.max(BATTLE_AREA.minY,Math.min(BATTLE_AREA.maxY, target.ay+mv.y*spd*mv.mag*dt));
-      if(allyEl){allyEl.style.left=target.ax+'%';allyEl.style.top=target.ay+'%';}
-    }
+    // 敵は標的の現在位置を追って狙いを更新する
+    angle=Math.atan2(target.ay-enemy.ay, target.ax-enemy.ax);
+    _layoutLaneZone(lane, enemy.ax, enemy.ay, angle, rangeLen, LANE_WIDTH_PX);
+
     remain-=dt*1000;
     timerEl.textContent=Math.max(0,Math.ceil(remain/1000));
     if(remain<=0){finish();return;}
