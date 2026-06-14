@@ -2836,8 +2836,8 @@ function buildVillageTiles(){
   [[2,2],[3,2],[4,2],[2,3],[4,3],[2,4],[4,4],[2,5],[4,5]].forEach(([x,y])=>g[y][x]=W);
   // 建物B: 宿屋（inn NPC x:12,y:4, 扉 x:12,y:5）
   [[11,2],[12,2],[13,2],[11,3],[13,3],[11,4],[13,4],[11,5],[13,5]].forEach(([x,y])=>g[y][x]=W);
-  // 建物C: 倉庫（chest配置用, 入口 x:18,y:14）
-  [[17,11],[18,11],[19,11],[20,11],[17,12],[20,12],[17,13],[20,13],[17,14],[19,14],[20,14]].forEach(([x,y])=>g[y][x]=W);
+  // 建物C: 倉庫（chest配置用, 入口 x:18,y:15）。建物Fと1行分の間隔を空けて屋根が正しく表示されるように配置
+  [[17,12],[18,12],[19,12],[20,12],[17,13],[20,13],[17,14],[20,14],[17,15],[19,15],[20,15]].forEach(([x,y])=>g[y][x]=W);
   // 建物D: 武器屋（weaponshop NPC x:12,y:9, 入口 x:12,y:10）
   [[11,8],[12,8],[13,8],[11,9],[13,9],[11,10],[13,10]].forEach(([x,y])=>g[y][x]=W);
   // 建物E: 防具屋（armorshop NPC x:5,y:9, 入口 x:5,y:10）
@@ -2887,10 +2887,10 @@ function generateMap(idx){
     // ─── 固定レイアウト: 村 ────────────────────────────────────
     G.tiles=buildVillageTiles();
     getVillageNPCs(idx/3).forEach(n=>{if(G.tiles[n.y]?.[n.x]===T.FLOOR){G.tiles[n.y][n.x]=T.NPC;G.npcsOnMap.push({...n});}});
-    for(const[cx,cy] of [[19,13],[18,13],[12,12]]){
+    for(const[cx,cy] of [[19,14],[18,13],[12,12]]){
       if(G.tiles[cy]?.[cx]===T.FLOOR){G.tiles[cy][cx]=T.CHEST;G.chests.push({x:cx,y:cy,opened:false});break;}
     }
-    [[12,5,'inn'],[3,5,'elder'],[12,10,'weaponshop'],[5,10,'armorshop'],[18,10,'smith'],[8,15,'itemshop'],[14,15,'villager']].forEach(([dx,dy,npcId])=>{
+    [[12,5,'inn'],[3,5,'elder'],[12,10,'weaponshop'],[5,10,'armorshop'],[18,10,'smith'],[8,15,'itemshop'],[14,15,'villager'],[18,15]].forEach(([dx,dy,npcId])=>{
       if(G.tiles[dy]?.[dx]===T.FLOOR){G.tiles[dy][dx]=T.DOOR;G.doors.push({x:dx,y:dy,opened:false,npcId});}
     });
     setPlayerPos(11,12);
