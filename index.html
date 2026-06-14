@@ -285,6 +285,32 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 .anim-hit{animation:hitShake .3s ease-in-out!important;}
 .anim-enemy-hit{animation:enemyHit .35s ease-in-out!important;}
 
+/* ---- 詠唱・発動エフェクト ---- */
+@keyframes castAuraBurst{
+  0%{transform:translate(-50%,-50%) scale(.3) rotate(0deg);opacity:0;}
+  35%{transform:translate(-50%,-50%) scale(1.25) rotate(90deg);opacity:1;}
+  100%{transform:translate(-50%,-50%) scale(1.6) rotate(220deg);opacity:0;}
+}
+@keyframes castAuraCharge{
+  0%{transform:translate(-50%,-50%) scale(.55) rotate(0deg);opacity:.45;}
+  50%{transform:translate(-50%,-50%) scale(1.15) rotate(180deg);opacity:.9;}
+  100%{transform:translate(-50%,-50%) scale(.55) rotate(360deg);opacity:.45;}
+}
+.cast-aura{
+  position:absolute;width:64px;height:64px;border-radius:50%;
+  pointer-events:none;z-index:18;left:50%;top:50%;
+  transform:translate(-50%,-50%) scale(.3);
+  animation:castAuraBurst .55s ease-out forwards;
+}
+.cast-aura.charge{width:58px;height:58px;animation:castAuraCharge 1s linear infinite;}
+@keyframes battleFlash{0%{opacity:0;}15%{opacity:.85;}100%{opacity:0;}}
+.battle-flash{
+  position:absolute;inset:0;background:#fff;pointer-events:none;z-index:45;
+  animation:battleFlash .35s ease-out forwards;
+}
+@keyframes battleZoomPulse{0%{transform:scale(1);}35%{transform:scale(1.09);}100%{transform:scale(1);}}
+.battle-zoom-pulse{animation:battleZoomPulse .5s ease-out;}
+
 /* Battle window */
 #battle-win{
   flex:1 1 0;min-height:0;border-radius:0;border-left:none;border-right:none;border-bottom:none;
@@ -3965,8 +3991,9 @@ function _unitsInLane(units, getAxAy, originPx, angleRad, lengthPx, widthPx){
 
 // 自分の攻撃: 左ぷにコンで移動、右ぷにコンで攻撃方向を指定する
 // cb(hitEnemies, angle) を呼ぶ
-function runPlayerAttackPositioning(actor, pIdx, rangeType, cb){
+function runPlayerAttackPositioning(actor, pIdx, rangeType, cb, fxType='atk'){
   const bg=document.getElementById('battle-bg');
+  const allySprEl=document.getElementById('bally-spr-'+pIdx);
   const allyEl=document.getElementById('bally-'+pIdx);
   const rangeLen=RANGE_LEN_PX[rangeType]||RANGE_LEN_PX.mid;
 
@@ -3982,6 +4009,8 @@ function runPlayerAttackPositioning(actor, pIdx, rangeType, cb){
 
   _showPhaseHint(`${actor.name}の番！左で移動・右で攻撃方向`);
   if(allyEl){allyEl.style.transition='none';allyEl.style.zIndex=30;}
+  // 攻撃/呪文の力を溜めているオーラを足元に表示
+  const stopCharge=startChargeAura(allySprEl||allyEl, fxType);
 
   // 敵もランダムに動いて攻撃を避けようとする
   const enemyDodgeMaxY=BATTLE_AREA.minY+(BATTLE_AREA.maxY-BATTLE_AREA.minY)*0.6;
@@ -4003,6 +4032,7 @@ function runPlayerAttackPositioning(actor, pIdx, rangeType, cb){
   let rafId, last=performance.now();
   const finish=()=>{
     cancelAnimationFrame(rafId);
+    stopCharge();
     moveJoy._cleanup();aimJoy._cleanup();
     moveJoy.remove();aimJoy.remove();
     _hidePhaseHint();
@@ -4066,6 +4096,9 @@ function runEnemyDangerPhase(enemy, target, rangeType, cb){
   bg.appendChild(lane);
   _layoutLaneZone(lane, enemy.ax, enemy.ay, angle, rangeLen, LANE_WIDTH_PX);
 
+  // 敵が攻撃の力を溜めているオーラを表示
+  const stopEnemyCharge=startChargeAura(document.getElementById('bspr-'+enemy.idx), 'enemyAtk');
+
   _showPhaseHint(`⚠ ${target.name}が狙われている！味方を指でスライドして回避！`);
 
   // ぷにコンの代わりに、生存している味方全員を指で直接スライドして回避できる
@@ -4116,6 +4149,7 @@ function runEnemyDangerPhase(enemy, target, rangeType, cb){
       el.style.touchAction='';el.classList.remove('draggable','dragging');
       el.style.zIndex='';el.style.transition='';
     });
+    stopEnemyCharge();
     _hidePhaseHint();
     const r=_bgRect();
     const originPx={x:r.left+r.width*enemy.ax/100, y:r.top+r.height*enemy.ay/100};
@@ -4603,24 +4637,26 @@ function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
           return;
         }
         const fx=hitList.map(t=>document.getElementById('bspr-'+t.idx)).filter(Boolean);
-        animSpellEffect(fromEl, fx, spell.type, ()=>{
-          let msg=`${actor.name}が ${spell.name}！\n`;
-          hitList.forEach(t=>{
-            let d;
-            if(spell.type==='multi'){
-              let tot=0;for(let i=0;i<3;i++){const dd=calcDmg(actor.atk,t.def,.7);applyEnemyDmg(t,dd);tot+=dd;}
-              d=tot;
-            } else {
-              d=calcDmg(actor.int*2,t.def,spell.power);applyEnemyDmg(t,d);
-            }
-            msg+=`${t.name}に ${d}　`;
+        playCastFx(fromEl, spell.type, _isBigCastFx(spell), ()=>{
+          animSpellEffect(fromEl, fx, spell.type, ()=>{
+            let msg=`${actor.name}が ${spell.name}！\n`;
+            hitList.forEach(t=>{
+              let d;
+              if(spell.type==='multi'){
+                let tot=0;for(let i=0;i<3;i++){const dd=calcDmg(actor.atk,t.def,.7);applyEnemyDmg(t,dd);tot+=dd;}
+                d=tot;
+              } else {
+                d=calcDmg(actor.int*2,t.def,spell.power);applyEnemyDmg(t,d);
+              }
+              msg+=`${t.name}に ${d}　`;
+            });
+            setBMsg(msg);
+            renderBattle();
+            checkBattleEnd(()=>setTimeout(runNextAction,1000));
           });
-          setBMsg(msg);
-          renderBattle();
-          checkBattleEnd(()=>setTimeout(runNextAction,1000));
         });
       });
-    });
+    }, spell.type);
     return;
   }
 
@@ -4644,7 +4680,8 @@ function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
 
   setBMsg(`${actor.name}が ${spell.name} を唱えた！`);
 
-  // アニメーション再生 → 完了後にダメージ/回復処理
+  // 詠唱エフェクト → アニメーション再生 → 完了後にダメージ/回復処理
+  playCastFx(fromEl, spell.type, _isBigCastFx(spell), ()=>{
   animSpellEffect(fromEl, fxEls, spell.type, ()=>{
     // 味方対象
     if(targetIdx<=-10){
@@ -4708,6 +4745,7 @@ function executeSpellCmd(actor, pIdx, spellIdx, targetIdx){
     renderBattle();
     checkBattleEnd(()=>setTimeout(runNextAction,1000));
   });
+  });
 }
 
 function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
@@ -4735,26 +4773,28 @@ function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
           return;
         }
         const fx=hitList.map(t=>document.getElementById('bspr-'+t.idx)).filter(Boolean);
-        animSpellEffect(fromEl, fx, skill.type, ()=>{
-          let msg=`${actor.name}の ${skill.name}！\n`;
-          let stunned=false;
-          hitList.forEach(t=>{
-            if(skill.type==='multi'){
-              let tot=0;for(let i=0;i<3;i++){const d=calcDmg(actor.atk,t.def,skill.power);applyEnemyDmg(t,d);tot+=d;}
-              msg+=`${t.name}に ${tot}　`;
-            } else {
-              const dmg=calcDmg(actor.atk,t.def,skill.power,!!skill.forceCrit);applyEnemyDmg(t,dmg);
-              msg+=`${t.name}に ${dmg}${skill.forceCrit?'（会心の一撃！）':''}　`;
-              if(skill.type==='stun'&&Math.random()<0.5){t.stunned=true;stunned=true;}
-            }
+        playCastFx(fromEl, skill.type, _isBigCastFx(skill), ()=>{
+          animSpellEffect(fromEl, fx, skill.type, ()=>{
+            let msg=`${actor.name}の ${skill.name}！\n`;
+            let stunned=false;
+            hitList.forEach(t=>{
+              if(skill.type==='multi'){
+                let tot=0;for(let i=0;i<3;i++){const d=calcDmg(actor.atk,t.def,skill.power);applyEnemyDmg(t,d);tot+=d;}
+                msg+=`${t.name}に ${tot}　`;
+              } else {
+                const dmg=calcDmg(actor.atk,t.def,skill.power,!!skill.forceCrit);applyEnemyDmg(t,dmg);
+                msg+=`${t.name}に ${dmg}${skill.forceCrit?'（会心の一撃！）':''}　`;
+                if(skill.type==='stun'&&Math.random()<0.5){t.stunned=true;stunned=true;}
+              }
+            });
+            if(stunned)msg+='\n行動不能になった！';
+            setBMsg(msg);
+            renderBattle();
+            checkBattleEnd(()=>setTimeout(runNextAction,1000));
           });
-          if(stunned)msg+='\n行動不能になった！';
-          setBMsg(msg);
-          renderBattle();
-          checkBattleEnd(()=>setTimeout(runNextAction,1000));
         });
       });
-    });
+    }, skill.type);
     return;
   }
 
@@ -4769,6 +4809,7 @@ function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
   } else {fxEls=[fromEl];}
 
   setBMsg(`${actor.name}の ${skill.name}！`);
+  playCastFx(fromEl, skill.type, _isBigCastFx(skill), ()=>{
   animSpellEffect(fromEl,fxEls,skill.type,()=>{
     if(skill.type==='atk'){
       const t=alive.find(e=>e.idx===targetIdx)||alive[0];
@@ -4827,6 +4868,7 @@ function executeSkillCmd(actor, pIdx, skillIdx, targetIdx){
     }
     renderBattle();
     checkBattleEnd(()=>setTimeout(runNextAction,1000));
+  });
   });
 }
 
@@ -4955,6 +4997,86 @@ function _elCenter(el){
   const bR=bg.getBoundingClientRect();
   const eR=el.getBoundingClientRect();
   return{x:eR.left-bR.left+eR.width/2, y:eR.top-bR.top+eR.height/2};
+}
+
+// ---- 詠唱・発動エフェクト ----
+// タイプ別の詠唱オーラの色
+const CAST_FX_COLOR={
+  atk:'rgba(255,120,40,.85)', multi:'rgba(255,120,40,.85)', all:'rgba(255,90,40,.9)',
+  heal:'rgba(90,255,150,.85)', heal2:'rgba(90,255,150,.85)', healall:'rgba(90,255,150,.85)',
+  healfull:'rgba(255,230,90,.9)', cure:'rgba(150,255,220,.85)',
+  buff:'rgba(255,230,90,.85)', buffDef:'rgba(120,180,255,.85)', selfbuff:'rgba(200,160,255,.85)',
+  powerCharge:'rgba(255,150,80,.85)', speedup:'rgba(150,255,255,.85)', rallybuff:'rgba(255,150,60,.85)',
+  debuff:'rgba(180,80,255,.85)', debuffall:'rgba(180,80,255,.85)', defdown:'rgba(180,80,255,.85)',
+  silence:'rgba(170,170,170,.85)', stun:'rgba(255,255,90,.85)', sleepall:'rgba(140,140,255,.85)',
+  steal:'rgba(180,255,180,.85)', enemyAtk:'rgba(255,40,40,.85)',
+};
+function _castColor(type){return CAST_FX_COLOR[type]||'rgba(255,255,255,.85)';}
+// 詠唱時間（演出を入れる分の溜め時間）
+const CAST_DELAY_MS=380;
+// 全体魔法・必殺技などの大技かどうか（画面フラッシュ＋ズームを伴う）
+function _isBigCastFx(spell){
+  return spell.category==='ultimate' || ['all','healall','debuffall','sleepall','healfull'].includes(spell.type);
+}
+
+// 発動の瞬間、キャラの足元に魔法陣のようなオーラを一瞬表示
+function showCastAura(el,type,durationMs=550){
+  const bg=document.getElementById('battle-bg');
+  const c=_elCenter(el);
+  if(!bg||!c)return;
+  const aura=document.createElement('div');
+  aura.className='cast-aura';
+  aura.style.left=c.x+'px';aura.style.top=c.y+'px';
+  aura.style.background=`radial-gradient(circle, ${_castColor(type)} 0%, transparent 70%)`;
+  aura.style.animationDuration=durationMs+'ms';
+  bg.appendChild(aura);
+  setTimeout(()=>{if(bg.contains(aura))bg.removeChild(aura);},durationMs+60);
+}
+
+// 詠唱中（移動フェーズなど）、キャラの足元にオーラを表示し続ける。停止関数を返す
+function startChargeAura(el,type){
+  const bg=document.getElementById('battle-bg');
+  if(!bg||!el)return ()=>{};
+  const aura=document.createElement('div');
+  aura.className='cast-aura charge';
+  aura.style.background=`radial-gradient(circle, ${_castColor(type)} 0%, transparent 70%)`;
+  bg.appendChild(aura);
+  let rafId;
+  const update=()=>{
+    const c=_elCenter(el);
+    if(c){aura.style.left=c.x+'px';aura.style.top=c.y+'px';}
+    rafId=requestAnimationFrame(update);
+  };
+  rafId=requestAnimationFrame(update);
+  return ()=>{cancelAnimationFrame(rafId);if(bg.contains(aura))bg.removeChild(aura);};
+}
+
+// 画面全体を一瞬フラッシュさせる（必殺技・全体魔法などの発動時）
+function flashImpact(durationMs=350){
+  const bg=document.getElementById('battle-bg');
+  if(!bg)return;
+  const flash=document.createElement('div');
+  flash.className='battle-flash';
+  flash.style.animationDuration=durationMs+'ms';
+  bg.appendChild(flash);
+  setTimeout(()=>{if(bg.contains(flash))bg.removeChild(flash);},durationMs+60);
+}
+
+// 画面を一瞬ズームさせる（必殺技・全体魔法などの発動時）
+function battleZoomPulse(durationMs=500){
+  const bg=document.getElementById('battle-bg');
+  if(!bg)return;
+  bg.classList.remove('battle-zoom-pulse');
+  void bg.offsetWidth;
+  bg.classList.add('battle-zoom-pulse');
+  setTimeout(()=>bg.classList.remove('battle-zoom-pulse'),durationMs+60);
+}
+
+// 詠唱オーラ→（大技なら画面フラッシュ＋ズーム）→ 少し溜めてからエフェクト発動
+function playCastFx(fromEl,type,big,cb){
+  showCastAura(fromEl,type);
+  if(big){setTimeout(()=>{flashImpact();battleZoomPulse();},120);}
+  setTimeout(cb,CAST_DELAY_MS);
 }
 
 // 呪文エフェクト：パーティクルが飛んでいく
