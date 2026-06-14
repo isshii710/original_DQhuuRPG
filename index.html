@@ -4262,6 +4262,12 @@ function bCmd(cmd){
     return;
   }
   if(cmd==='attack'){
+    // ソロプレイは自分で照準を合わせて攻撃するため対象選択は不要
+    if(!ONLINE.isOnline){
+      G.cmdQueue.push({actor, type:'attack', targetIdx:-1, spellIdx:-1});
+      selectCommandFor(G.cmdSelectIdx+1);
+      return;
+    }
     // 攻撃対象を選ぶ
     openTargetSelect(actor, 'attack', -1);
     return;
@@ -4294,7 +4300,9 @@ function onSpellSelected(idx){
   pendingSpellIdx=idx;
   const needsEnemyTarget=['atk','multi','silence'].includes(spell.type);
   const needsAllyTarget=['heal','heal2','healfull','buffDef'].includes(spell.type);
-  if(needsEnemyTarget){openTargetSelect(actor,'spell',idx);}
+  // ソロプレイのatk/multiは自分で照準を合わせるため対象選択は不要
+  const usesPositioning=!ONLINE.isOnline && (spell.type==='atk'||spell.type==='multi');
+  if(needsEnemyTarget && !usesPositioning){openTargetSelect(actor,'spell',idx);}
   else if(needsAllyTarget){openAllyTargetSelect(actor,idx);}
   else{G.cmdQueue.push({actor,type:'spell',spellIdx:idx,targetIdx:-1});selectCommandFor(G.cmdSelectIdx+1);}
 }
@@ -4322,7 +4330,9 @@ function onSkillSelected(idx){
   if(!skill){enableCmds(true);return;}
   pendingSpellIdx=idx;
   const needsEnemyTarget=['atk','multi','stun','steal'].includes(skill.type);
-  if(needsEnemyTarget){openTargetSelect(actor,'skill',idx);}
+  // ソロプレイのatk/multi/stunは自分で照準を合わせるため対象選択は不要
+  const usesPositioning=!ONLINE.isOnline && ['atk','multi','stun'].includes(skill.type);
+  if(needsEnemyTarget && !usesPositioning){openTargetSelect(actor,'skill',idx);}
   else{G.cmdQueue.push({actor,type:'skill',spellIdx:idx,targetIdx:-1});selectCommandFor(G.cmdSelectIdx+1);}
 }
 function closeSkill(){document.getElementById('skill-screen').classList.add('hidden');enableCmds(true);}
