@@ -383,13 +383,15 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 .eq-stats{padding:7px 12px;display:flex;flex-wrap:wrap;gap:6px 14px;border-top:1px solid rgba(60,90,160,.2);border-bottom:1px solid rgba(60,90,160,.2);font-size:10px;}
 .eq-chip{color:var(--white);}.eq-chip b{color:var(--gold);}
 .eq-list{display:flex;flex-direction:column;gap:1px;background:rgba(60,90,160,.12);overflow-y:auto;flex:1;min-height:60px;touch-action:pan-y;-webkit-overflow-scrolling:touch;}
-.eqitem{background:var(--win-bg);border:none;display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;color:var(--white);font-family:'DotGothic16',serif;font-size:11px;width:100%;text-align:left;transition:background .06s;}
-.eqitem:active{background:rgba(50,90,200,.5);}.eqitem.equipped{background:rgba(255,215,0,.1);}
+.eq-list .shop-row.equipped{background:rgba(255,215,0,.1);}
 .eq-delta{font-size:9px;}.dplus{color:#00ff88;}.dminus{color:#ff6666;}
 .eq-badge{font-size:8px;color:var(--gold);}
 .eq-chars{display:flex;gap:1px;background:rgba(60,90,160,.18);}
 .eq-char-btn{flex:1;background:var(--win-bg);border:none;padding:7px 4px;cursor:pointer;color:var(--white);font-family:'DotGothic16',serif;text-align:center;transition:background .06s;min-width:0;}
 .eq-char-btn.cur{background:rgba(50,90,200,.55);}
+#eq-main-view.hidden,#eq-list-view.hidden{display:none;}
+.eq-list-back{padding:10px 12px;cursor:pointer;font-size:11px;color:var(--white);border-bottom:1px solid rgba(60,90,160,0.3);transition:background .1s;}
+.eq-list-back:active{background:rgba(50,90,200,.3);}
 .eq-char-ico{font-size:17px;display:block;}
 .eq-char-nm{font-size:7px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:1px;}
 #sp-screen,#job-screen{position:fixed;left:0;right:0;bottom:0;height:calc(var(--vh) * 50);z-index:66;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:12px;}
@@ -439,7 +441,6 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 .shop-row-bottom{display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap;}
 .shop-pagenav{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;font-size:9px;color:var(--white);}
 .shop-pagenav:empty{display:none;}
-.eq-list.shop-grid .eqitem{flex-direction:column;align-items:flex-start;gap:4px;padding:7px 9px;}
 
 /* Item popup */
 #item-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:70;padding:18px 28px;text-align:center;animation:ipop 2.4s forwards;}
@@ -759,12 +760,18 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
 <div id="equip-screen" class="hidden">
   <div class="win eq-box">
     <div class="win-title">⚔️ そうび</div>
-    <div class="eq-chars" id="eq-chars"></div>
-    <div class="eq-slots" id="eq-slots"></div>
-    <div class="eq-stats" id="eq-stats"></div>
-    <div style="padding:6px 12px;font-size:9px;color:var(--gold);letter-spacing:2px;" id="eq-list-lbl"></div>
-    <div class="eq-list shop-grid" id="eq-list"></div>
-    <div class="shop-pagenav" id="eq-list-pagenav"></div>
+    <div id="eq-main-view">
+      <div class="eq-chars" id="eq-chars"></div>
+      <div class="eq-slots" id="eq-slots"></div>
+      <div class="eq-stats" id="eq-stats"></div>
+    </div>
+    <div id="eq-list-view" class="hidden">
+      <div class="eq-list-back" onclick="closeEqList()">◀ 戻る</div>
+      <div class="eq-stats" id="eq-list-stats"></div>
+      <div style="padding:6px 12px;font-size:9px;color:var(--gold);letter-spacing:2px;" id="eq-list-lbl"></div>
+      <div class="eq-list shop-grid" id="eq-list"></div>
+      <div class="shop-pagenav" id="eq-list-pagenav"></div>
+    </div>
     <div class="win-close" onclick="closeEquip()">▶ とじる</div>
   </div>
 </div>
@@ -5524,10 +5531,16 @@ function menuItem(){closeMenu();const items=G.party[0].items;addChat(items.lengt
 
 let eqSlot='weapon';
 let eqCharIdx=0;
-function menuEquip(){closeMenu();eqCharIdx=0;eqSlot='weapon';shopPages['eq-list']=0;renderEquip();document.getElementById('equip-screen').classList.remove('hidden');}
+let eqView='main';
+function menuEquip(){closeMenu();eqCharIdx=0;eqSlot='weapon';eqView='main';shopPages['eq-list']=0;renderEquip();document.getElementById('equip-screen').classList.remove('hidden');}
 function closeEquip(){document.getElementById('equip-screen').classList.add('hidden');}
 const SLOT_LBL={weapon:'ぶき',armor:'よろい',accessory:'そうしょく'};
+function eqStatsHtml(c){
+  return`<span class="eq-chip">攻<b>${c.atk}</b></span><span class="eq-chip">守<b>${c.def}</b></span><span class="eq-chip">速<b>${c.spd}</b></span><span class="eq-chip">魔<b>${c.int}</b></span>`;
+}
 function renderEquip(){
+  document.getElementById('eq-main-view').classList.toggle('hidden',eqView!=='main');
+  document.getElementById('eq-list-view').classList.toggle('hidden',eqView!=='list');
   // キャラクター選択タブ
   document.getElementById('eq-chars').innerHTML=
     G.party.map((ch,i)=>`<button class="eq-char-btn ${i===eqCharIdx?'cur':''}" onclick="selEqChar(${i})">
@@ -5540,24 +5553,28 @@ function renderEquip(){
       <span class="eq-stype">${SLOT_LBL[s]}</span><span class="eq-sico">${e?e.icon:'➖'}</span>
       <span class="eq-snm ${e?'':'eq-empty'}">${e?e.name:'なし'}</span>
       <span class="eq-sstat">${stat}</span></button>`;}).join('');
-  document.getElementById('eq-stats').innerHTML=`<span class="eq-chip">攻<b>${c.atk}</b></span><span class="eq-chip">守<b>${c.def}</b></span><span class="eq-chip">速<b>${c.spd}</b></span><span class="eq-chip">魔<b>${c.int}</b></span>`;
+  document.getElementById('eq-stats').innerHTML=eqStatsHtml(c);
+  if(eqView!=='list')return;
+  document.getElementById('eq-list-stats').innerHTML=eqStatsHtml(c);
   document.getElementById('eq-list-lbl').textContent=SLOT_LBL[eqSlot]+'を選ぶ';
   const owned=c.inventory.map(getEquip).filter(e=>e&&e.slot===eqSlot);
   const curId=c.equip[eqSlot];
-  const rows=[`<button class="eqitem" onclick="equipItm(null)">
+  const rows=[`<div class="shop-row">
       <div class="shop-row-top"><span class="eq-sico">➖</span><span class="shop-row-name">はずす</span></div>
-    </button>`,
+      <div class="shop-row-bottom">${curId?`<button class="smith-btn" onclick="equipItm(null)">はずす</button>`:'<span class="eq-badge">未装備</span>'}</div>
+    </div>`,
     ...owned.map(e=>{
       const cur=curId?getEquip(curId):null;
       const da=(e.atk||0)-(cur?.atk||0),dd=(e.def||0)-(cur?.def||0);
       const delta=[da&&`<span class="${da>0?'dplus':'dminus'}">攻${da>0?'+':''}${da}</span>`,dd&&`<span class="${dd>0?'dplus':'dminus'}">守${dd>0?'+':''}${dd}</span>`].filter(Boolean).join(' ');
-      return`<button class="eqitem ${e.id===curId?'equipped':''}" onclick="equipItm('${e.id}')">
+      return`<div class="shop-row ${e.id===curId?'equipped':''}">
         <div class="shop-row-top"><span class="eq-sico">${e.icon}</span><span class="shop-row-name">${e.name}</span></div>
-        <div class="shop-row-bottom"><span class="eq-delta">${delta}</span>${e.id===curId?'<span class="eq-badge">装備中</span>':''}</div></button>`;})];
+        <div class="shop-row-bottom"><span class="eq-delta">${delta}</span>${e.id===curId?'<span class="eq-badge">装備中</span>':`<button class="smith-btn" onclick="equipItm('${e.id}')">装備</button>`}</div></div>`;})];
   renderShopPage('eq-list','eq-list-pagenav',rows,renderEquip);
 }
-function selEqSlot(s){eqSlot=s;shopPages['eq-list']=0;renderEquip();}
+function selEqSlot(s){eqSlot=s;eqView='list';shopPages['eq-list']=0;renderEquip();}
 function selEqChar(i){eqCharIdx=i;shopPages['eq-list']=0;renderEquip();}
+function closeEqList(){eqView='main';renderEquip();}
 function equipItm(id){
   const c=G.party[eqCharIdx];c.equip[eqSlot]=id;recalcStats(c);
   addChat(`${c.name}が`+(id?getEquip(id).icon+getEquip(id).name+'を装備！':'はずした'),null,true);
