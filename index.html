@@ -2503,22 +2503,11 @@ function _handleP2P(msg) {
         const lbl = document.getElementById('map-label');
         if (lbl) lbl.textContent = '📍 ' + mapName;
         addChat('📍 ' + mapName + 'に移動した', null, true);
-        // ホストの近くの歩けるタイルにゲストをスポーン
-        if(msg.hostX!=null && msg.hostY!=null && G.party.length){
-          const htx=Math.floor(msg.hostX/G.TILE), hty=Math.floor(msg.hostY/G.TILE);
-          const BLOCK=new Set([T.WALL,T.TREE,T.CHEST,T.DOOR,T.NPC,T.BOSS_GATE]);
-          let spawnTx=htx, spawnTy=hty;
-          outer: for(let r=1;r<=8;r++){
-            for(let dy=-r;dy<=r;dy++){for(let dx=-r;dx<=r;dx++){
-              if(Math.abs(dx)!==r&&Math.abs(dy)!==r)continue;
-              const tx=htx+dx,ty=hty+dy;
-              if(tx<1||ty<1||tx>=MAP_W-1||ty>=MAP_H-1)continue;
-              if(!BLOCK.has(G.tiles[ty]?.[tx]??T.WALL)){spawnTx=tx;spawnTy=ty;break outer;}
-            }}
-          }
-          const px=spawnTx*G.TILE+G.TILE/2, py=spawnTy*G.TILE+G.TILE/2;
-          G.party.forEach((c,i)=>{c.x=px+(i%2)*12;c.y=py+Math.floor(i/2)*12;});
-          // スポーン直後の位置をホストに即時送信
+        // マップタイプ別の安全なスポーン地点（壁に埋まらないように固定座標を使用）
+        if(G.party.length){
+          if(msg.mapIdx%3===2) setPlayerPos(12,14);      // ダンジョン
+          else if(msg.mapIdx%3===1) setPlayerPos(3,9);   // フィールド
+          else setPlayerPos(11,12);                       // 村（噴水広場付近）
           const _g=G.party[0];
           if(_g) setTimeout(()=>_sendP2P({type:'pos_update',x:_g.x,y:_g.y,icon:_g.icon,name:_g.name,chipImg:_g.chipImg}),50);
         }
