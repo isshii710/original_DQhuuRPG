@@ -2401,6 +2401,7 @@ function _setupConn(c, asHost) {
   c.on('close', () => {
     ONLINE.isOnline = false;
     ONLINE.remoteParties = [];
+    ONLINE.remotePos = null;
     addChat('⚠️ 接続が切れました', null, true);
     updatePlayersBadge();
   });
@@ -2506,6 +2507,9 @@ function _handleP2P(msg) {
         if(msg.hostX!=null && msg.hostY!=null && G.party.length){
           const off=G.TILE*1.5;
           G.party.forEach((c,i)=>{c.x=msg.hostX+(i%2?off:-off);c.y=msg.hostY+off;});
+          // スポーン直後の位置をホストに即時送信
+          const _g=G.party[0];
+          if(_g) setTimeout(()=>_sendP2P({type:'pos_update',x:_g.x,y:_g.y,icon:_g.icon,name:_g.name,chipImg:_g.chipImg}),50);
         }
       }
       break;
@@ -2636,6 +2640,11 @@ function _startOnlineMidGame() {
     }
   }
 
+  // 接続直後に自分の位置を即時送信（相手の画面に即座に表示されるように）
+  if(G.party[0]){
+    const _c=G.party[0];
+    _sendP2P({type:'pos_update',x:_c.x,y:_c.y,icon:_c.icon,name:_c.name,chipImg:_c.chipImg});
+  }
   addChat('🌐 仲間と接続しました！一緒に冒険しよう！', null, true);
   updateOnlineModal();
 }
@@ -6403,7 +6412,7 @@ function addChat(msg,name,sys=false){
 }
 function openChatInput(){document.getElementById('chat-input').classList.remove('hidden');document.getElementById('chat-txt').focus();}
 function closeChatInput(){document.getElementById('chat-input').classList.add('hidden');}
-function sendChat(){const t=document.getElementById('chat-txt').value.trim();if(!t)return;addChat(t,G.party[0].name);document.getElementById('chat-txt').value='';closeChatInput();}
+function sendChat(){const t=document.getElementById('chat-txt').value.trim();if(!t)return;const n=G.party[0].name;addChat(t,n);if(ONLINE.isOnline)_sendP2P({type:'chat',name:n,msg:t});document.getElementById('chat-txt').value='';closeChatInput();}
 document.getElementById('chat-txt').addEventListener('keypress',e=>{if(e.key==='Enter')sendChat();});
 
 // ============================================================
