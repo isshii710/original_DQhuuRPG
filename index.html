@@ -2513,28 +2513,47 @@ function _handleP2P(msg) {
     }
 
     case 'map_sync': {
-      // 接続直後のみ：ゲストをホストと同じマップの安全な位置にスポーン
-      if (!ONLINE.isHost && msg._initial) {
-        G.mapIdx  = msg.mapIdx;
-        G.tiles   = msg.tiles;
-        G.chests  = msg.chests || [];
-        G.doors   = msg.doors  || [];
+      if (ONLINE.isHost) break; // ホストは受け取らない
+
+      const _applyMapSync = (targetMapIdx, srcTiles, srcChests, srcDoors, srcFloor) => {
+        G.mapIdx     = targetMapIdx;
+        G.dungeonFloor = srcFloor || 0;
+        G.tiles      = srcTiles;
+        G.chests     = srcChests || [];
+        G.doors      = srcDoors  || [];
         G.mapEnemies = [];
-        G.npcsOnMap  = (msg.mapIdx % 3 === 0 ? getVillageNPCs(Math.floor(msg.mapIdx / 3)) : [])
-          .filter(n => msg.tiles[n.y]?.[n.x] === T.NPC).map(n => ({...n}));
-        const mapName = MAPS_DEF[msg.mapIdx]?.name || '';
+        G.npcsOnMap  = (targetMapIdx % 3 === 0 ? getVillageNPCs(Math.floor(targetMapIdx / 3)) : [])
+          .filter(n => srcTiles[n.y]?.[n.x] === T.NPC).map(n => ({...n}));
+        const mapName = MAPS_DEF[targetMapIdx]?.name || '';
         const lbl = document.getElementById('map-label');
-        if (lbl) lbl.textContent = (msg.mapIdx%3===0?'🏘️ ':msg.mapIdx%3===1?'🌿 ':'🏰 ') + mapName;
-        if(G.party.length){
-          if(msg.mapIdx%3===2) setPlayerPos(12,14);
-          else if(msg.mapIdx%3===1) setPlayerPos(3,9);
+        if (lbl) lbl.textContent = (targetMapIdx%3===0?'🏘️ ':targetMapIdx%3===1?'🌿 ':'🏰 ') + mapName;
+        if (G.party.length) {
+          if (targetMapIdx%3===2) setPlayerPos(12,14);
+          else if (targetMapIdx%3===1) setPlayerPos(3,9);
           else setPlayerPos(11,12);
-          const _g=G.party[0];
-          if(_g) setTimeout(()=>{
-            const _ph=G.party.map(p=>({name:p.name,icon:p.icon||'?',hp:Math.floor(p.hp),maxHp:p.maxHp,mp:Math.floor(p.mp||0),maxMp:p.maxMp||1}));
+          const _g = G.party[0];
+          if (_g) setTimeout(() => {
+            const _ph = G.party.map(p=>({name:p.name,icon:p.icon||'?',hp:Math.floor(p.hp),maxHp:p.maxHp,mp:Math.floor(p.mp||0),maxMp:p.maxMp||1}));
             _sendP2P({type:'pos_update',x:_g.x,y:_g.y,mapIdx:G.mapIdx,icon:_g.icon,name:_g.name,chipImg:_g.chipImg,partyHp:_ph});
-          },50);
+          }, 50);
         }
+      };
+
+      if (msg._initial) {
+        // 初期接続: 常に始まりの村(mapIdx=0)の噴水前にスポーン
+        if (G.party.length) {
+          generateMap(0);
+          setPlayerPos(11, 12);
+          const _g = G.party[0];
+          if (_g) setTimeout(() => {
+            const _ph = G.party.map(p=>({name:p.name,icon:p.icon||'?',hp:Math.floor(p.hp),maxHp:p.maxHp,mp:Math.floor(p.mp||0),maxMp:p.maxMp||1}));
+            _sendP2P({type:'pos_update',x:_g.x,y:_g.y,mapIdx:G.mapIdx,icon:_g.icon,name:_g.name,chipImg:_g.chipImg,partyHp:_ph});
+          }, 100);
+        }
+      } else {
+        // ホストのマップ変更に追従（戦闘中は無視）
+        if (G.inBattle) break;
+        _applyMapSync(msg.mapIdx, msg.tiles, msg.chests, msg.doors, msg.floor);
       }
       break;
     }
@@ -3091,6 +3110,10 @@ function generateMap(idx){
     idx%3===0?`🏘️ ${map.name}`:idx%3===1?`🌿 ${map.name}`:
     `🏰 ${map.name} B${G.dungeonFloor+1}F`;
 
+  // オンライン（ホスト）: マップデータをゲストに同期してダンジョンを共有
+  if (ONLINE.isOnline && ONLINE.isHost) {
+    _sendP2P({ type: 'map_sync', mapIdx: G.mapIdx, floor: G.dungeonFloor, tiles: G.tiles, chests: G.chests, doors: G.doors });
+  }
 }
 
 function setPlayerPos(tx,ty){
