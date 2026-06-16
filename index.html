@@ -2490,34 +2490,13 @@ function _handleP2P(msg) {
     }
 
     case 'map_sync': {
-      // ゲストがホストのマップを受け取って適用する
-      if (!ONLINE.isHost) {
-        G.mapIdx  = msg.mapIdx;
-        G.tiles   = msg.tiles;
-        G.chests  = msg.chests || [];
-        G.doors   = msg.doors  || [];
-        G.mapEnemies = [];
-        G.npcsOnMap  = (msg.mapIdx % 3 === 0 ? getVillageNPCs(Math.floor(msg.mapIdx / 3)) : [])
-          .filter(n => msg.tiles[n.y]?.[n.x] === T.NPC).map(n => ({...n}));
-        const mapName = MAPS_DEF[msg.mapIdx]?.name || '';
-        const lbl = document.getElementById('map-label');
-        if (lbl) lbl.textContent = '📍 ' + mapName;
-        addChat('📍 ' + mapName + 'に移動した', null, true);
-        // マップタイプ別の安全なスポーン地点（壁に埋まらないように固定座標を使用）
-        if(G.party.length){
-          if(msg.mapIdx%3===2) setPlayerPos(12,14);      // ダンジョン
-          else if(msg.mapIdx%3===1) setPlayerPos(3,9);   // フィールド
-          else setPlayerPos(11,12);                       // 村（噴水広場付近）
-          const _g=G.party[0];
-          if(_g) setTimeout(()=>_sendP2P({type:'pos_update',x:_g.x,y:_g.y,icon:_g.icon,name:_g.name,chipImg:_g.chipImg}),50);
-        }
-      }
+      // 互換性のため受信するが何もしない（独立マップ探索モード）
       break;
     }
 
     case 'enemy_update': {
-      // ゲストがホストの敵位置を受け取って反映する
-      if (!ONLINE.isHost) {
+      // 同じマップにいる時だけ敵を同期する
+      if (!ONLINE.isHost && msg.mapIdx === G.mapIdx) {
         G.mapEnemies = msg.enemies.map(e => ({
           ...(ENEMIES_DATA[e.idx] || {}), ...e,
         }));
@@ -2526,7 +2505,7 @@ function _handleP2P(msg) {
     }
 
     case 'pos_update': {
-      ONLINE.remotePos = { x: msg.x, y: msg.y, icon: msg.icon, name: msg.name, chipImg: msg.chipImg };
+      ONLINE.remotePos = { x: msg.x, y: msg.y, mapIdx: msg.mapIdx, icon: msg.icon, name: msg.name, chipImg: msg.chipImg };
       break;
     }
 
@@ -2612,27 +2591,20 @@ function _startOnlineMidGame() {
   // 自分のパーティ情報を相手に送る
   _sendP2P({ type: 'party_update', party: encodePartyToHash(G.party) });
 
-  if (ONLINE.isHost) {
-    // ホストの現在のマップをゲストに同期する（現在座標も送りゲストを近くにスポーン）
-    const _leader=G.party[0];
-    _sendP2P({ type: 'map_sync', mapIdx: G.mapIdx, tiles: G.tiles, chests: G.chests, doors: G.doors,
-      hostX: _leader?.x, hostY: _leader?.y });
-  }
-
   if (!G._onlineIntervalsStarted) {
     G._onlineIntervalsStarted = true;
-    // 自分の位置を 150ms ごとに送る
+    // 自分の位置とマップ番号を 150ms ごとに送る
     setInterval(() => {
       if (G.inBattle || !G.party[0]) return;
       const c = G.party[0];
-      _sendP2P({ type: 'pos_update', x: c.x, y: c.y, icon: c.icon, name: c.name, chipImg: c.chipImg });
+      _sendP2P({ type: 'pos_update', x: c.x, y: c.y, mapIdx: G.mapIdx, icon: c.icon, name: c.name, chipImg: c.chipImg });
     }, 150);
 
-    // ホストは敵位置を 400ms ごとに送る
+    // ホストは敵位置を 400ms ごとに送る（マップ番号付き）
     if (ONLINE.isHost) {
       setInterval(() => {
         if (G.inBattle) return;
-        _sendP2P({ type: 'enemy_update', enemies: G.mapEnemies.map(e => ({
+        _sendP2P({ type: 'enemy_update', mapIdx: G.mapIdx, enemies: G.mapEnemies.map(e => ({
           idx: e.idx, x: e.x, y: e.y, curHp: e.curHp, hp: e.hp, dead: e.dead,
           sprite: e.sprite, color: e.color, spd: e.spd,
         }))});
@@ -2643,7 +2615,7 @@ function _startOnlineMidGame() {
   // 接続直後に自分の位置を即時送信（相手の画面に即座に表示されるように）
   if(G.party[0]){
     const _c=G.party[0];
-    _sendP2P({type:'pos_update',x:_c.x,y:_c.y,icon:_c.icon,name:_c.name,chipImg:_c.chipImg});
+    _sendP2P({type:'pos_update',x:_c.x,y:_c.y,mapIdx:G.mapIdx,icon:_c.icon,name:_c.name,chipImg:_c.chipImg});
   }
   addChat('🌐 仲間と接続しました！一緒に冒険しよう！', null, true);
   updateOnlineModal();
@@ -3048,11 +3020,6 @@ function generateMap(idx){
     idx%3===0?`🏘️ ${map.name}`:idx%3===1?`🌿 ${map.name}`:
     `🏰 ${map.name} B${G.dungeonFloor+1}F`;
 
-  if(ONLINE.isOnline&&ONLINE.isHost){
-    const _ldr=G.party[0];
-    _sendP2P({type:'map_sync',mapIdx:idx,tiles:G.tiles,chests:G.chests,doors:G.doors,
-      hostX:_ldr?.x, hostY:_ldr?.y});
-  }
 }
 
 function setPlayerPos(tx,ty){
@@ -3559,32 +3526,45 @@ function render(){
   // オンライン: 相手プレイヤーをマップに表示
   if(ONLINE.isOnline && ONLINE.remotePos){
     const rp=ONLINE.remotePos;
-    const rx=rp.x-G.cam.x, ry=rp.y-G.cam.y;
-    // 青い影で区別
-    ctx.fillStyle='rgba(0,100,255,0.25)';ctx.beginPath();ctx.ellipse(rx,ry+8,12,5,0,0,Math.PI*2);ctx.fill();
-    const rdraw = rp.chipImg && drawCharaChip(ctx, rp.chipImg, rx, ry-2, G.TILE*0.9, G.TILE*0.9, 0, wf);
-    if(!rdraw){
-      ctx.font=`${G.TILE*0.75}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(rp.icon||'🧑',rx,ry-2);
-    }
-    // 名前タグ（青色）
-    ctx.font='9px DotGothic16,serif';ctx.fillStyle='#88ffcc';
-    ctx.fillText((rp.name||'仲間').substr(0,4),rx,ry-G.TILE*0.6);
+    if(rp.mapIdx == null || rp.mapIdx === G.mapIdx){
+      // 同じマップにいる → アイコンを表示
+      const rx=rp.x-G.cam.x, ry=rp.y-G.cam.y;
+      ctx.fillStyle='rgba(0,100,255,0.25)';ctx.beginPath();ctx.ellipse(rx,ry+8,12,5,0,0,Math.PI*2);ctx.fill();
+      const rdraw = rp.chipImg && drawCharaChip(ctx, rp.chipImg, rx, ry-2, G.TILE*0.9, G.TILE*0.9, 0, wf);
+      if(!rdraw){
+        ctx.font=`${G.TILE*0.75}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(rp.icon||'🧑',rx,ry-2);
+      }
+      ctx.font='9px DotGothic16,serif';ctx.fillStyle='#88ffcc';
+      ctx.fillText((rp.name||'仲間').substr(0,4),rx,ry-G.TILE*0.6);
 
-    // 画面外にいる場合: 画面端に方向矢印を表示
-    const _cw=canvas.width,_ch=canvas.height,_mg=28;
-    if(rx<_mg||rx>_cw-_mg||ry<_mg||ry>_ch-_mg){
-      const _ang=Math.atan2(ry-_ch/2,rx-_cw/2);
-      const _r=Math.min(_cw/2,_ch/2)*0.82;
-      const _ex=Math.max(_mg,Math.min(_cw-_mg,_cw/2+Math.cos(_ang)*_r));
-      const _ey=Math.max(_mg,Math.min(_ch-_mg,_ch/2+Math.sin(_ang)*_r));
+      // 画面外にいる場合: 画面端に方向矢印を表示
+      const _cw=canvas.width,_ch=canvas.height,_mg=28;
+      if(rx<_mg||rx>_cw-_mg||ry<_mg||ry>_ch-_mg){
+        const _ang=Math.atan2(ry-_ch/2,rx-_cw/2);
+        const _r=Math.min(_cw/2,_ch/2)*0.82;
+        const _ex=Math.max(_mg,Math.min(_cw-_mg,_cw/2+Math.cos(_ang)*_r));
+        const _ey=Math.max(_mg,Math.min(_ch-_mg,_ch/2+Math.sin(_ang)*_r));
+        ctx.save();
+        ctx.translate(_ex,_ey);ctx.rotate(_ang);
+        ctx.fillStyle='rgba(136,255,200,0.92)';
+        ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(-9,-7);ctx.lineTo(-5,0);ctx.lineTo(-9,7);ctx.closePath();ctx.fill();
+        ctx.restore();
+        ctx.font='bold 9px DotGothic16,serif';ctx.fillStyle='#88ffcc';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText((rp.name||'仲間').substr(0,4),_ex,_ey-17);
+      }
+    } else {
+      // 別のマップにいる → 右上に「仲間: [マップ名]」を表示
+      const _partnerMap = MAPS_DEF[rp.mapIdx]?.name || '別のマップ';
+      const _partnerName = (rp.name||'仲間').substr(0,5);
       ctx.save();
-      ctx.translate(_ex,_ey);ctx.rotate(_ang);
-      ctx.fillStyle='rgba(136,255,200,0.92)';
-      ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(-9,-7);ctx.lineTo(-5,0);ctx.lineTo(-9,7);ctx.closePath();ctx.fill();
+      ctx.font='bold 10px DotGothic16,serif';
+      ctx.textAlign='right';ctx.textBaseline='top';
+      ctx.fillStyle='rgba(0,0,0,0.5)';
+      ctx.fillRect(canvas.width-130, 4, 126, 18);
+      ctx.fillStyle='#88ffcc';
+      ctx.fillText(`🌐 ${_partnerName}: ${_partnerMap}`, canvas.width-4, 6);
       ctx.restore();
-      ctx.font='bold 9px DotGothic16,serif';ctx.fillStyle='#88ffcc';ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText((rp.name||'仲間').substr(0,4),_ex,_ey-17);
     }
   }
 }
@@ -3745,7 +3725,7 @@ function drawMinimap(){
     const lx=G.party[0].x/G.TILE*sx,ly=G.party[0].y/G.TILE*sy;
     mmCtx.fillStyle='#00ffaa';mmCtx.beginPath();mmCtx.arc(lx,ly,3,0,Math.PI*2);mmCtx.fill();
   }
-  if(ONLINE.isOnline && ONLINE.remotePos){
+  if(ONLINE.isOnline && ONLINE.remotePos && (ONLINE.remotePos.mapIdx==null||ONLINE.remotePos.mapIdx===G.mapIdx)){
     const rp=ONLINE.remotePos;
     const rx=rp.x/G.TILE*sx, ry=rp.y/G.TILE*sy;
     mmCtx.fillStyle='#88aaff';mmCtx.beginPath();mmCtx.arc(rx,ry,3,0,Math.PI*2);mmCtx.fill();
