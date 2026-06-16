@@ -2502,6 +2502,11 @@ function _handleP2P(msg) {
         const lbl = document.getElementById('map-label');
         if (lbl) lbl.textContent = '📍 ' + mapName;
         addChat('📍 ' + mapName + 'に移動した', null, true);
+        // ホストの近くにゲストをスポーン（画面に見えるように）
+        if(msg.hostX!=null && msg.hostY!=null && G.party.length){
+          const off=G.TILE*1.5;
+          G.party.forEach((c,i)=>{c.x=msg.hostX+(i%2?off:-off);c.y=msg.hostY+off;});
+        }
       }
       break;
     }
@@ -2604,8 +2609,10 @@ function _startOnlineMidGame() {
   _sendP2P({ type: 'party_update', party: encodePartyToHash(G.party) });
 
   if (ONLINE.isHost) {
-    // ホストの現在のマップをゲストに同期する
-    _sendP2P({ type: 'map_sync', mapIdx: G.mapIdx, tiles: G.tiles, chests: G.chests, doors: G.doors });
+    // ホストの現在のマップをゲストに同期する（現在座標も送りゲストを近くにスポーン）
+    const _leader=G.party[0];
+    _sendP2P({ type: 'map_sync', mapIdx: G.mapIdx, tiles: G.tiles, chests: G.chests, doors: G.doors,
+      hostX: _leader?.x, hostY: _leader?.y });
   }
 
   if (!G._onlineIntervalsStarted) {
@@ -3033,7 +3040,9 @@ function generateMap(idx){
     `🏰 ${map.name} B${G.dungeonFloor+1}F`;
 
   if(ONLINE.isOnline&&ONLINE.isHost){
-    _sendP2P({type:'map_sync',mapIdx:idx,tiles:G.tiles,chests:G.chests,doors:G.doors});
+    const _ldr=G.party[0];
+    _sendP2P({type:'map_sync',mapIdx:idx,tiles:G.tiles,chests:G.chests,doors:G.doors,
+      hostX:_ldr?.x, hostY:_ldr?.y});
   }
 }
 
@@ -3552,6 +3561,22 @@ function render(){
     // 名前タグ（青色）
     ctx.font='9px DotGothic16,serif';ctx.fillStyle='#88ffcc';
     ctx.fillText((rp.name||'仲間').substr(0,4),rx,ry-G.TILE*0.6);
+
+    // 画面外にいる場合: 画面端に方向矢印を表示
+    const _cw=canvas.width,_ch=canvas.height,_mg=28;
+    if(rx<_mg||rx>_cw-_mg||ry<_mg||ry>_ch-_mg){
+      const _ang=Math.atan2(ry-_ch/2,rx-_cw/2);
+      const _r=Math.min(_cw/2,_ch/2)*0.82;
+      const _ex=Math.max(_mg,Math.min(_cw-_mg,_cw/2+Math.cos(_ang)*_r));
+      const _ey=Math.max(_mg,Math.min(_ch-_mg,_ch/2+Math.sin(_ang)*_r));
+      ctx.save();
+      ctx.translate(_ex,_ey);ctx.rotate(_ang);
+      ctx.fillStyle='rgba(136,255,200,0.92)';
+      ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(-9,-7);ctx.lineTo(-5,0);ctx.lineTo(-9,7);ctx.closePath();ctx.fill();
+      ctx.restore();
+      ctx.font='bold 9px DotGothic16,serif';ctx.fillStyle='#88ffcc';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText((rp.name||'仲間').substr(0,4),_ex,_ey-17);
+    }
   }
 }
 
