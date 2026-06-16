@@ -2507,7 +2507,7 @@ function _handleP2P(msg) {
         if(msg.hostX!=null && msg.hostY!=null && G.party.length){
           const htx=Math.floor(msg.hostX/G.TILE), hty=Math.floor(msg.hostY/G.TILE);
           const BLOCK=new Set([T.WALL,T.TREE,T.CHEST,T.DOOR,T.NPC,T.BOSS_GATE]);
-          let spawnTx=htx, spawnTy=hty; // デフォルト: ホストと同タイル
+          let spawnTx=htx, spawnTy=hty;
           outer: for(let r=1;r<=8;r++){
             for(let dy=-r;dy<=r;dy++){for(let dx=-r;dx<=r;dx++){
               if(Math.abs(dx)!==r&&Math.abs(dy)!==r)continue;
