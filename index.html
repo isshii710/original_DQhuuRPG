@@ -659,6 +659,7 @@ body{background:#000;overflow:hidden;width:100vw;height:calc(var(--vh) * 100);fo
     <div class="act-row">
       <button class="act-btn btn-chat" onclick="openChatInput()">✉ チャット</button>
       <button class="act-btn" onclick="handleSearch()">🔍 調べる</button>
+      <button class="act-btn" id="btn-partner-overworld" onclick="togglePartnerPanel()" style="display:none;">👥 仲間</button>
     </div>
   </div>
 </div>
@@ -2402,6 +2403,11 @@ function _setupConn(c, asHost) {
     ONLINE.isOnline = false;
     ONLINE.remoteParties = [];
     ONLINE.remotePos = null;
+    ONLINE.remotePartyHp = [];
+    const _ppBtn2 = document.getElementById('btn-partner-overworld');
+    if (_ppBtn2) _ppBtn2.style.display = 'none';
+    const _panel2 = document.getElementById('partner-panel');
+    if (_panel2) _panel2.classList.remove('open');
     addChat('⚠️ 接続が切れました', null, true);
     updatePlayersBadge();
   });
@@ -2490,7 +2496,26 @@ function _handleP2P(msg) {
     }
 
     case 'map_sync': {
-      // 互換性のため受信するが何もしない（独立マップ探索モード）
+      // 接続直後のみ：ゲストをホストと同じマップの安全な位置にスポーン
+      if (!ONLINE.isHost && msg._initial) {
+        G.mapIdx  = msg.mapIdx;
+        G.tiles   = msg.tiles;
+        G.chests  = msg.chests || [];
+        G.doors   = msg.doors  || [];
+        G.mapEnemies = [];
+        G.npcsOnMap  = (msg.mapIdx % 3 === 0 ? getVillageNPCs(Math.floor(msg.mapIdx / 3)) : [])
+          .filter(n => msg.tiles[n.y]?.[n.x] === T.NPC).map(n => ({...n}));
+        const mapName = MAPS_DEF[msg.mapIdx]?.name || '';
+        const lbl = document.getElementById('map-label');
+        if (lbl) lbl.textContent = (msg.mapIdx%3===0?'🏘️ ':msg.mapIdx%3===1?'🌿 ':'🏰 ') + mapName;
+        if(G.party.length){
+          if(msg.mapIdx%3===2) setPlayerPos(12,14);
+          else if(msg.mapIdx%3===1) setPlayerPos(3,9);
+          else setPlayerPos(11,12);
+          const _g=G.party[0];
+          if(_g) setTimeout(()=>_sendP2P({type:'pos_update',x:_g.x,y:_g.y,mapIdx:G.mapIdx,icon:_g.icon,name:_g.name,chipImg:_g.chipImg}),50);
+        }
+      }
       break;
     }
 
@@ -2506,6 +2531,11 @@ function _handleP2P(msg) {
 
     case 'pos_update': {
       ONLINE.remotePos = { x: msg.x, y: msg.y, mapIdx: msg.mapIdx, icon: msg.icon, name: msg.name, chipImg: msg.chipImg };
+      if (msg.partyHp) {
+        ONLINE.remotePartyHp = msg.partyHp;
+        const panel = document.getElementById('partner-panel');
+        if (panel?.classList.contains('open')) renderPartnerPanel();
+      }
       break;
     }
 
@@ -2591,13 +2621,19 @@ function _startOnlineMidGame() {
   // 自分のパーティ情報を相手に送る
   _sendP2P({ type: 'party_update', party: encodePartyToHash(G.party) });
 
+  // ホストは初回のみマップをゲストに送ってスポーン位置を決める
+  if (ONLINE.isHost) {
+    _sendP2P({ type: 'map_sync', _initial: true, mapIdx: G.mapIdx, tiles: G.tiles, chests: G.chests, doors: G.doors });
+  }
+
   if (!G._onlineIntervalsStarted) {
     G._onlineIntervalsStarted = true;
-    // 自分の位置とマップ番号を 150ms ごとに送る
+    // 自分の位置・マップ番号・HP/MPを 150ms ごとに送る
     setInterval(() => {
       if (G.inBattle || !G.party[0]) return;
       const c = G.party[0];
-      _sendP2P({ type: 'pos_update', x: c.x, y: c.y, mapIdx: G.mapIdx, icon: c.icon, name: c.name, chipImg: c.chipImg });
+      const partyHp = G.party.map(p=>({name:p.name,icon:p.icon||'?',hp:Math.floor(p.hp),maxHp:p.maxHp,mp:Math.floor(p.mp||0),maxMp:p.maxMp||1}));
+      _sendP2P({ type: 'pos_update', x: c.x, y: c.y, mapIdx: G.mapIdx, icon: c.icon, name: c.name, chipImg: c.chipImg, partyHp });
     }, 150);
 
     // ホストは敵位置を 400ms ごとに送る（マップ番号付き）
@@ -2612,11 +2648,21 @@ function _startOnlineMidGame() {
     }
   }
 
-  // 接続直後に自分の位置を即時送信（相手の画面に即座に表示されるように）
+  // 接続直後に自分の位置を即時送信
   if(G.party[0]){
     const _c=G.party[0];
-    _sendP2P({type:'pos_update',x:_c.x,y:_c.y,mapIdx:G.mapIdx,icon:_c.icon,name:_c.name,chipImg:_c.chipImg});
+    const _ph=G.party.map(p=>({name:p.name,icon:p.icon||'?',hp:Math.floor(p.hp),maxHp:p.maxHp,mp:Math.floor(p.mp||0),maxMp:p.maxMp||1}));
+    _sendP2P({type:'pos_update',x:_c.x,y:_c.y,mapIdx:G.mapIdx,icon:_c.icon,name:_c.name,chipImg:_c.chipImg,partyHp:_ph});
   }
+
+  // パートナーパネルを自動表示
+  const _ppBtn = document.getElementById('btn-partner-overworld');
+  if (_ppBtn) _ppBtn.style.display = '';
+  const _panel = document.getElementById('partner-panel');
+  if (_panel && !_panel.classList.contains('open')) {
+    _panel.classList.add('open');
+  }
+
   addChat('🌐 仲間と接続しました！一緒に冒険しよう！', null, true);
   updateOnlineModal();
 }
@@ -5253,7 +5299,12 @@ function renderPartnerPanel(){
   const body = document.getElementById('partner-panel-body');
   if (!body) return;
 
-  const party = ONLINE.remotePartyHp;
+  // リアルタイムHPデータがあればそれを、なければ接続時のパーティデータを使用
+  let party = ONLINE.remotePartyHp;
+  if (!party || !party.length) {
+    const rp = ONLINE.remoteParties[0];
+    party = rp?.party?.map(p=>({name:p.name,icon:p.icon||'?',hp:Math.floor(p.hp),maxHp:p.maxHp,mp:Math.floor(p.mp||0),maxMp:p.maxMp||1})) || [];
+  }
   const cmds  = ONLINE.remoteCmds;
 
   if (!party || !party.length) {
@@ -5261,7 +5312,11 @@ function renderPartnerPanel(){
     return;
   }
 
-  body.innerHTML = party.map(p => {
+  // 現在地マップ名を表示
+  const mapName = ONLINE.remotePos?.mapIdx != null ? (MAPS_DEF[ONLINE.remotePos.mapIdx]?.name || '？') : null;
+  const locHtml = mapName ? `<div style="padding:4px 10px;font-size:9px;color:#88ffcc;border-bottom:1px solid rgba(60,90,160,.2);">📍 ${mapName}</div>` : '';
+
+  body.innerHTML = locHtml + party.map(p => {
     const hpPct = p.maxHp ? Math.max(0, p.hp / p.maxHp * 100) : 0;
     const mpPct = p.maxMp ? Math.max(0, p.mp / p.maxMp * 100) : 0;
     const hpColor = hpPct > 50 ? '#44ee88' : hpPct > 25 ? '#ffee44' : '#ff4444';
